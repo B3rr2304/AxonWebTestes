@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import * as api from "../lib/api";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
@@ -7,6 +8,7 @@ import {
   Brain,
   Check,
   Clock3,
+  Loader2,
   Moon,
   Sparkles,
   Sun,
@@ -14,429 +16,260 @@ import {
   Zap,
 } from "lucide-react";
 
-type ChronotypeKey = "morning" | "intermediate" | "evening" | "night";
-
 type Option = {
   id: string;
   label: string;
-  description?: string;
-  score: Partial<Record<ChronotypeKey, number>>;
 };
 
 type Question = {
   id: string;
   category: string;
   title: string;
-  description: string;
   icon: React.ElementType;
   options: Option[];
 };
 
 const questions: Question[] = [
   {
-    id: "natural_wake_time",
+    id: "P1",
     category: "Sono e despertar",
-    title: "Quando você acordaria naturalmente se não tivesse compromissos?",
-    description:
-      "Pense em um dia livre, sem alarme, sem trabalho, faculdade ou obrigações logo cedo.",
+    title: "Você acha fácil acordar pela manhã?",
     icon: Sunrise,
     options: [
-      {
-        id: "before_7",
-        label: "Antes das 7h",
-        description: "Acordo cedo com facilidade.",
-        score: { morning: 3 },
-      },
-      {
-        id: "7_9",
-        label: "Entre 7h e 9h",
-        description: "Acordo bem em horários moderados.",
-        score: { morning: 1, intermediate: 2 },
-      },
-      {
-        id: "9_11",
-        label: "Entre 9h e 11h",
-        description: "Prefiro começar o dia mais tarde.",
-        score: { evening: 2, intermediate: 1 },
-      },
-      {
-        id: "after_11",
-        label: "Depois das 11h",
-        description: "Meu corpo tende a acordar bem tarde.",
-        score: { night: 3, evening: 1 },
-      },
+      { id: "A", label: "Muito fácil." },
+      { id: "B", label: "Moderadamente fácil." },
+      { id: "C", label: "Normal." },
+      { id: "D", label: "Difícil." },
+      { id: "E", label: "Muito difícil." },
     ],
   },
   {
-    id: "natural_sleep_time",
-    category: "Sono e descanso",
-    title: "Em um dia livre, que horas você sentiria sono naturalmente?",
-    description:
-      "Considere o horário em que seu corpo começaria a pedir descanso, sem pressão externa.",
-    icon: Moon,
-    options: [
-      {
-        id: "before_22",
-        label: "Antes das 22h",
-        description: "Costumo sentir sono cedo.",
-        score: { morning: 3 },
-      },
-      {
-        id: "22_00",
-        label: "Entre 22h e meia-noite",
-        description: "Meu sono vem em um horário equilibrado.",
-        score: { intermediate: 3, morning: 1 },
-      },
-      {
-        id: "00_02",
-        label: "Entre meia-noite e 2h",
-        description: "Costumo funcionar bem até mais tarde.",
-        score: { evening: 3 },
-      },
-      {
-        id: "after_02",
-        label: "Depois das 2h",
-        description: "Meu corpo parece despertar mais à noite.",
-        score: { night: 3, evening: 1 },
-      },
-    ],
-  },
-  {
-    id: "wake_energy",
-    category: "Energia",
-    title: "Como costuma ser sua energia logo após acordar?",
-    description:
-      "Não pense apenas em sono. Pense em disposição mental e física para começar o dia.",
+    id: "P2",
+    category: "Sono e despertar",
+    title: "Você se sente alerta durante a primeira meia hora depois de acordar?",
     icon: Zap,
     options: [
-      {
-        id: "high",
-        label: "Alta",
-        description: "Acordo relativamente pronto para fazer as coisas.",
-        score: { morning: 3 },
-      },
-      {
-        id: "medium",
-        label: "Média",
-        description: "Preciso de um tempo, mas logo entro no ritmo.",
-        score: { intermediate: 3 },
-      },
-      {
-        id: "low",
-        label: "Baixa",
-        description: "Demoro bastante para funcionar bem.",
-        score: { evening: 2, night: 1 },
-      },
-      {
-        id: "very_low",
-        label: "Muito baixa",
-        description: "Manhãs costumam ser difíceis para mim.",
-        score: { night: 3, evening: 1 },
-      },
+      { id: "A", label: "Totalmente alerta." },
+      { id: "B", label: "Moderadamente alerta." },
+      { id: "C", label: "Pouco alerta." },
+      { id: "D", label: "Não me sinto alerta." },
     ],
   },
   {
-    id: "best_focus_time",
-    category: "Foco",
-    title: "Em qual período você sente que consegue focar melhor?",
-    description:
-      "Pense no horário em que tarefas difíceis parecem menos pesadas.",
-    icon: Brain,
-    options: [
-      {
-        id: "morning",
-        label: "Manhã",
-        description: "Meu melhor foco aparece cedo.",
-        score: { morning: 3 },
-      },
-      {
-        id: "afternoon",
-        label: "Tarde",
-        description: "Rendo melhor depois que o dia engrena.",
-        score: { intermediate: 2, evening: 1 },
-      },
-      {
-        id: "evening",
-        label: "Noite",
-        description: "Minha clareza aumenta no fim do dia.",
-        score: { evening: 3 },
-      },
-      {
-        id: "late_night",
-        label: "Madrugada",
-        description: "Meu pico costuma vir quando tudo está mais silencioso.",
-        score: { night: 3 },
-      },
-    ],
-  },
-  {
-    id: "hard_tasks",
-    category: "Execução",
-    title: "Quando você prefere fazer tarefas que exigem muito raciocínio?",
-    description:
-      "Exemplos: estudar, programar, escrever, resolver problemas ou tomar decisões importantes.",
-    icon: Sparkles,
-    options: [
-      {
-        id: "early",
-        label: "Logo pela manhã",
-        description: "Gosto de resolver o mais importante cedo.",
-        score: { morning: 3 },
-      },
-      {
-        id: "midday",
-        label: "Meio do dia",
-        description: "Prefiro depois de já ter entrado no ritmo.",
-        score: { intermediate: 3 },
-      },
-      {
-        id: "night",
-        label: "À noite",
-        description: "Sinto mais clareza quando o dia acalma.",
-        score: { evening: 3 },
-      },
-      {
-        id: "late",
-        label: "Bem tarde",
-        description: "Tenho facilidade de concentração em horários avançados.",
-        score: { night: 3 },
-      },
-    ],
-  },
-  {
-    id: "energy_drop",
-    category: "Queda de energia",
-    title: "Em qual momento você mais sente queda de energia?",
-    description:
-      "Pense naquele horário em que parece mais difícil manter foco e disposição.",
-    icon: Clock3,
-    options: [
-      {
-        id: "early_morning",
-        label: "Logo de manhã",
-        description: "Demoro para acordar de verdade.",
-        score: { evening: 2, night: 2 },
-      },
-      {
-        id: "after_lunch",
-        label: "Depois do almoço",
-        description: "Minha energia cai no início da tarde.",
-        score: { morning: 1, intermediate: 2 },
-      },
-      {
-        id: "late_afternoon",
-        label: "Fim da tarde",
-        description: "Perco energia conforme o dia avança.",
-        score: { morning: 2, intermediate: 1 },
-      },
-      {
-        id: "late_night",
-        label: "À noite",
-        description: "Depois de certo horário, meu corpo desliga.",
-        score: { morning: 3 },
-      },
-    ],
-  },
-  {
-    id: "ideal_routine",
-    category: "Rotina ideal",
-    title: "Se pudesse escolher, como seria sua rotina ideal?",
-    description:
-      "Imagine uma rotina sem imposições externas, apenas seguindo seu melhor funcionamento.",
+    id: "P3",
+    category: "Manhã",
+    title: "Como é o seu apetite durante a primeira hora depois de acordar?",
     icon: Sun,
     options: [
-      {
-        id: "start_early",
-        label: "Começar cedo e terminar cedo",
-        description: "Gosto da sensação de vencer o dia logo no início.",
-        score: { morning: 3 },
-      },
-      {
-        id: "balanced",
-        label: "Começar em horário normal",
-        description: "Prefiro equilíbrio, sem extremos.",
-        score: { intermediate: 3 },
-      },
-      {
-        id: "start_later",
-        label: "Começar mais tarde e render à noite",
-        description: "Meu dia flui melhor quando não começa cedo demais.",
-        score: { evening: 3 },
-      },
-      {
-        id: "night_flow",
-        label: "Ter liberdade para produzir de madrugada",
-        description: "Me sinto mais ativo quando a maioria das pessoas parou.",
-        score: { night: 3 },
-      },
+      { id: "A", label: "Tenho bastante apetite." },
+      { id: "B", label: "Apetite moderado." },
+      { id: "C", label: "Pouco apetite." },
+      { id: "D", label: "Sem apetite." },
     ],
   },
   {
-    id: "early_commitments",
-    category: "Compromissos cedo",
-    title: "Como você reage a compromissos muito cedo?",
-    description:
-      "Considere reuniões, aulas, treinos ou tarefas importantes pela manhã.",
-    icon: Sunrise,
-    options: [
-      {
-        id: "fine",
-        label: "Lido bem",
-        description: "Consigo funcionar normalmente cedo.",
-        score: { morning: 3 },
-      },
-      {
-        id: "ok",
-        label: "Consigo, mas não é meu ideal",
-        description: "Faço o que precisa, mas prefiro não exagerar.",
-        score: { intermediate: 2, morning: 1 },
-      },
-      {
-        id: "hard",
-        label: "Tenho dificuldade",
-        description: "Sinto que meu corpo ainda não acompanhou.",
-        score: { evening: 2, night: 1 },
-      },
-      {
-        id: "very_hard",
-        label: "É muito difícil",
-        description: "Compromissos cedo prejudicam bastante meu rendimento.",
-        score: { night: 3, evening: 1 },
-      },
-    ],
-  },
-  {
-    id: "night_energy",
-    category: "Energia noturna",
-    title: "Como você costuma se sentir à noite?",
-    description:
-      "Pense especialmente no período depois das 20h.",
-    icon: Moon,
-    options: [
-      {
-        id: "tired",
-        label: "Cansado",
-        description: "Normalmente já estou desacelerando.",
-        score: { morning: 3 },
-      },
-      {
-        id: "normal",
-        label: "Normal",
-        description: "Consigo fazer coisas leves, mas sem pico de energia.",
-        score: { intermediate: 3 },
-      },
-      {
-        id: "productive",
-        label: "Produtivo",
-        description: "Tenho boa clareza e disposição à noite.",
-        score: { evening: 3 },
-      },
-      {
-        id: "very_active",
-        label: "Muito ativo",
-        description: "À noite ou madrugada parece ser meu melhor momento.",
-        score: { night: 3 },
-      },
-    ],
-  },
-  {
-    id: "social_jetlag",
-    category: "Ritmo real",
-    title: "Nos fins de semana, seu sono muda muito?",
-    description:
-      "Isso ajuda o Axon a entender se sua rotina atual está desalinhada com seu ritmo natural.",
+    id: "P4",
+    category: "Sono e despertar",
+    title: "Pela manhã, você depende do despertador para acordar?",
     icon: Clock3,
     options: [
-      {
-        id: "no",
-        label: "Quase não muda",
-        description: "Durmo e acordo em horários parecidos.",
-        score: { morning: 1, intermediate: 2 },
-      },
-      {
-        id: "little",
-        label: "Muda um pouco",
-        description: "Costumo atrasar 1 ou 2 horas.",
-        score: { intermediate: 2, evening: 1 },
-      },
-      {
-        id: "much",
-        label: "Muda bastante",
-        description: "Durmo e acordo bem mais tarde.",
-        score: { evening: 2, night: 1 },
-      },
-      {
-        id: "very_much",
-        label: "Muda completamente",
-        description: "Meu ritmo livre é muito diferente da semana.",
-        score: { night: 2, evening: 2 },
-      },
+      { id: "A", label: "Não, acordo espontaneamente." },
+      { id: "B", label: "Sim, mas não costumo ter dificuldades para levantar." },
+      { id: "C", label: "Sim, e às vezes tenho dificuldades para levantar." },
+      { id: "D", label: "Sim, preciso de vários alarmes para conseguir acordar." },
+    ],
+  },
+  {
+    id: "P5",
+    category: "Horário ideal de dormir",
+    title: "Caso não tivesse compromisso na manhã seguinte, a que horas gostaria de deitar?",
+    icon: Moon,
+    options: [
+      { id: "A", label: "Entre 21h e 22h." },
+      { id: "B", label: "Entre 22h e 23h." },
+      { id: "C", label: "Entre 23h e 00h30." },
+      { id: "D", label: "Depois da 1h da manhã." },
+    ],
+  },
+  {
+    id: "P6",
+    category: "Energia física",
+    title: "Em qual horário você se sente fisicamente mais disposto e com mais energia no corpo?",
+    icon: Zap,
+    options: [
+      { id: "A", label: "De manhã cedo, antes das 8h." },
+      { id: "B", label: "No período da manhã, entre 8h e 12h." },
+      { id: "C", label: "No início da tarde, entre 12h e 15h." },
+      { id: "D", label: "No final da tarde, entre 15h e 20h." },
+      { id: "E", label: "À noite, depois das 20h." },
+    ],
+  },
+  {
+    id: "P7",
+    category: "Cansaço noturno",
+    title: "À noite, entre 20h e 3h, a que horas você costuma se sentir cansado e com vontade de dormir?",
+    icon: Moon,
+    options: [
+      { id: "A", label: "Entre 20h e 21h." },
+      { id: "B", label: "Entre 21h e 22h30." },
+      { id: "C", label: "Entre 22h30 e 00h30." },
+      { id: "D", label: "Entre 00h30 e 3h." },
+    ],
+  },
+  {
+    id: "P8",
+    category: "Horário ideal de acordar",
+    title: "Se você tivesse total liberdade para planejar seu dia, a que horas preferiria acordar?",
+    icon: Sunrise,
+    options: [
+      { id: "A", label: "Antes das 6h30." },
+      { id: "B", label: "Entre 6h30 e 8h." },
+      { id: "C", label: "Entre 8h e 9h30." },
+      { id: "D", label: "Após 9h30." },
+    ],
+  },
+  {
+    id: "P9",
+    category: "Qualidade do sono",
+    title: "Como você descreveria a qualidade do seu sono atualmente?",
+    icon: Moon,
+    options: [
+      { id: "A", label: "Durmo direto e acordo me sentindo 100% disposto." },
+      { id: "B", label: "Acordo poucas vezes durante a noite, mas acordo me sentindo bem." },
+      { id: "C", label: "Tenho dificuldade em pegar no sono, mas depois durmo bem." },
+      { id: "D", label: "Acordo várias vezes durante a noite e tenho o sono leve." },
+      { id: "E", label: "Sinto que durmo bem, mas acordo cansado e sem energia." },
+      { id: "F", label: "Outro." },
+    ],
+  },
+  {
+    id: "P10",
+    category: "Pico mental",
+    title: "Em qual horário você estaria no máximo de sua forma para um teste de esforço mental?",
+    icon: Brain,
+    options: [
+      { id: "A", label: "Antes das 10h." },
+      { id: "B", label: "Entre 10h e 12h." },
+      { id: "C", label: "Entre 13h30 e 16h." },
+      { id: "D", label: "Entre 16h e 21h." },
+      { id: "E", label: "Entre 21h e 00h." },
+      { id: "F", label: "Depois das 00h." },
+    ],
+  },
+  {
+    id: "P11",
+    category: "Produtividade",
+    title: "Em qual período do dia você geralmente se sente mais produtivo para tarefas que exigem concentração?",
+    icon: Brain,
+    options: [
+      { id: "A", label: "Nas primeiras horas da manhã (5h às 9h)." },
+      { id: "B", label: "No final da manhã (9h às 12h)." },
+      { id: "C", label: "No início da tarde (12h às 15h)." },
+      { id: "D", label: "No final da tarde (15h às 18h)." },
+      { id: "E", label: "À noite (18h às 22h)." },
+      { id: "F", label: "Tarde da noite (após as 22h)." },
+      { id: "G", label: "Não tenho um pico claro — cada dia é diferente." },
+    ],
+  },
+  {
+    id: "P12",
+    category: "Queda de energia",
+    title: "Você sente uma queda de energia em algum momento específico do dia?",
+    icon: Zap,
+    options: [
+      { id: "A", label: "Não, sinto-me energizado o dia todo." },
+      { id: "B", label: "Sim, no fim da manhã (10h às 12h)." },
+      { id: "C", label: "Sim, no início da tarde (12h às 15h)." },
+      { id: "D", label: "Sim, no meio da tarde (15h às 17h)." },
+      { id: "E", label: "Sim, no final da tarde (17h às 20h)." },
+      { id: "F", label: "Sim, no começo da noite (20h às 23h)." },
+      { id: "G", label: "Sim, apenas de madrugada (após as 23h)." },
+    ],
+  },
+  {
+    id: "P13",
+    category: "Criatividade",
+    title: "Você consegue realizar tarefas criativas ou de resolução de problemas melhor em algum horário específico?",
+    icon: Sparkles,
+    options: [
+      { id: "A", label: "Nas primeiras horas da manhã (antes das 09h)." },
+      { id: "B", label: "No final da manhã (09h às 12h)." },
+      { id: "C", label: "Durante a tarde (12h às 16h)." },
+      { id: "D", label: "Final da tarde (16h às 19h)." },
+      { id: "E", label: "Noite (19h às 22h)." },
+      { id: "F", label: "Tarde da noite (depois das 22h)." },
+      { id: "G", label: "Não tenho um pico definido." },
+    ],
+  },
+  {
+    id: "P14",
+    category: "Execução",
+    title: "Se tivesse que realizar uma tarefa importante e desafiadora, em qual horário você escolheria?",
+    icon: Brain,
+    options: [
+      { id: "A", label: "Antes das 10h." },
+      { id: "B", label: "Das 10h às 13h." },
+      { id: "C", label: "Das 13h às 16h." },
+      { id: "D", label: "Das 16h às 19h." },
+      { id: "E", label: "Das 19h às 22h." },
+      { id: "F", label: "Após as 22h." },
+    ],
+  },
+  {
+    id: "P15",
+    category: "Turno menos produtivo",
+    title: "Se você tivesse que descartar um turno do dia por considerá-lo menos produtivo, qual seria?",
+    icon: Clock3,
+    options: [
+      { id: "A", label: "Manhã (antes das 12h)." },
+      { id: "B", label: "Tarde (12h às 18h)." },
+      { id: "C", label: "Noite (18h às 00h)." },
+      { id: "D", label: "Madrugada (depois das 00h)." },
+    ],
+  },
+  {
+    id: "P16",
+    category: "Melhor turno cognitivo",
+    title: "Qual é o seu melhor turno para tarefas cognitivas exigentes?",
+    icon: Brain,
+    options: [
+      { id: "A", label: "Manhã cedo, antes das 8h." },
+      { id: "B", label: "Manhã, entre 8h e 12h." },
+      { id: "C", label: "Começo da tarde, entre 12h e 16h." },
+      { id: "D", label: "Final da tarde, entre 16h e 20h." },
+      { id: "E", label: "Noite, entre 20h e 00h." },
+      { id: "F", label: "Madrugada, depois das 00h." },
+    ],
+  },
+  {
+    id: "P17",
+    category: "Ritmo de produtividade",
+    title: "Como você descreveria sua produtividade ao longo do dia?",
+    icon: Zap,
+    options: [
+      { id: "A", label: "Alta pela manhã e vai diminuindo ao longo do dia." },
+      { id: "B", label: "Consistente ao longo de todo o dia, com pequenos picos." },
+      { id: "C", label: "Baixa pela manhã, aumentando durante a tarde e a noite." },
+      { id: "D", label: "Alta somente à noite." },
+      { id: "E", label: "Tenho dois picos: um de manhã e outro à noite." },
+    ],
+  },
+  {
+    id: "P18",
+    category: "Concentração",
+    title: "Você sente que sua capacidade de se concentrar aumenta em algum horário específico do dia?",
+    icon: Sparkles,
+    options: [
+      { id: "A", label: "Nas primeiras horas da manhã." },
+      { id: "B", label: "No meio da manhã." },
+      { id: "C", label: "No começo da tarde." },
+      { id: "D", label: "No final da tarde." },
+      { id: "E", label: "No início da noite." },
+      { id: "F", label: "De madrugada." },
+      { id: "G", label: "Em horários alternados, dependendo do dia." },
     ],
   },
 ];
-
-const chronotypeLabels: Record<
-  ChronotypeKey,
-  {
-    title: string;
-    subtitle: string;
-    description: string;
-  }
-> = {
-  morning: {
-    title: "Perfil Matutino",
-    subtitle: "Seu melhor funcionamento tende a acontecer mais cedo.",
-    description:
-      "Você provavelmente tem mais energia e clareza nas primeiras horas do dia. O Axon poderá priorizar tarefas importantes pela manhã e reservar atividades mais leves para o fim do dia.",
-  },
-  intermediate: {
-    title: "Perfil Intermediário",
-    subtitle: "Seu ritmo tende a ser mais equilibrado ao longo do dia.",
-    description:
-      "Você provavelmente consegue se adaptar bem a diferentes horários. O Axon poderá distribuir tarefas importantes em janelas equilibradas, respeitando seus compromissos e variações de energia.",
-  },
-  evening: {
-    title: "Perfil Vespertino",
-    subtitle: "Seu desempenho tende a melhorar ao longo do dia.",
-    description:
-      "Você provavelmente ganha energia e clareza mais tarde. O Axon poderá evitar sobrecarregar suas manhãs e reservar tarefas importantes para tarde ou noite.",
-  },
-  night: {
-    title: "Perfil Noturno",
-    subtitle: "Seu pico de energia tende a aparecer em horários mais avançados.",
-    description:
-      "Você provavelmente sente mais clareza quando o dia está mais silencioso. O Axon poderá considerar uma rotina mais flexível, com blocos relevantes no período noturno quando possível.",
-  },
-};
-
-function calculateChronotype(answers: Record<string, string>) {
-  const scores: Record<ChronotypeKey, number> = {
-    morning: 0,
-    intermediate: 0,
-    evening: 0,
-    night: 0,
-  };
-
-  questions.forEach((question) => {
-    const selectedOptionId = answers[question.id];
-    const selectedOption = question.options.find(
-      (option) => option.id === selectedOptionId
-    );
-
-    if (!selectedOption) return;
-
-    Object.entries(selectedOption.score).forEach(([key, value]) => {
-      scores[key as ChronotypeKey] += value ?? 0;
-    });
-  });
-
-  const winner = Object.entries(scores).sort((a, b) => b[1] - a[1])[0][0];
-
-  return {
-    key: winner as ChronotypeKey,
-    scores,
-  };
-}
 
 function ProgressBar({ progress }: { progress: number }) {
   return (
@@ -456,16 +289,11 @@ export default function Questionnaire() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [finished, setFinished] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = answers[currentQuestion?.id];
-  const progress = finished
-    ? 100
-    : ((currentIndex + 1) / questions.length) * 100;
-
-  const result = useMemo(() => calculateChronotype(answers), [answers]);
-  const resultContent = chronotypeLabels[result.key];
+  const progress = ((currentIndex + 1) / questions.length) * 100;
 
   function selectAnswer(optionId: string) {
     setAnswers((prev) => ({
@@ -474,18 +302,32 @@ export default function Questionnaire() {
     }));
   }
 
+  async function handleFinish(finalAnswers: Record<string, string>) {
+    const { P9: qualidade_sono = "F", ...respostas } = finalAnswers;
+
+    setIsLoading(true);
+    try {
+      const result = await api.classify(respostas, qualidade_sono);
+      localStorage.setItem("axon_chronotype", result.cronotipo);
+
+      if (api.isLoggedIn()) {
+        api.saveChronotype(result.cronotipo, result.pontos, finalAnswers).catch(() => {});
+      }
+    } catch {
+      // navigate anyway even if classify fails
+    } finally {
+      setIsLoading(false);
+    }
+
+    navigate("/analyzing");
+  }
+
   function goNext() {
-    if (!selectedAnswer) return;
+    if (!selectedAnswer || isLoading) return;
 
     if (currentIndex === questions.length - 1) {
-      const finalResult = calculateChronotype({
-        ...answers,
-        [currentQuestion.id]: selectedAnswer,
-      });
-
-      localStorage.setItem("axon_chronotype", finalResult.key);
-
-      navigate("/analyzing");
+      const finalAnswers = { ...answers, [currentQuestion.id]: selectedAnswer };
+      handleFinish(finalAnswers);
       return;
     }
 
@@ -493,12 +335,6 @@ export default function Questionnaire() {
   }
 
   function goBack() {
-    if (finished) {
-      setFinished(false);
-      setCurrentIndex(questions.length - 1);
-      return;
-    }
-
     if (currentIndex === 0) {
       navigate("/questionnaire-intro");
       return;
@@ -507,88 +343,16 @@ export default function Questionnaire() {
     setCurrentIndex((prev) => prev - 1);
   }
 
-  if (finished) {
-    return (
-      <main className="relative min-h-screen overflow-hidden bg-[#05050b] px-4 py-5 text-white">
-        <Background />
-
-        <div className="relative z-10 mx-auto flex min-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col">
-          <Header />
-
-          <section className="flex flex-1 flex-col justify-center py-8">
-            <div className="mb-6">
-              <p className="mb-3 text-sm text-white/45">
-                Configuração inicial concluída
-              </p>
-              <ProgressBar progress={100} />
-            </div>
-
-            <motion.div
-              initial={{ opacity: 0, y: 24, scale: 0.98 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{ duration: 0.45 }}
-              className="overflow-hidden rounded-[2.2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/35 backdrop-blur-2xl"
-            >
-              <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-[1.7rem] border border-purple-300/20 bg-purple-500/15 text-purple-100 shadow-[0_0_60px_rgba(168,85,247,0.25)]">
-                <Sparkles className="h-9 w-9" />
-              </div>
-
-              <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
-                Resultado inicial
-              </div>
-
-              <h1 className="text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.055em] text-white">
-                {resultContent.title}
-              </h1>
-
-              <p className="mt-4 text-base leading-7 text-white/65">
-                {resultContent.subtitle}
-              </p>
-
-              <p className="mt-4 text-sm leading-7 text-white/48">
-                {resultContent.description}
-              </p>
-
-              <div className="mt-6 rounded-3xl border border-white/10 bg-black/20 p-4">
-                <p className="text-xs leading-5 text-white/42">
-                  Esse é apenas um perfil inicial. Com o uso diário, o Axon
-                  poderá ajustar sua rotina com base nos seus padrões reais.
-                </p>
-              </div>
-            </motion.div>
-          </section>
-
-          <footer className="space-y-3 pb-2">
-            <button
-              onClick={() => navigate("/")}
-              className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98]"
-            >
-              Entrar no Axon
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </button>
-
-            <button
-              onClick={goBack}
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/60 backdrop-blur-2xl transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98]"
-            >
-              Revisar respostas
-            </button>
-          </footer>
-        </div>
-      </main>
-    );
-  }
-
   const Icon = currentQuestion.icon;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#05050b] px-4 py-5 text-white">
+    <main className="relative min-h-screen overflow-x-hidden bg-[#05050b] px-4 py-5 text-white">
       <Background />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col">
         <Header />
 
-        <section className="flex flex-1 flex-col justify-center py-6">
+        <section className="flex flex-1 flex-col py-6">
           <div className="mb-6">
             <div className="mb-3 flex items-center justify-between">
               <p className="text-sm text-white/45">
@@ -619,13 +383,9 @@ export default function Questionnaire() {
                 {currentQuestion.category}
               </div>
 
-              <h1 className="text-[1.9rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+              <h1 className="text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.04em] text-white">
                 {currentQuestion.title}
               </h1>
-
-              <p className="mt-4 text-sm leading-6 text-white/48">
-                {currentQuestion.description}
-              </p>
 
               <div className="mt-7 space-y-3">
                 {currentQuestion.options.map((option) => {
@@ -635,7 +395,7 @@ export default function Questionnaire() {
                     <button
                       key={option.id}
                       onClick={() => selectAnswer(option.id)}
-                      className={`flex min-h-[76px] w-full items-center gap-3 rounded-3xl border p-4 text-left transition duration-300 active:scale-[0.99] ${
+                      className={`flex min-h-[60px] w-full items-center gap-3 rounded-3xl border p-4 text-left transition duration-300 active:scale-[0.99] ${
                         isSelected
                           ? "border-purple-300/40 bg-purple-500/15 shadow-[0_0_30px_rgba(168,85,247,0.16)]"
                           : "border-white/10 bg-black/20 hover:bg-white/[0.06]"
@@ -651,20 +411,15 @@ export default function Questionnaire() {
                         {isSelected ? (
                           <Check className="h-4 w-4" />
                         ) : (
-                          <span className="h-2 w-2 rounded-full bg-white/30" />
+                          <span className="text-xs font-semibold text-white/40">
+                            {option.id}
+                          </span>
                         )}
                       </div>
 
-                      <div>
-                        <p className="text-sm font-semibold text-white">
-                          {option.label}
-                        </p>
-                        {option.description && (
-                          <p className="mt-1 text-xs leading-5 text-white/42">
-                            {option.description}
-                          </p>
-                        )}
-                      </div>
+                      <p className="text-sm font-medium leading-5 text-white">
+                        {option.label}
+                      </p>
                     </button>
                   );
                 })}
@@ -676,18 +431,31 @@ export default function Questionnaire() {
         <footer className="space-y-3 pb-2">
           <button
             onClick={goNext}
-            disabled={!selectedAnswer}
+            disabled={!selectedAnswer || isLoading}
             className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30 disabled:shadow-none"
           >
-            {currentIndex === questions.length - 1
-              ? "Ver meu perfil inicial"
-              : "Continuar"}
-            <ArrowRight className="ml-2 h-4 w-4" />
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Analisando...
+              </>
+            ) : currentIndex === questions.length - 1 ? (
+              <>
+                Analisar meu perfil
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </>
+            ) : (
+              <>
+                Continuar
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </>
+            )}
           </button>
 
           <button
             onClick={goBack}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/60 backdrop-blur-2xl transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98]"
+            disabled={isLoading}
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/60 backdrop-blur-2xl transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar

@@ -1,5 +1,5 @@
-import React from "react";
-import { Link } from "react-router-dom";
+import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   ArrowRight,
@@ -9,7 +9,9 @@ import {
   User,
   Sparkles,
   CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
+import * as api from "../lib/api";
 
 function AuthBackground() {
   return (
@@ -28,26 +30,22 @@ type InputFieldProps = {
   label: string;
   type?: string;
   placeholder?: string;
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
-function InputField({
-  icon: Icon,
-  label,
-  type = "text",
-  placeholder,
-}: InputFieldProps) {
+function InputField({ icon: Icon, label, type = "text", placeholder, value, onChange }: InputFieldProps) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-white/55">
-        {label}
-      </span>
-
+      <span className="mb-2 block text-sm font-medium text-white/55">{label}</span>
       <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.055] px-4 backdrop-blur-2xl transition focus-within:border-purple-300/35 focus-within:bg-white/[0.075]">
         <Icon className="h-5 w-5 text-purple-200/80" />
-
         <input
           type={type}
           placeholder={placeholder}
+          value={value}
+          onChange={onChange}
+          required
           className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/28"
         />
       </div>
@@ -56,6 +54,39 @@ function InputField({
 }
 
 export default function Signup() {
+  const navigate = useNavigate();
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+
+    if (password !== confirm) {
+      setError("As senhas não coincidem.");
+      return;
+    }
+    if (password.length < 6) {
+      setError("A senha deve ter pelo menos 6 caracteres.");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await api.register(name, email, password);
+      api.saveSession(res);
+      navigate("/questionnaire-intro");
+    } catch (err: unknown) {
+      setError((err as Error).message ?? "Erro ao criar conta. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#05050b] px-4 py-8 text-white">
       <AuthBackground />
@@ -68,7 +99,6 @@ export default function Signup() {
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/15 text-purple-200">
             <Brain className="h-5 w-5" />
           </div>
-
           <div>
             <p className="text-sm font-semibold text-white">Axon</p>
             <p className="text-xs text-white/40">Personal OS</p>
@@ -86,63 +116,43 @@ export default function Signup() {
               <Sparkles className="h-3.5 w-3.5" />
               Primeiro acesso
             </div>
-
             <h1 className="text-[2rem] font-semibold leading-[1.05] tracking-[-0.045em] text-white">
               Crie seu Axon pessoal.
             </h1>
-
             <p className="mt-3 text-sm leading-6 text-white/48">
-              Depois do cadastro, você responderá um questionário rápido para
-              personalizar sua experiência.
+              Depois do cadastro, você responderá um questionário rápido para personalizar sua experiência.
             </p>
           </div>
 
-          <form className="space-y-4">
-            <InputField
-              icon={User}
-              label="Nome"
-              type="text"
-              placeholder="Como devemos te chamar?"
-            />
+          <form className="space-y-4" onSubmit={handleSubmit}>
+            <InputField icon={User} label="Nome" type="text" placeholder="Como devemos te chamar?" value={name} onChange={(e) => setName(e.target.value)} />
+            <InputField icon={Mail} label="E-mail" type="email" placeholder="seuemail@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <InputField icon={Lock} label="Senha" type="password" placeholder="Crie uma senha segura" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <InputField icon={Lock} label="Confirmar senha" type="password" placeholder="Repita sua senha" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
 
-            <InputField
-              icon={Mail}
-              label="E-mail"
-              type="email"
-              placeholder="seuemail@exemplo.com"
-            />
-
-            <InputField
-              icon={Lock}
-              label="Senha"
-              type="password"
-              placeholder="Crie uma senha segura"
-            />
-
-            <InputField
-              icon={Lock}
-              label="Confirmar senha"
-              type="password"
-              placeholder="Repita sua senha"
-            />
+            {error && (
+              <div className="flex items-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-300" />
+                <p className="text-xs text-red-200">{error}</p>
+              </div>
+            )}
 
             <div className="rounded-2xl border border-purple-300/15 bg-purple-500/10 p-4">
               <div className="flex gap-3">
                 <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-purple-200" />
                 <p className="text-xs leading-5 text-white/55">
-                  Ao criar sua conta, o próximo passo será responder o
-                  questionário inicial para o Axon entender sua rotina, energia,
-                  prioridades e estilo de trabalho.
+                  Ao criar sua conta, o próximo passo será responder o questionário inicial para o Axon entender sua rotina, energia, prioridades e estilo de trabalho.
                 </p>
               </div>
             </div>
 
             <button
               type="submit"
-              className="mt-3 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98]"
+              disabled={loading}
+              className="mt-3 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
-              Criar minha conta
-              <ArrowRight className="ml-2 h-4 w-4" />
+              {loading ? "Criando conta..." : "Criar minha conta"}
+              {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
             </button>
           </form>
 
