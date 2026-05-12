@@ -11,10 +11,14 @@ app = FastAPI(title="Axon API")
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
+# Em Codespaces, o domínio muda a cada reinício — permite tudo em dev
+_is_codespace = "app.github.dev" in FRONTEND_URL
+_origins = ["*"] if _is_codespace else [FRONTEND_URL, "http://localhost:5173"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[FRONTEND_URL, "http://localhost:5173"],
-    allow_credentials=True,
+    allow_origins=_origins,
+    allow_credentials=not _is_codespace,  # credentials=True é incompatível com origins=["*"]
     allow_methods=["*"],
     allow_headers=["*"],
 )

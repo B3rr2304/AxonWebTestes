@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Brain, Mail, Lock, Sparkles, AlertCircle } from "lucide-react";
+import { ArrowRight, Brain, Mail, Lock, Sparkles, AlertCircle, Eye, EyeOff } from "lucide-react";
 import * as api from "../lib/api";
 
 function AuthBackground() {
