@@ -305,11 +305,10 @@ function HeroVisual() {
                 (item, index) => (
                   <div
                     key={item}
-                    className={`rounded-2xl px-4 py-3 text-sm ${
-                      index === 0
+                    className={`rounded-2xl px-4 py-3 text-sm ${index === 0
                         ? "border border-purple-300/20 bg-purple-500/15 text-white"
                         : "text-white/45"
-                    }`}
+                      }`}
                   >
                     {item}
                   </div>
@@ -487,17 +486,17 @@ export default function LandingPage() {
           <div className="flex items-center gap-2">
             <Link
               to="/login"
-                            className="hidden rounded-2xl px-4 py-3 text-sm font-medium text-white/60 transition hover:bg-white/10 hover:text-white sm:inline-flex"
-                                        >
-                                                      Entrar
-                                                                  </Link>
+              className="hidden rounded-2xl px-4 py-3 text-sm font-medium text-white/60 transition hover:bg-white/10 hover:text-white sm:inline-flex"
+            >
+              Entrar
+            </Link>
 
-                                                                              <Link
-                                                                                            to="/signup"
-                                                                                                          className="hidden rounded-2xl bg-purple-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 transition hover:bg-purple-400 sm:inline-flex"
-                                                                                                                      >
-                                                                                                                                    Começar
-                                                                                                                                                </Link>
+            <Link
+              to="/signup"
+              className="hidden rounded-2xl bg-purple-500 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 transition hover:bg-purple-400 sm:inline-flex"
+            >
+              Começar
+            </Link>
 
             <button className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/70 backdrop-blur-xl md:hidden">
               <Menu className="h-5 w-5" />

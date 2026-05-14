@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowUp, Brain, Menu, Plus, Sparkles, Zap } from "lucide-react";
 
-import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
+import type { ProfileData } from "../lib/api";
 
 type Message = {
   id: number;
@@ -12,8 +12,6 @@ type Message = {
   text: string;
   streaming?: boolean;
 };
-
-const validKeys: ChronotypeResultKey[] = ["morning", "intermediate", "evening", "night"];
 
 const quickPrompts = [
   "Organizar meu dia",
@@ -27,23 +25,32 @@ export default function Chat() {
   const [input, setInput] = useState("");
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isStreaming, setIsStreaming] = useState(false);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const resultKey = useMemo<ChronotypeResultKey>(() => {
-    const stored = localStorage.getItem("axon_chronotype");
-    if (stored && validKeys.includes(stored as ChronotypeResultKey)) {
-      return stored as ChronotypeResultKey;
-    }
-    return "intermediate";
+  useEffect(() => {
+    api.getProfile().then(setProfile).catch(() => {
+      // Fallback: tenta construir perfil mínimo do localStorage
+      const chronotype = localStorage.getItem("axon_chronotype");
+      if (chronotype) {
+        setProfile({
+          email: "",
+          chronotype,
+          chronotype_label: chronotype,
+          has_chronotype: true,
+        });
+      }
+    });
   }, []);
 
-  const result = results[resultKey];
+  const chronotypeLabel = profile?.chronotype_label ?? "seu perfil";
+  const energyPeak = profile?.energy_peak ?? "";
 
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 1,
       role: "axon",
-      text: `Eu já estou considerando seu ${result.label.toLowerCase()} para adaptar minhas sugestões ao seu ritmo.`,
+      text: "Olá! Estou aqui para te ajudar a organizar seu dia com base no seu ritmo natural.",
     },
     {
       id: 2,
@@ -56,66 +63,49 @@ export default function Chat() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Build history array for API (only non-streaming completed messages)
   function buildHistory(msgs: Message[]): api.ChatMessage[] {
     return msgs
       .filter((m) => !m.streaming)
+      .slice(-50)
       .map((m) => ({
         role: m.role === "axon" ? "assistant" : "user",
         content: m.text,
       }));
   }
 
-  const sendMessage = useCallback((text?: string) => {
+  const sendMessage = useCallback(async (text?: string) => {
     const messageText = (text ?? input).trim();
     if (!messageText || isStreaming) return;
 
     const userMsg: Message = { id: Date.now(), role: "user", text: messageText };
     const axonMsgId = Date.now() + 1;
-    const axonMsg: Message = { id: axonMsgId, role: "axon", text: "", streaming: true };
+    const typingMsg: Message = { id: axonMsgId, role: "axon", text: "", streaming: true };
 
-    setMessages((prev) => {
-      const history = buildHistory(prev);
+    const history = buildHistory(messages);
 
-      // Start streaming after state update
-      setTimeout(() => {
-        setIsStreaming(true);
-        api.streamChat(
-          messageText,
-          history,
-          (chunk) => {
-            setMessages((m) =>
-              m.map((msg) =>
-                msg.id === axonMsgId ? { ...msg, text: msg.text + chunk } : msg
-              )
-            );
-          },
-          () => {
-            setMessages((m) =>
-              m.map((msg) =>
-                msg.id === axonMsgId ? { ...msg, streaming: false } : msg
-              )
-            );
-            setIsStreaming(false);
-          },
-          (err) => {
-            setMessages((m) =>
-              m.map((msg) =>
-                msg.id === axonMsgId
-                  ? { ...msg, text: `Erro ao conectar com o Axon: ${err.message}`, streaming: false }
-                  : msg
-              )
-            );
-            setIsStreaming(false);
-          }
-        );
-      }, 0);
-
-      return [...prev, userMsg, axonMsg];
-    });
-
+    setMessages((prev) => [...prev, userMsg, typingMsg]);
     setInput("");
-  }, [input, isStreaming]);
+    setIsStreaming(true);
+
+    try {
+      const res = await api.chat(messageText, history);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === axonMsgId ? { ...msg, text: res.response, streaming: false } : msg
+        )
+      );
+    } catch {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === axonMsgId
+            ? { ...msg, text: "Não consegui me conectar agora. Verifique sua conexão e tente novamente.", streaming: false }
+            : msg
+        )
+      );
+    } finally {
+      setIsStreaming(false);
+    }
+  }, [input, isStreaming, messages]);
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
@@ -141,7 +131,7 @@ export default function Chat() {
               <button
                 onClick={() => {
                   setMessages([
-                    { id: Date.now(), role: "axon", text: `Olá! Nova conversa iniciada. Como posso ajudar com seu ${result.label.toLowerCase()}?` },
+                    { id: Date.now(), role: "axon", text: "Nova conversa iniciada. Como posso ajudar você hoje?" },
                   ]);
                 }}
                 className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/55 backdrop-blur-2xl active:scale-[0.96]"
@@ -163,9 +153,15 @@ export default function Chat() {
           <div className="mt-3 flex items-center gap-2 overflow-hidden rounded-2xl border border-purple-300/15 bg-purple-500/10 px-3 py-2">
             <Sparkles className="h-4 w-4 shrink-0 text-purple-200" />
             <p className="truncate text-xs text-white/55">
-              Contexto ativo:{" "}
-              <span className="text-purple-100">{result.label}</span> · pico{" "}
-              {result.energyPeak}
+              {profile ? (
+                <>
+                  Contexto ativo:{" "}
+                  <span className="text-purple-100">{chronotypeLabel}</span>
+                  {energyPeak && <> · pico {energyPeak}</>}
+                </>
+              ) : (
+                "Carregando seu perfil..."
+              )}
             </p>
           </div>
         </header>
@@ -213,8 +209,8 @@ export default function Chat() {
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        chronotypeLabel={result.label}
-        energyPeak={result.energyPeak}
+        chronotypeLabel={chronotypeLabel}
+        energyPeak={energyPeak}
       />
     </main>
   );
@@ -282,9 +278,19 @@ function MessageBubble({ message }: { message: Message }) {
           </div>
         )}
         <p className="text-sm leading-6">
-          {message.text}
-          {message.streaming && (
-            <span className="ml-1 inline-block h-3 w-0.5 animate-pulse bg-purple-300" />
+          {message.streaming && !message.text ? (
+            <span className="flex items-center gap-1.5 text-white/40">
+              <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-purple-300 [animation-delay:0ms]" />
+              <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-purple-300 [animation-delay:150ms]" />
+              <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-purple-300 [animation-delay:300ms]" />
+            </span>
+          ) : (
+            <>
+              {message.text}
+              {message.streaming && (
+                <span className="ml-1 inline-block h-3 w-0.5 animate-pulse bg-purple-300" />
+              )}
+            </>
           )}
         </p>
       </div>

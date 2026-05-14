@@ -1,5 +1,19 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
+async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
+  const token = localStorage.getItem("axon_token");
+  return fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...options?.headers,
+    },
+  });
+}
+
+export default apiFetch;
+
 function getToken(): string | null {
   return localStorage.getItem("axon_token");
 }
@@ -72,6 +86,22 @@ export function isLoggedIn(): boolean {
   return !!getToken();
 }
 
+// --- Profile ---
+
+export interface ProfileData {
+  name?: string;
+  email: string;
+  chronotype?: string;
+  chronotype_label?: string;
+  energy_peak?: string;
+  focus_window?: string;
+  has_chronotype: boolean;
+}
+
+export function getProfile() {
+  return request<ProfileData>("/profile");
+}
+
 // --- Users ---
 
 export interface UserProfile {
@@ -106,6 +136,13 @@ export interface ClassifyResponse {
 
 export function classify(respostas: Record<string, string>, qualidade_sono: string) {
   return request<ClassifyResponse>("/classify/", {
+    method: "POST",
+    body: JSON.stringify({ respostas, qualidade_sono }),
+  });
+}
+
+export function classifyAndSave(respostas: Record<string, string>, qualidade_sono: string) {
+  return request<ClassifyResponse>("/classify/save", {
     method: "POST",
     body: JSON.stringify({ respostas, qualidade_sono }),
   });
@@ -147,6 +184,18 @@ export function getDashboard() {
 }
 
 // --- Chat ---
+
+export interface ChatApiResponse {
+  response: string;
+}
+
+export function chat(message: string, history: ChatMessage[]) {
+  return request<ChatApiResponse>("/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, history }),
+  });
+}
+
 
 export interface ChatMessage {
   role: "user" | "assistant";

@@ -19,10 +19,11 @@ import {
 } from "../data/results";
 
 const validKeys: ChronotypeResultKey[] = [
-  "morning",
-  "intermediate",
-  "evening",
-  "night",
+  "Matutino",
+  "Vespertino",
+  "Noturno",
+  "Misto",
+  "Bimodal",
 ];
 
 export default function Result() {
@@ -35,7 +36,7 @@ export default function Result() {
       return stored as ChronotypeResultKey;
     }
 
-    return "intermediate";
+    return "Misto";
   }, []);
 
   const result = results[resultKey];
@@ -99,20 +100,24 @@ export default function Result() {
                   }}
                   className="relative flex h-20 w-20 items-center justify-center rounded-[1.5rem] border border-white/10 bg-black/35"
                 >
-                  {resultKey === "morning" && (
+                  {resultKey === "Matutino" && (
                     <Sun className="h-10 w-10 text-purple-100" />
                   )}
 
-                  {resultKey === "intermediate" && (
-                    <BarChart3 className="h-10 w-10 text-purple-100" />
-                  )}
-
-                  {resultKey === "evening" && (
+                  {resultKey === "Vespertino" && (
                     <Sparkles className="h-10 w-10 text-purple-100" />
                   )}
 
-                  {resultKey === "night" && (
+                  {resultKey === "Noturno" && (
                     <Moon className="h-10 w-10 text-purple-100" />
+                  )}
+
+                  {resultKey === "Misto" && (
+                    <BarChart3 className="h-10 w-10 text-purple-100" />
+                  )}
+
+                  {resultKey === "Bimodal" && (
+                    <Zap className="h-10 w-10 text-purple-100" />
                   )}
                 </motion.div>
               </div>
@@ -126,13 +131,17 @@ export default function Result() {
                 {result.title}
               </h1>
 
-              <p className="mt-4 text-sm leading-6 text-white/58">
-                {result.subtitle}
-              </p>
+              {result.subtitle && (
+                <p className="mt-4 text-sm leading-6 text-white/58">
+                  {result.subtitle}
+                </p>
+              )}
 
-              <p className="mt-4 text-sm leading-7 text-white/45">
-                {result.description}
-              </p>
+              {result.description && (
+                <p className="mt-4 text-sm leading-7 text-white/45">
+                  {result.description}
+                </p>
+              )}
             </div>
           </motion.div>
 
@@ -158,7 +167,7 @@ export default function Result() {
             <InfoCard
               icon={Brain}
               label="Perfil"
-              value={result.label.replace("Perfil ", "")}
+              value={result.label.replace("Cronotipo ", "")}
             />
           </div>
 
