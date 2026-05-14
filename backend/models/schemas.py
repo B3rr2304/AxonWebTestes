@@ -38,6 +38,18 @@ class ClassifyResponse(BaseModel):
     pontos: dict[str, int]
 
 
+# --- Profile ---
+
+class ProfileResponse(BaseModel):
+    name: Optional[str] = None
+    email: str
+    chronotype: Optional[str] = None
+    chronotype_label: Optional[str] = None
+    energy_peak: Optional[str] = None
+    focus_window: Optional[str] = None
+    has_chronotype: bool = False
+
+
 # --- Chat ---
 
 class ChatMessage(BaseModel):
@@ -48,3 +60,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[ChatMessage] = []
+
+
+class ChatResponse(BaseModel):
+    response: str

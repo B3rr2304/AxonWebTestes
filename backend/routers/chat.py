@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends
 from fastapi.responses import StreamingResponse
-from models.schemas import ChatRequest
+from models.schemas import ChatRequest, ChatResponse
 from auth_helper import get_current_user
 from database import supabase
 from services import chronotype as chronotype_service
@@ -48,3 +48,39 @@ def chat_message(
             "X-Accel-Buffering": "no",
         },
     )
+
+
+@router.post("", response_model=ChatResponse)
+def chat(
+    body: ChatRequest,
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["id"]
+
+    profile_res = supabase.table("profiles").select("name, chronotype, qualidade_sono").eq("id", user_id).single().execute()
+    profile_data = profile_res.data or {}
+
+    relevant = ["P10", "P11", "P13", "P14", "P17", "P18"]
+    answers_res = supabase.table("respostas").select("pergunta, alternativa").eq("user_id", user_id).in_("pergunta", relevant).execute()
+    respostas = {row["pergunta"]: row["alternativa"] for row in (answers_res.data or [])}
+
+    perfil = {
+        "nome": profile_data.get("name"),
+        "cronotipo": profile_data.get("chronotype", "intermediate"),
+        "qualidade_sono": profile_data.get("qualidade_sono"),
+        "respostas": respostas,
+    }
+
+    system_prompt = claude_service.build_system_prompt(perfil)
+
+    history = [{"role": m.role, "content": m.content} for m in body.history[-50:]]
+    history.append({"role": "user", "content": body.message})
+
+    response_text = claude_service.call_chat(history, system_prompt)
+
+    supabase.table("messages").insert([
+        {"user_id": user_id, "role": "user", "content": body.message},
+        {"user_id": user_id, "role": "assistant", "content": response_text},
+    ]).execute()
+
+    return ChatResponse(response=response_text)

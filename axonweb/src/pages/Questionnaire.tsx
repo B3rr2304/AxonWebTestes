@@ -8,7 +8,6 @@ import {
   Brain,
   Check,
   Clock3,
-  Loader2,
   Moon,
   Sparkles,
   Sun,
@@ -74,8 +73,8 @@ const questions: Question[] = [
     icon: Clock3,
     options: [
       { id: "A", label: "Não, acordo espontaneamente." },
-      { id: "B", label: "Sim, mas não costumo ter dificuldades para levantar." },
-      { id: "C", label: "Sim, e às vezes tenho dificuldades para levantar." },
+      { id: "B", label: "Sim, mas sem dificuldades." },
+      { id: "C", label: "Sim, às vezes com dificuldades." },
       { id: "D", label: "Sim, preciso de vários alarmes para conseguir acordar." },
     ],
   },
@@ -289,7 +288,7 @@ export default function Questionnaire() {
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [isLoading, setIsLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
 
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = answers[currentQuestion?.id];
@@ -305,27 +304,23 @@ export default function Questionnaire() {
   async function handleFinish(finalAnswers: Record<string, string>) {
     const { P9: qualidade_sono = "F", ...respostas } = finalAnswers;
 
-    setIsLoading(true);
-    try {
-      const result = await api.classify(respostas, qualidade_sono);
-      localStorage.setItem("axon_chronotype", result.cronotipo);
-
-      if (api.isLoggedIn()) {
-        api.saveChronotype(result.cronotipo, result.pontos, finalAnswers).catch(() => {});
-      }
-    } catch {
-      // navigate anyway even if classify fails
-    } finally {
-      setIsLoading(false);
-    }
-
     navigate("/analyzing");
+
+    try {
+      const result = api.isLoggedIn()
+        ? await api.classifyAndSave(respostas, qualidade_sono)
+        : await api.classify(respostas, qualidade_sono);
+      localStorage.setItem("axon_chronotype", result.cronotipo);
+    } catch {
+      // /result usa o valor que já estiver no localStorage
+    }
   }
 
   function goNext() {
-    if (!selectedAnswer || isLoading) return;
+    if (!selectedAnswer || submitted) return;
 
     if (currentIndex === questions.length - 1) {
+      setSubmitted(true);
       const finalAnswers = { ...answers, [currentQuestion.id]: selectedAnswer };
       handleFinish(finalAnswers);
       return;
@@ -431,15 +426,10 @@ export default function Questionnaire() {
         <footer className="space-y-3 pb-2">
           <button
             onClick={goNext}
-            disabled={!selectedAnswer || isLoading}
+            disabled={!selectedAnswer || submitted}
             className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30 disabled:shadow-none"
           >
-            {isLoading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Analisando...
-              </>
-            ) : currentIndex === questions.length - 1 ? (
+            {currentIndex === questions.length - 1 ? (
               <>
                 Analisar meu perfil
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -454,7 +444,7 @@ export default function Questionnaire() {
 
           <button
             onClick={goBack}
-            disabled={isLoading}
+            disabled={submitted}
             className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/60 backdrop-blur-2xl transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />

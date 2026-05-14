@@ -1,14 +1,15 @@
 export type ChronotypeResultKey =
-  | "morning"
-  | "intermediate"
-  | "evening"
-  | "night";
+  | "Matutino"
+  | "Vespertino"
+  | "Noturno"
+  | "Misto"
+  | "Bimodal";
 
 export type ChronotypeResult = {
   label: string;
   title: string;
-  subtitle: string;
-  description: string;
+  subtitle?: string;
+  description?: string;
   focusWindow: string;
   energyPeak: string;
   lowEnergy: string;
@@ -17,77 +18,78 @@ export type ChronotypeResult = {
 };
 
 export const results: Record<ChronotypeResultKey, ChronotypeResult> = {
-  morning: {
-    label: "Perfil Matutino",
-    title: "Você tende a render melhor nas primeiras horas do dia.",
-    subtitle: "Seu ritmo natural favorece clareza, energia e foco pela manhã.",
-    description:
-      "Seu corpo parece responder melhor a uma rotina que começa cedo. Tarefas importantes, decisões e atividades que exigem raciocínio tendem a funcionar melhor no início do dia.",
+  Matutino: {
+    label: "Cronotipo Matutino",
+    title: "Você rende melhor nas primeiras horas do dia.",
     focusWindow: "Manhã",
-    energyPeak: "Entre 7h e 11h",
+    energyPeak: "6h às 11h",
     lowEnergy: "Fim da tarde e noite",
     recommendation:
-      "Priorize tarefas difíceis logo cedo e deixe atividades leves, revisões e organização para o fim do dia.",
+      "Reserve suas tarefas mais difíceis para a manhã. Depois das 14h, prefira tarefas leves.",
     routineTips: [
-      "Comece o dia pela tarefa mais importante.",
-      "Evite gastar sua melhor energia com mensagens e demandas pequenas.",
-      "Reserve o fim do dia para revisão, planejamento e tarefas leves.",
+      "Acorde no mesmo horário todos os dias.",
+      "Faça sua tarefa mais importante antes das 10h.",
+      "Evite reuniões longas no fim da tarde.",
     ],
   },
 
-  intermediate: {
-    label: "Perfil Intermediário",
-    title: "Você tende a ter um ritmo mais equilibrado ao longo do dia.",
-    subtitle:
-      "Seu funcionamento é flexível e pode se adaptar bem a diferentes rotinas.",
-    description:
-      "Seu perfil indica uma boa capacidade de adaptação. Você pode render bem em diferentes horários, desde que tenha clareza de prioridades e pausas bem distribuídas.",
-    focusWindow: "Meio do dia",
-    energyPeak: "Entre 9h e 15h",
-    lowEnergy: "Após longos períodos sem pausa",
-    recommendation:
-      "Distribua tarefas importantes entre manhã e tarde, mantendo pausas curtas para preservar energia.",
-    routineTips: [
-      "Planeje o dia em blocos equilibrados.",
-      "Use pausas para manter constância.",
-      "Evite concentrar todas as tarefas difíceis em um único período.",
-    ],
-  },
-
-  evening: {
-    label: "Perfil Vespertino",
-    title: "Você tende a ganhar energia conforme o dia avança.",
-    subtitle: "Seu foco costuma melhorar mais tarde, especialmente à tarde ou à noite.",
-    description:
-      "Seu corpo parece precisar de mais tempo para entrar em ritmo. Manhãs podem ser mais lentas, enquanto tarefas difíceis tendem a fluir melhor depois que o dia já começou.",
+  Vespertino: {
+    label: "Cronotipo Vespertino",
+    title: "Você ganha energia conforme o dia avança.",
     focusWindow: "Tarde e início da noite",
-    energyPeak: "Entre 14h e 20h",
-    lowEnergy: "Início da manhã",
+    energyPeak: "14h às 20h",
+    lowEnergy: "Primeiras horas da manhã",
     recommendation:
-      "Use a manhã para tarefas simples e reserve o período da tarde para atividades que exigem mais foco.",
+      "Não force tarefas complexas logo cedo. Reserve a tarde para o que exige mais de você.",
     routineTips: [
-      "Não force tarefas complexas logo cedo se puder evitar.",
-      "Use a manhã para aquecer com tarefas menores.",
-      "Reserve sua melhor energia para projetos importantes à tarde.",
+      "Use a manhã para tarefas simples e automáticas.",
+      "Proteja o bloco da tarde para projetos importantes.",
+      "Evite dormir muito tarde — isso prejudica o ciclo.",
     ],
   },
 
-  night: {
-    label: "Perfil Noturno",
-    title: "Você tende a funcionar melhor em horários mais avançados.",
-    subtitle:
-      "Seu pico de clareza pode aparecer quando o ambiente está mais silencioso.",
-    description:
-      "Seu perfil indica maior disposição mental no fim do dia ou à noite. Rotinas muito cedo podem gerar desgaste, enquanto períodos mais tardios podem favorecer foco profundo.",
+  Noturno: {
+    label: "Cronotipo Noturno",
+    title: "Seu pico de clareza aparece quando o mundo desacelera.",
     focusWindow: "Noite",
-    energyPeak: "Entre 20h e 01h",
+    energyPeak: "20h às 01h",
     lowEnergy: "Manhã",
     recommendation:
-      "Quando possível, evite concentrar tarefas importantes cedo demais e proteja blocos de foco em horários mais tardios.",
+      "Quando possível, concentre tarefas críticas no período noturno. Proteja seu sono compensando no horário certo.",
     routineTips: [
-      "Use a manhã para tarefas leves ou automáticas.",
-      "Evite compromissos muito cedo sempre que possível.",
-      "Proteja blocos noturnos para tarefas de alta concentração.",
+      "Use a manhã apenas para o essencial.",
+      "Evite compromissos importantes muito cedo.",
+      "Proteja blocos noturnos para foco profundo.",
+    ],
+  },
+
+  Misto: {
+    label: "Cronotipo Misto",
+    title: "Seu ritmo varia — e isso é uma característica, não um problema.",
+    focusWindow: "Depende do contexto",
+    energyPeak: "Varia por dia",
+    lowEnergy: "Sem padrão fixo",
+    recommendation:
+      "Seu desafio é identificar seus micro-picos. O AXON vai ajudar você a mapear seu padrão real ao longo do tempo.",
+    routineTips: [
+      "Observe em quais dias e horários você rende mais.",
+      "Evite rotinas rígidas — prefira estruturas flexíveis.",
+      "Use o chat do AXON para planejar cada dia individualmente.",
+    ],
+  },
+
+  Bimodal: {
+    label: "Cronotipo Bimodal",
+    title: "Você tem dois picos de energia bem definidos.",
+    focusWindow: "9h-12h e 20h-23h",
+    energyPeak: "Manhã e noite",
+    lowEnergy: "Início da tarde",
+    recommendation:
+      "Aproveite os dois picos para tarefas de alto esforço. Proteja a tarde para descanso ou tarefas leves.",
+    routineTips: [
+      "Use a manhã para o trabalho analítico.",
+      "Descanse ou faça tarefas leves entre 13h e 17h.",
+      "Reserve a noite para projetos criativos ou revisão.",
     ],
   },
 };

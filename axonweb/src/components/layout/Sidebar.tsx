@@ -21,6 +21,9 @@ type SidebarProps = {
   onClose: () => void;
   chronotypeLabel?: string;
   energyPeak?: string;
+  userName?: string;
+  userEmail?: string;
+  userAvatar?: string;
 };
 
 const mainItems = [
@@ -60,7 +63,7 @@ const secondaryItems = [
   {
     label: "Perfil",
     icon: User,
-    path: "/result",
+    path: "/profile",
   },
   {
     label: "Configurações",
@@ -74,6 +77,9 @@ export default function Sidebar({
   onClose,
   chronotypeLabel = "Perfil Intermediário",
   energyPeak = "Entre 9h e 15h",
+  userName = "Bernardo",
+  userEmail = "bernardo@axon.app",
+  userAvatar,
 }: SidebarProps) {
   const navigate = useNavigate();
 
@@ -127,34 +133,48 @@ export default function Sidebar({
                 </button>
               </header>
 
-              <section className="mb-5 rounded-[1.6rem] border border-purple-300/20 bg-purple-500/10 p-4">
-                <div className="mb-3 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-200" />
-                  <p className="text-xs font-semibold text-purple-100">
-                    Contexto ativo
-                  </p>
+              <section className="mb-5 overflow-hidden rounded-[1.6rem] border border-purple-300/20 bg-purple-500/10 p-4">
+                <div className="mb-4 flex items-center gap-3">
+                  <div className="relative flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-purple-300/25 bg-purple-500/15 text-purple-100 shadow-lg shadow-purple-950/30">
+                    {userAvatar ? (
+                      <img
+                        src={userAvatar}
+                        alt={userName}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <User className="h-6 w-6" />
+                    )}
+
+                    <span className="absolute bottom-1 right-1 h-3 w-3 rounded-full border-2 border-[#201527] bg-emerald-400" />
+                  </div>
+
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1 flex items-center gap-2">
+                      <Sparkles className="h-3.5 w-3.5 shrink-0 text-purple-200" />
+                      <p className="truncate text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-purple-100/80">
+                        Perfil ativo
+                      </p>
+                    </div>
+
+                    <p className="truncate text-sm font-semibold text-white">
+                      {userName}
+                    </p>
+
+                    <p className="truncate text-xs text-white/38">
+                      {userEmail}
+                    </p>
+                  </div>
                 </div>
 
-                <p className="text-sm font-semibold text-white">
-                  {chronotypeLabel}
-                </p>
+                <div className="rounded-[1.25rem] border border-white/10 bg-black/20 p-3">
+                  <p className="text-[0.68rem] font-medium uppercase tracking-[0.14em] text-white/28">
+                    Cronotipo
+                  </p>
 
-                <div className="mt-3 grid grid-cols-2 gap-2">
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                    <Zap className="mb-2 h-4 w-4 text-purple-200" />
-                    <p className="text-[0.68rem] text-white/35">Pico</p>
-                    <p className="mt-1 text-xs font-medium leading-4 text-white/70">
-                      {energyPeak}
-                    </p>
-                  </div>
-
-                  <div className="rounded-2xl border border-white/10 bg-black/20 p-3">
-                    <Moon className="mb-2 h-4 w-4 text-purple-200" />
-                    <p className="text-[0.68rem] text-white/35">Ritmo</p>
-                    <p className="mt-1 text-xs font-medium leading-4 text-white/70">
-                      Personalizado
-                    </p>
-                  </div>
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    {chronotypeLabel}
+                  </p>
                 </div>
               </section>
 

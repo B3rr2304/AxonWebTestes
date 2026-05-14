@@ -9,6 +9,11 @@ import Analyzing from "../pages/Analyzing";
 import Result from "../pages/Result";  
 import Dashboard from "../pages/Dashboard";
 import Chat from "../pages/Chat";
+import Planning from "../pages/Planning";
+import Insights from "../pages/Insights";
+import Focus from "../pages/Focus";
+import Profile from "../pages/Profile";
+import Settings from "../pages/Settings";
 
 
 export default function App() {
@@ -24,7 +29,11 @@ export default function App() {
         <Route path="/result" element={<Result />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/chat" element={<Chat />} />
-
+        <Route path="/planning" element={<Planning />} />
+        <Route path="/insights" element={<Insights />} />
+        <Route path="/focus" element={<Focus />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
       </Routes>
     </BrowserRouter>
   );
