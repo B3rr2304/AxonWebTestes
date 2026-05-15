@@ -190,23 +190,60 @@ export function getDashboard() {
   return request<DashboardData>("/dashboard/");
 }
 
+// --- Conversations ---
+
+export interface ConversationData {
+  id: string;
+  title: string;
+  type: "general" | "planning" | "focus" | "project";
+  archived: boolean;
+  created_at: string;
+  last_message?: string;
+  message_count: number;
+}
+
+export function getConversations() {
+  return request<ConversationData[]>("/chat/conversations");
+}
+
+export function createConversation(title: string, type: ConversationData["type"]) {
+  return request<ConversationData>("/chat/conversations", {
+    method: "POST",
+    body: JSON.stringify({ title, type }),
+  });
+}
+
+export function updateConversation(id: string, updates: { title?: string; archived?: boolean }) {
+  return request<ConversationData>(`/chat/conversations/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+export function deleteConversation(id: string) {
+  return request<void>(`/chat/conversations/${id}`, { method: "DELETE" });
+}
+
+export function clearConversationMessages(id: string) {
+  return request<void>(`/chat/conversations/${id}/messages`, { method: "DELETE" });
+}
+
 // --- Chat ---
 
 export interface ChatApiResponse {
   response: string;
 }
 
-export function chat(message: string, history: ChatMessage[]) {
-  return request<ChatApiResponse>("/chat", {
-    method: "POST",
-    body: JSON.stringify({ message, history }),
-  });
-}
-
-
 export interface ChatMessage {
   role: "user" | "assistant";
   content: string;
+}
+
+export function chat(message: string, history: ChatMessage[], conversationId?: string) {
+  return request<ChatApiResponse>("/chat", {
+    method: "POST",
+    body: JSON.stringify({ message, history, conversation_id: conversationId ?? null }),
+  });
 }
 
 export function streamChat(
@@ -214,7 +251,8 @@ export function streamChat(
   history: ChatMessage[],
   onChunk: (text: string) => void,
   onDone: () => void,
-  onError: (err: Error) => void
+  onError: (err: Error) => void,
+  conversationId?: string
 ): void {
   const token = getToken();
   fetch(`${BASE_URL}/chat/message`, {
@@ -223,7 +261,7 @@ export function streamChat(
       "Content-Type": "application/json",
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
-    body: JSON.stringify({ message, history }),
+    body: JSON.stringify({ message, history, conversation_id: conversationId ?? null }),
   })
     .then(async (res) => {
       if (!res.ok) {

@@ -78,9 +78,13 @@ def chat(
 
     response_text = claude_service.call_chat(history, system_prompt)
 
+    base_row = {"user_id": user_id}
+    if body.conversation_id:
+        base_row["conversation_id"] = body.conversation_id
+
     supabase.table("messages").insert([
-        {"user_id": user_id, "role": "user", "content": body.message},
-        {"user_id": user_id, "role": "assistant", "content": response_text},
+        {**base_row, "role": "user", "content": body.message},
+        {**base_row, "role": "assistant", "content": response_text},
     ]).execute()
 
     return ChatResponse(response=response_text)

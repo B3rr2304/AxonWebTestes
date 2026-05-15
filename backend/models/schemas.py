@@ -50,6 +50,28 @@ class ProfileResponse(BaseModel):
     has_chronotype: bool = False
 
 
+# --- Conversations ---
+
+class ConversationCreate(BaseModel):
+    title: str
+    type: str = "general"  # general | planning | focus | project
+
+
+class ConversationUpdate(BaseModel):
+    title: Optional[str] = None
+    archived: Optional[bool] = None
+
+
+class ConversationResponse(BaseModel):
+    id: str
+    title: str
+    type: str
+    archived: bool
+    created_at: str
+    last_message: Optional[str] = None
+    message_count: int = 0
+
+
 # --- Chat ---
 
 class ChatMessage(BaseModel):
@@ -60,6 +82,7 @@ class ChatMessage(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     history: list[ChatMessage] = []
+    conversation_id: Optional[str] = None
 
 
 class ChatResponse(BaseModel):

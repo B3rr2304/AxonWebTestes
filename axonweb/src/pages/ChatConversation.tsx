@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Archive,
@@ -17,6 +17,7 @@ import {
 
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
+import * as api from "../lib/api";
 
 type Message = {
   id: number;
@@ -54,7 +55,7 @@ const initialMessages: Message[] = [
 
 export default function ChatConversation() {
   const navigate = useNavigate();
-  const { chatId } = useParams();
+  const { conversationId } = useParams();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -64,9 +65,11 @@ export default function ChatConversation() {
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [isSending, setIsSending] = useState(false);
+  const historyRef = useRef<api.ChatMessage[]>([]);
 
-  const [chatTitle, setChatTitle] = useState(formatChatTitle(chatId));
-  const [draftTitle, setDraftTitle] = useState(formatChatTitle(chatId));
+  const [chatTitle, setChatTitle] = useState(formatChatTitle(conversationId));
+  const [draftTitle, setDraftTitle] = useState(formatChatTitle(conversationId));
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -81,41 +84,90 @@ export default function ChatConversation() {
   const result = results[resultKey];
 
   function handleSend() {
-    if (!message.trim()) return;
+    const text = message.trim();
+    if (!text || isSending) return;
 
-    setMessages((current) => [
-      ...current,
-      {
-        id: Date.now(),
-        sender: "user",
-        text: message.trim(),
-      },
-    ]);
-
+    const userMsg: Message = { id: Date.now(), sender: "user", text };
+    setMessages((prev) => [...prev, userMsg]);
     setMessage("");
+    setIsSending(true);
+
+    const history = historyRef.current;
+    const axonId = Date.now() + 1;
+
+    setMessages((prev) => [...prev, { id: axonId, sender: "axon", text: "" }]);
+
+    api.streamChat(
+      text,
+      history,
+      (chunk) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === axonId ? { ...m, text: m.text + chunk } : m))
+        );
+      },
+      () => {
+        setIsSending(false);
+        setMessages((prev) => {
+          const axonMsg = prev.find((m) => m.id === axonId);
+          if (axonMsg) {
+            historyRef.current = [
+              ...history,
+              { role: "user", content: text },
+              { role: "assistant", content: axonMsg.text },
+            ];
+          }
+          return prev;
+        });
+      },
+      () => {
+        setIsSending(false);
+        setMessages((prev) =>
+          prev.map((m) =>
+            m.id === axonId
+              ? { ...m, text: m.text || "Erro ao obter resposta. Tente novamente." }
+              : m
+          )
+        );
+      },
+      conversationId
+    );
   }
 
-  function handleRename() {
-    if (!draftTitle.trim()) return;
+  async function handleRename() {
+    const newTitle = draftTitle.trim();
+    if (!newTitle) return;
 
-    setChatTitle(draftTitle.trim());
+    setChatTitle(newTitle);
     setIsRenameOpen(false);
+
+    if (conversationId) {
+      await api.updateConversation(conversationId, { title: newTitle }).catch(() => null);
+    }
   }
 
-  function handleConfirmAction() {
+  async function handleConfirmAction() {
+    if (!conversationId) {
+      setConfirmAction(null);
+      return;
+    }
+
     if (confirmAction === "clear") {
+      await api.clearConversationMessages(conversationId).catch(() => null);
       setMessages([]);
+      historyRef.current = [];
       setConfirmAction(null);
       return;
     }
 
     if (confirmAction === "archive") {
+      await api.updateConversation(conversationId, { archived: true }).catch(() => null);
       setConfirmAction(null);
       navigate("/chat");
       return;
     }
 
     if (confirmAction === "delete") {
+      await api.deleteConversation(conversationId).catch(() => null);
       setConfirmAction(null);
       navigate("/chat");
       return;
@@ -213,7 +265,8 @@ export default function ChatConversation() {
 
             <button
               onClick={handleSend}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/35 active:scale-[0.96]"
+              disabled={isSending}
+              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/35 active:scale-[0.96] disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Enviar"
             >
               <Send className="h-5 w-5" />

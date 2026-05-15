@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Brain,
@@ -16,19 +16,10 @@ import {
 
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
+import * as api from "../lib/api";
+import type { ConversationData } from "../lib/api";
 
 type ConversationType = "general" | "planning" | "focus" | "project";
-
-type Conversation = {
-  id: string;
-  title: string;
-  description: string;
-  lastMessage: string;
-  time: string;
-  unread?: number;
-  type: ConversationType;
-  archived?: boolean;
-};
 
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
@@ -38,55 +29,6 @@ const validKeys: ChronotypeResultKey[] = [
   "Bimodal",
 ];
 
-const conversations: Conversation[] = [
-  {
-    id: "daily-planning",
-    title: "Planejamento do dia",
-    description: "Rotina, prioridades e blocos",
-    lastMessage: "Posso reorganizar sua tarde em 3 blocos mais leves.",
-    time: "10:40",
-    unread: 2,
-    type: "planning",
-    archived: false,
-  },
-  {
-    id: "focus-session",
-    title: "Foco profundo",
-    description: "Execução e concentração",
-    lastMessage: "Sua melhor janela de foco começa agora.",
-    time: "09:12",
-    type: "focus",
-    archived: false,
-  },
-  {
-    id: "axon-general",
-    title: "Axon geral",
-    description: "Conversa livre com o assistente",
-    lastMessage: "Me conte o que você precisa organizar hoje.",
-    time: "Ontem",
-    type: "general",
-    archived: false,
-  },
-  {
-    id: "project-ideas",
-    title: "Ideias de projeto",
-    description: "Brainstorm, decisões e clareza",
-    lastMessage: "Podemos separar isso em MVP, versão 2 e longo prazo.",
-    time: "Seg",
-    type: "project",
-    archived: true,
-  },
-  {
-    id: "college-routine",
-    title: "Rotina da faculdade",
-    description: "Aulas, estudos e entregas",
-    lastMessage: "Essa conversa foi arquivada, mas pode ser restaurada depois.",
-    time: "Sex",
-    type: "planning",
-    archived: true,
-  },
-];
-
 export default function Chat() {
   const navigate = useNavigate();
 
@@ -94,6 +36,16 @@ export default function Chat() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"all" | "archived">("all");
+  const [conversations, setConversations] = useState<ConversationData[]>([]);
+  const [loadingConversations, setLoadingConversations] = useState(true);
+
+  useEffect(() => {
+    api
+      .getConversations()
+      .then(setConversations)
+      .catch(() => setConversations([]))
+      .finally(() => setLoadingConversations(false));
+  }, []);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -112,8 +64,7 @@ export default function Chat() {
 
     const matchesSearch =
       conversation.title.toLowerCase().includes(query) ||
-      conversation.description.toLowerCase().includes(query) ||
-      conversation.lastMessage.toLowerCase().includes(query);
+      (conversation.last_message ?? "").toLowerCase().includes(query);
 
     const matchesView =
       view === "all" ? !conversation.archived : conversation.archived;
@@ -223,16 +174,20 @@ export default function Chat() {
         </section>
 
         <section className="space-y-3">
-          {filteredConversations.map((conversation) => (
-            <ConversationCard
-              key={conversation.id}
-              conversation={conversation}
-              onClick={() => navigate(`/chat/${conversation.id}`)}
-            />
-          ))}
+          {loadingConversations ? (
+            <div className="py-8 text-center text-sm text-white/35">Carregando conversas...</div>
+          ) : (
+            filteredConversations.map((conversation) => (
+              <ConversationCard
+                key={conversation.id}
+                conversation={conversation}
+                onClick={() => navigate(`/chat/${conversation.id}`)}
+              />
+            ))
+          )}
         </section>
 
-        {filteredConversations.length === 0 && (
+        {!loadingConversations && filteredConversations.length === 0 && (
           <section className="mt-6 rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
             <MessageCircle className="mx-auto mb-3 h-6 w-6 text-purple-200" />
 
@@ -261,6 +216,10 @@ export default function Chat() {
       <CreateConversationModal
         isOpen={isCreateModalOpen}
         onClose={() => setIsCreateModalOpen(false)}
+        onCreated={(conv) => {
+          setConversations((prev) => [conv, ...prev]);
+          navigate(`/chat/${conv.id}`);
+        }}
       />
     </main>
   );
@@ -270,10 +229,20 @@ function ConversationCard({
   conversation,
   onClick,
 }: {
-  conversation: Conversation;
+  conversation: ConversationData;
   onClick: () => void;
 }) {
-  const Icon = getConversationIcon(conversation.type);
+  const Icon = getConversationIcon(conversation.type as ConversationType);
+
+  const formattedDate = useMemo(() => {
+    const date = new Date(conversation.created_at);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+    if (diffDays === 0) return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    if (diffDays === 1) return "Ontem";
+    if (diffDays < 7) return date.toLocaleDateString("pt-BR", { weekday: "short" });
+    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+  }, [conversation.created_at]);
 
   return (
     <button
@@ -286,12 +255,6 @@ function ConversationCard({
     >
       <div className="relative flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
         <Icon className="h-5 w-5" />
-
-        {conversation.unread && !conversation.archived ? (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-purple-500 px-1 text-[0.65rem] font-semibold text-white">
-            {conversation.unread}
-          </span>
-        ) : null}
       </div>
 
       <div className="min-w-0 flex-1">
@@ -301,13 +264,15 @@ function ConversationCard({
           </p>
 
           <p className="shrink-0 text-[0.68rem] text-white/32">
-            {conversation.time}
+            {formattedDate}
           </p>
         </div>
 
         <div className="mb-2 flex items-center gap-2">
-          <p className="truncate text-xs text-white/38">
-            {conversation.description}
+          <p className="truncate text-xs text-white/38 capitalize">
+            {conversation.type === "general" ? "Geral" :
+             conversation.type === "planning" ? "Planejamento" :
+             conversation.type === "focus" ? "Foco" : "Projeto"}
           </p>
 
           {conversation.archived && (
@@ -317,9 +282,11 @@ function ConversationCard({
           )}
         </div>
 
-        <p className="line-clamp-1 text-xs leading-5 text-white/50">
-          {conversation.lastMessage}
-        </p>
+        {conversation.last_message && (
+          <p className="line-clamp-1 text-xs leading-5 text-white/50">
+            {conversation.last_message}
+          </p>
+        )}
       </div>
 
       <ChevronRight className="h-5 w-5 shrink-0 text-white/22" />
@@ -337,24 +304,32 @@ function getConversationIcon(type: ConversationType) {
 function CreateConversationModal({
   isOpen,
   onClose,
+  onCreated,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onCreated: (conv: ConversationData) => void;
 }) {
-  const navigate = useNavigate();
   const [selectedType, setSelectedType] =
     useState<ConversationType>("general");
   const [title, setTitle] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   if (!isOpen) return null;
 
-  function handleCreate() {
-    const id =
-      title.trim().toLowerCase().replace(/\s+/g, "-") ||
-      `nova-conversa-${Date.now()}`;
-
-    onClose();
-    navigate(`/chat/${id}`);
+  async function handleCreate() {
+    const finalTitle = title.trim() || "Nova conversa";
+    setIsLoading(true);
+    try {
+      const conv = await api.createConversation(finalTitle, selectedType);
+      setTitle("");
+      onClose();
+      onCreated(conv);
+    } catch {
+      // mantém o modal aberto se falhar
+    } finally {
+      setIsLoading(false);
+    }
   }
 
   return (
@@ -457,10 +432,11 @@ function CreateConversationModal({
           <button
             type="button"
             onClick={handleCreate}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
+            disabled={isLoading}
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            Criar conversa
-            <Plus className="ml-2 h-4 w-4" />
+            {isLoading ? "Criando..." : "Criar conversa"}
+            {!isLoading && <Plus className="ml-2 h-4 w-4" />}
           </button>
 
           <button
