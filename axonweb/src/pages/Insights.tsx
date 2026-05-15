@@ -33,10 +33,11 @@ type PatternCardProps = {
 };
 
 const validKeys: ChronotypeResultKey[] = [
-  "morning",
-  "intermediate",
-  "evening",
-  "night",
+  "Matutino",
+  "Vespertino",
+  "Noturno",
+  "Misto",
+  "Bimodal",
 ];
 
 const energyData = [
@@ -69,19 +70,21 @@ export default function Insights() {
       return stored as ChronotypeResultKey;
     }
 
-    return "intermediate";
+    return "Misto";
   }, []);
 
   const result = results[resultKey];
 
   const bestFocusLabel =
-    resultKey === "morning"
+    resultKey === "Matutino"
       ? "manhã"
-      : resultKey === "intermediate"
-      ? "meio do dia"
-      : resultKey === "evening"
-      ? "tarde/noite"
-      : "noite";
+      : resultKey === "Bimodal"
+      ? "manhã e noite"
+      : resultKey === "Vespertino"
+      ? "tarde"
+      : resultKey === "Noturno"
+      ? "noite"
+      : "variação ao longo do dia";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
@@ -141,7 +144,7 @@ export default function Insights() {
                 </div>
 
                 <p className="text-sm leading-6 text-white/55">
-                  {result.description}
+                  {result.recommendation}
                 </p>
               </div>
             </div>

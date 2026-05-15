@@ -5,7 +5,7 @@ import {
   Brain,
   CalendarDays,
   ChevronRight,
-  Clock3,
+  Download,
   Link2,
   Lock,
   LogOut,
@@ -13,12 +13,10 @@ import {
   Menu,
   Moon,
   Palette,
-  RefreshCcw,
   Settings as SettingsIcon,
   Shield,
   Sparkles,
   User,
-  Zap,
   X,
 } from "lucide-react";
 
@@ -31,6 +29,7 @@ type SettingItemProps = {
   description: string;
   value?: string;
   onClick?: () => void;
+  danger?: boolean;
 };
 
 type ToggleItemProps = {
@@ -42,19 +41,23 @@ type ToggleItemProps = {
 };
 
 const validKeys: ChronotypeResultKey[] = [
-  "morning",
-  "intermediate",
-  "evening",
-  "night",
+  "Matutino",
+  "Vespertino",
+  "Noturno",
+  "Misto",
+  "Bimodal",
 ];
 
 export default function Settings() {
   const navigate = useNavigate();
+
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+
   const [smartNotifications, setSmartNotifications] = useState(true);
   const [focusReminders, setFocusReminders] = useState(true);
   const [weeklyInsights, setWeeklyInsights] = useState(false);
+  const [silentMode, setSilentMode] = useState(true);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -63,7 +66,7 @@ export default function Settings() {
       return stored as ChronotypeResultKey;
     }
 
-    return "intermediate";
+    return "Misto";
   }, []);
 
   const result = results[resultKey];
@@ -72,11 +75,11 @@ export default function Settings() {
   const userEmail = "bernardo@axon.app";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
       <Background />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-6 flex items-center justify-between">
+        <header className="mb-5 flex items-center justify-between">
           <button
             onClick={() => navigate("/dashboard")}
             className="flex items-center gap-3 text-left active:scale-[0.98]"
@@ -87,60 +90,38 @@ export default function Settings() {
 
             <div>
               <p className="text-sm font-semibold text-white">Configurações</p>
-              <p className="text-xs text-white/40">Preferências do Axon</p>
+              <p className="text-xs text-white/40">Conta e preferências</p>
             </div>
           </button>
 
           <button
             onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 backdrop-blur-2xl active:scale-[0.96]"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
             aria-label="Abrir menu"
           >
             <Menu className="h-5 w-5" />
           </button>
         </header>
 
-        <section className="mb-5">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/14 via-transparent to-fuchsia-400/10" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:26px_26px] opacity-20" />
+        <section className="mb-4">
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
 
             <div className="relative">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
                 <SettingsIcon className="h-3.5 w-3.5" />
-                Central de controle
+                Central do app
               </div>
 
-              <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-white">
-                Ajuste o Axon ao seu jeito de funcionar.
+              <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.055em] text-white">
+                Ajuste o Axon sem poluir sua rotina.
               </h1>
 
-              <p className="mt-4 text-sm leading-6 text-white/50">
-                Configure sua rotina, notificações, preferências de foco e o
-                modo como o Axon deve acompanhar seu dia.
+              <p className="mt-3 text-sm leading-6 text-white/50">
+                Gerencie conta, notificações, aparência, privacidade e
+                integrações em um só lugar.
               </p>
-
-              <div className="mt-6 flex items-center gap-3 rounded-[1.5rem] border border-purple-300/20 bg-purple-500/10 p-4">
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-100">
-                  <User className="h-5 w-5" />
-                </div>
-
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-white">
-                    {userName}
-                  </p>
-                  <p className="mt-1 truncate text-xs text-white/38">
-                    {userEmail}
-                  </p>
-                </div>
-
-                <button
-                  onClick={() => navigate("/profile")}
-                  className="rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-xs font-semibold text-white/55 active:scale-[0.98]"
-                >
-                  Editar
-                </button>
-              </div>
             </div>
           </div>
         </section>
@@ -149,7 +130,7 @@ export default function Settings() {
           <SettingItem
             icon={User}
             title="Perfil"
-            description="Nome, foto, e-mail e dados pessoais."
+            description="Nome, foto, e-mail e perfil produtivo."
             value={userName}
             onClick={() => navigate("/profile")}
           />
@@ -157,62 +138,38 @@ export default function Settings() {
           <SettingItem
             icon={Mail}
             title="E-mail"
-            description="Gerencie seu e-mail de acesso."
+            description="E-mail usado para acessar sua conta."
             value={userEmail}
           />
 
           <SettingItem
             icon={Lock}
             title="Senha e segurança"
-            description="Altere sua senha e proteja sua conta."
+            description="Altere sua senha e proteja o acesso."
             value="Protegido"
           />
         </Section>
 
-        <Section title="Rotina e personalização">
-          <SettingItem
-            icon={Brain}
-            title="Cronotipo"
-            description="Perfil usado para adaptar sua rotina."
-            value={result.label}
-            onClick={() => navigate("/profile")}
-          />
-
-          <SettingItem
-            icon={Zap}
-            title="Pico de energia"
-            description="Janela usada para sugerir tarefas importantes."
-            value={result.energyPeak}
-          />
-
-          <SettingItem
-            icon={Clock3}
-            title="Janela de foco"
-            description="Melhor período para atividades profundas."
-            value={result.focusWindow}
-          />
-
-          <SettingItem
-            icon={RefreshCcw}
-            title="Refazer questionário"
-            description="Atualize seu perfil cronobiológico inicial."
-            onClick={() => navigate("/questionnaire-intro")}
-          />
-        </Section>
-
-        <Section title="Experiência do Axon">
+        <Section title="Experiência">
           <SettingItem
             icon={Sparkles}
-            title="Tom do assistente"
-            description="Como o Axon deve conversar com você."
+            title="Tom do Axon"
+            description="Como o assistente deve conversar com você."
             value="Direto e estratégico"
           />
 
           <SettingItem
             icon={CalendarDays}
-            title="Estilo de planejamento"
-            description="Como o Axon deve organizar seu dia."
+            title="Planejamento"
+            description="Forma como o Axon organiza sua rotina."
             value="Flexível"
+          />
+
+          <SettingItem
+            icon={Moon}
+            title="Modo Focus"
+            description="Reduz estímulos visuais durante blocos de foco."
+            value={silentMode ? "Silencioso" : "Padrão"}
           />
 
           <SettingItem
@@ -221,42 +178,43 @@ export default function Settings() {
             description="Tema visual da interface."
             value="Escuro premium"
           />
-
-          <SettingItem
-            icon={Moon}
-            title="Modo silencioso"
-            description="Reduza estímulos visuais durante foco."
-            value="Automático"
-          />
         </Section>
 
         <Section title="Notificações">
           <ToggleItem
             icon={Bell}
             title="Notificações inteligentes"
-            description="Receba lembretes com base na sua rotina."
+            description="Lembretes com base na sua rotina."
             enabled={smartNotifications}
             onToggle={() => setSmartNotifications((prev) => !prev)}
           />
 
           <ToggleItem
-            icon={Zap}
-            title="Lembretes de foco"
-            description="Avisos antes das melhores janelas de energia."
-            enabled={focusReminders}
-            onToggle={() => setFocusReminders((prev) => !prev)}
+            icon={Moon}
+            title="Modo silencioso automático"
+            description="Diminui alertas durante foco ou descanso."
+            enabled={silentMode}
+            onToggle={() => setSilentMode((prev) => !prev)}
           />
 
           <ToggleItem
             icon={Sparkles}
             title="Resumo semanal"
-            description="Receba insights sobre seus padrões da semana."
+            description="Receba um panorama dos seus padrões."
             enabled={weeklyInsights}
             onToggle={() => setWeeklyInsights((prev) => !prev)}
           />
+
+          <ToggleItem
+            icon={Bell}
+            title="Lembretes de foco"
+            description="Avisos antes dos blocos importantes."
+            enabled={focusReminders}
+            onToggle={() => setFocusReminders((prev) => !prev)}
+          />
         </Section>
 
-        <Section title="Integrações e dados">
+        <Section title="Dados e integrações">
           <SettingItem
             icon={Link2}
             title="Integrações"
@@ -270,21 +228,35 @@ export default function Settings() {
             description="Controle dados usados para personalização."
             value="Gerenciar"
           />
+
+          <SettingItem
+            icon={Download}
+            title="Exportar dados"
+            description="Baixe suas conversas, rotinas e preferências."
+            value="Em breve"
+          />
         </Section>
 
-        <section className="space-y-3">
-            <button
-                onClick={() => setShowLogoutModal(true)}
-                className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl border border-red-300/15 bg-red-500/10 px-6 text-sm font-semibold text-red-100 shadow-xl shadow-black/20 active:scale-[0.98]"
-                >
-                Sair da conta
-                <LogOut className="ml-2 h-4 w-4" />
-            </button>
+        <Section title="Sistema">
+          <SettingItem
+            icon={SettingsIcon}
+            title="Versão"
+            description="Versão atual do Axon Web."
+            value="MVP 0.1"
+          />
 
-          <p className="text-center text-xs leading-5 text-white/28">
-            Axon Web · versão inicial de desenvolvimento
-          </p>
-        </section>
+          <SettingItem
+            icon={LogOut}
+            title="Sair da conta"
+            description="Encerrar sua sessão neste dispositivo."
+            danger
+            onClick={() => setShowLogoutModal(true)}
+          />
+        </Section>
+
+        <p className="pt-1 text-center text-xs leading-5 text-white/28">
+          Axon Web · versão inicial de desenvolvimento
+        </p>
       </div>
 
       <Sidebar
@@ -300,8 +272,8 @@ export default function Settings() {
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
         onConfirm={() => {
-            setShowLogoutModal(false);
-            navigate("/");
+          setShowLogoutModal(false);
+          navigate("/");
         }}
       />
     </main>
@@ -332,30 +304,58 @@ function SettingItem({
   description,
   value,
   onClick,
+  danger = false,
 }: SettingItemProps) {
   const Wrapper = onClick ? "button" : "div";
 
   return (
     <Wrapper
       onClick={onClick}
-      className="flex w-full items-center gap-3 rounded-[1.7rem] border border-white/10 bg-white/[0.055] p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99]"
+      className={`flex w-full items-center gap-3 rounded-[1.7rem] border p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99] ${
+        danger
+          ? "border-red-300/15 bg-red-500/10"
+          : "border-white/10 bg-[#1b1b27]/76"
+      }`}
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+      <div
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
+          danger
+            ? "border-red-300/20 bg-red-500/10 text-red-100"
+            : "border-purple-300/15 bg-purple-500/10 text-purple-200"
+        }`}
+      >
         <Icon className="h-5 w-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-white">{title}</p>
+        <p
+          className={`text-sm font-semibold ${
+            danger ? "text-red-100" : "text-white"
+          }`}
+        >
+          {title}
+        </p>
+
         <p className="mt-1 text-xs leading-5 text-white/38">{description}</p>
 
         {value && (
-          <p className="mt-2 truncate text-xs font-medium text-purple-100">
+          <p
+            className={`mt-2 truncate text-xs font-medium ${
+              danger ? "text-red-100/70" : "text-purple-100"
+            }`}
+          >
             {value}
           </p>
         )}
       </div>
 
-      {onClick && <ChevronRight className="h-5 w-5 shrink-0 text-white/28" />}
+      {onClick && (
+        <ChevronRight
+          className={`h-5 w-5 shrink-0 ${
+            danger ? "text-red-100/35" : "text-white/24"
+          }`}
+        />
+      )}
     </Wrapper>
   );
 }
@@ -370,7 +370,7 @@ function ToggleItem({
   return (
     <button
       onClick={onToggle}
-      className="flex w-full items-center gap-3 rounded-[1.7rem] border border-white/10 bg-white/[0.055] p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99]"
+      className="flex w-full items-center gap-3 rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/76 p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99]"
     >
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
         <Icon className="h-5 w-5" />
@@ -410,11 +410,13 @@ function LogoutConfirmModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-4 pb-5 backdrop-blur-sm">
-      <div className="relative w-full overflow-hidden rounded-[2rem] border border-white/10 bg-[#11101a]/90 p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-red-500/10 via-transparent to-purple-500/10" />
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
+      <div className="relative w-full max-w-[430px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.16),transparent_48%)]" />
 
         <div className="relative">
+          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+
           <div className="mb-5 flex items-start justify-between gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-red-300/15 bg-red-500/10 text-red-100">
               <LogOut className="h-5 w-5" />
@@ -422,14 +424,14 @@ function LogoutConfirmModal({
 
             <button
               onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/45 active:scale-[0.96]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
               aria-label="Fechar"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <h2 className="text-[1.7rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+          <h2 className="text-[1.65rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
             Tem certeza que deseja sair?
           </h2>
 
@@ -438,22 +440,20 @@ function LogoutConfirmModal({
             novamente para acessar seu Axon.
           </p>
 
-          <div className="mt-6 space-y-3">
-            <button
-              onClick={onConfirm}
-              className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-red-500/90 px-6 text-sm font-semibold text-white shadow-xl shadow-red-950/30 active:scale-[0.98]"
-            >
-              Sim, sair da conta
-              <LogOut className="ml-2 h-4 w-4" />
-            </button>
+          <button
+            onClick={onConfirm}
+            className="mt-6 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-red-500 px-6 text-sm font-semibold text-white shadow-xl shadow-red-950/30 active:scale-[0.98]"
+          >
+            Sim, sair da conta
+            <LogOut className="ml-2 h-4 w-4" />
+          </button>
 
-            <button
-              onClick={onClose}
-              className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/60 backdrop-blur-2xl active:scale-[0.98]"
-            >
-              Cancelar
-            </button>
-          </div>
+          <button
+            onClick={onClose}
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]"
+          >
+            Cancelar
+          </button>
         </div>
       </div>
     </div>
@@ -463,14 +463,13 @@ function LogoutConfirmModal({
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute left-1/2 top-[-16rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-purple-700/25 blur-[120px]" />
-      <div className="absolute right-[-14rem] top-[14rem] h-[26rem] w-[26rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
+
+      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
+      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
       <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:28px_28px] opacity-20" />
-
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,11,0.05),#05050b_88%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
     </div>
   );
 }
-

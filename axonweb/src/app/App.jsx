@@ -7,8 +7,10 @@ import QuestionnaireIntro from "../pages/QuestionnaireIntro";
 import Questionnaire from "../pages/Questionnaire";
 import Analyzing from "../pages/Analyzing";
 import Result from "../pages/Result";  
+import DashboardLoading from "../pages/DashboardLoading";
 import Dashboard from "../pages/Dashboard";
 import Chat from "../pages/Chat";
+import ChatConversation from "../pages/ChatConversation";
 import Planning from "../pages/Planning";
 import Insights from "../pages/Insights";
 import Focus from "../pages/Focus";
@@ -27,8 +29,10 @@ export default function App() {
         <Route path="/questionnaire" element={<Questionnaire />} />
         <Route path="/analyzing" element={<Analyzing />} />
         <Route path="/result" element={<Result />} />
+        <Route path="/dashboard-loading" element={<DashboardLoading />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/chat" element={<Chat />} />
+        <Route path="/chat/:conversationId" element={<ChatConversation />} />
         <Route path="/planning" element={<Planning />} />
         <Route path="/insights" element={<Insights />} />
         <Route path="/focus" element={<Focus />} />

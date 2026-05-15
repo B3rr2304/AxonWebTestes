@@ -1,311 +1,518 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowUp, Brain, Menu, Plus, Sparkles, Zap } from "lucide-react";
+import {
+  Brain,
+  Briefcase,
+  CalendarDays,
+  ChevronRight,
+  Focus,
+  Menu,
+  MessageCircle,
+  Plus,
+  Search,
+  Sparkles,
+  X,
+} from "lucide-react";
 
+import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
-import * as api from "../lib/api";
-import type { ProfileData } from "../lib/api";
 
-type Message = {
-  id: number;
-  role: "axon" | "user";
-  text: string;
-  streaming?: boolean;
+type ConversationType = "general" | "planning" | "focus" | "project";
+
+type Conversation = {
+  id: string;
+  title: string;
+  description: string;
+  lastMessage: string;
+  time: string;
+  unread?: number;
+  type: ConversationType;
+  archived?: boolean;
 };
 
-const quickPrompts = [
-  "Organizar meu dia",
-  "Qual tarefa fazer agora?",
-  "Criar bloco de foco",
-  "Replanejar minha rotina",
+const validKeys: ChronotypeResultKey[] = [
+  "Matutino",
+  "Vespertino",
+  "Noturno",
+  "Misto",
+  "Bimodal",
+];
+
+const conversations: Conversation[] = [
+  {
+    id: "daily-planning",
+    title: "Planejamento do dia",
+    description: "Rotina, prioridades e blocos",
+    lastMessage: "Posso reorganizar sua tarde em 3 blocos mais leves.",
+    time: "10:40",
+    unread: 2,
+    type: "planning",
+    archived: false,
+  },
+  {
+    id: "focus-session",
+    title: "Foco profundo",
+    description: "Execução e concentração",
+    lastMessage: "Sua melhor janela de foco começa agora.",
+    time: "09:12",
+    type: "focus",
+    archived: false,
+  },
+  {
+    id: "axon-general",
+    title: "Axon geral",
+    description: "Conversa livre com o assistente",
+    lastMessage: "Me conte o que você precisa organizar hoje.",
+    time: "Ontem",
+    type: "general",
+    archived: false,
+  },
+  {
+    id: "project-ideas",
+    title: "Ideias de projeto",
+    description: "Brainstorm, decisões e clareza",
+    lastMessage: "Podemos separar isso em MVP, versão 2 e longo prazo.",
+    time: "Seg",
+    type: "project",
+    archived: true,
+  },
+  {
+    id: "college-routine",
+    title: "Rotina da faculdade",
+    description: "Aulas, estudos e entregas",
+    lastMessage: "Essa conversa foi arquivada, mas pode ser restaurada depois.",
+    time: "Sex",
+    type: "planning",
+    archived: true,
+  },
 ];
 
 export default function Chat() {
   const navigate = useNavigate();
-  const [input, setInput] = useState("");
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isStreaming, setIsStreaming] = useState(false);
-  const [profile, setProfile] = useState<ProfileData | null>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    api.getProfile().then(setProfile).catch(() => {
-      // Fallback: tenta construir perfil mínimo do localStorage
-      const chronotype = localStorage.getItem("axon_chronotype");
-      if (chronotype) {
-        setProfile({
-          email: "",
-          chronotype,
-          chronotype_label: chronotype,
-          has_chronotype: true,
-        });
-      }
-    });
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const [view, setView] = useState<"all" | "archived">("all");
+
+  const resultKey = useMemo<ChronotypeResultKey>(() => {
+    const stored = localStorage.getItem("axon_chronotype");
+
+    if (stored && validKeys.includes(stored as ChronotypeResultKey)) {
+      return stored as ChronotypeResultKey;
+    }
+
+    return "Misto";
   }, []);
 
-  const chronotypeLabel = profile?.chronotype_label ?? "seu perfil";
-  const energyPeak = profile?.energy_peak ?? "";
+  const result = results[resultKey];
 
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: 1,
-      role: "axon",
-      text: "Olá! Estou aqui para te ajudar a organizar seu dia com base no seu ritmo natural.",
-    },
-    {
-      id: 2,
-      role: "axon",
-      text: "Me diga o que você quer organizar agora: seu dia, uma tarefa, sua semana ou um momento de foco.",
-    },
-  ]);
+  const filteredConversations = conversations.filter((conversation) => {
+    const query = search.toLowerCase();
 
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    const matchesSearch =
+      conversation.title.toLowerCase().includes(query) ||
+      conversation.description.toLowerCase().includes(query) ||
+      conversation.lastMessage.toLowerCase().includes(query);
 
-  function buildHistory(msgs: Message[]): api.ChatMessage[] {
-    return msgs
-      .filter((m) => !m.streaming)
-      .slice(-50)
-      .map((m) => ({
-        role: m.role === "axon" ? "assistant" : "user",
-        content: m.text,
-      }));
-  }
+    const matchesView =
+      view === "all" ? !conversation.archived : conversation.archived;
 
-  const sendMessage = useCallback(async (text?: string) => {
-    const messageText = (text ?? input).trim();
-    if (!messageText || isStreaming) return;
-
-    const userMsg: Message = { id: Date.now(), role: "user", text: messageText };
-    const axonMsgId = Date.now() + 1;
-    const typingMsg: Message = { id: axonMsgId, role: "axon", text: "", streaming: true };
-
-    const history = buildHistory(messages);
-
-    setMessages((prev) => [...prev, userMsg, typingMsg]);
-    setInput("");
-    setIsStreaming(true);
-
-    try {
-      const res = await api.chat(messageText, history);
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === axonMsgId ? { ...msg, text: res.response, streaming: false } : msg
-        )
-      );
-    } catch {
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === axonMsgId
-            ? { ...msg, text: "Não consegui me conectar agora. Verifique sua conexão e tente novamente.", streaming: false }
-            : msg
-        )
-      );
-    } finally {
-      setIsStreaming(false);
-    }
-  }, [input, isStreaming, messages]);
+    return matchesSearch && matchesView;
+  });
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
       <Background />
 
-      <div className="relative z-10 flex min-h-screen flex-col">
-        <header className="shrink-0 border-b border-white/10 bg-[#05050b]/88 px-4 pb-3 pt-4 backdrop-blur-2xl">
-          <div className="flex items-center justify-between">
+      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
+        <header className="mb-5 flex items-center justify-between">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-3 text-left active:scale-[0.98]"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
+              <Brain className="h-5 w-5" />
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-white">Chat</p>
+              <p className="text-xs text-white/40">Conversas com o Axon</p>
+            </div>
+          </button>
+
+          <div className="flex items-center gap-2">
             <button
-              onClick={() => navigate("/dashboard")}
-              className="flex items-center gap-3 text-left active:scale-[0.98]"
+              onClick={() => setIsCreateModalOpen(true)}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/35 active:scale-[0.96]"
+              aria-label="Nova conversa"
             >
-              <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
-                <Brain className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-white">Axon Chat</p>
-                <p className="text-xs text-white/38">Copiloto pessoal</p>
-              </div>
+              <Plus className="h-5 w-5" />
             </button>
 
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => {
-                  setMessages([
-                    { id: Date.now(), role: "axon", text: "Nova conversa iniciada. Como posso ajudar você hoje?" },
-                  ]);
-                }}
-                className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/55 backdrop-blur-2xl active:scale-[0.96]"
-                aria-label="Nova conversa"
-              >
-                <Plus className="h-5 w-5" />
-              </button>
-
-              <button
-                onClick={() => setIsSidebarOpen(true)}
-                className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 backdrop-blur-2xl active:scale-[0.96]"
-                aria-label="Abrir menu"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-            </div>
-          </div>
-
-          <div className="mt-3 flex items-center gap-2 overflow-hidden rounded-2xl border border-purple-300/15 bg-purple-500/10 px-3 py-2">
-            <Sparkles className="h-4 w-4 shrink-0 text-purple-200" />
-            <p className="truncate text-xs text-white/55">
-              {profile ? (
-                <>
-                  Contexto ativo:{" "}
-                  <span className="text-purple-100">{chronotypeLabel}</span>
-                  {energyPeak && <> · pico {energyPeak}</>}
-                </>
-              ) : (
-                "Carregando seu perfil..."
-              )}
-            </p>
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
           </div>
         </header>
 
-        <section className="flex-1 overflow-y-auto px-4 pb-32 pt-4">
-          <div className="mb-4 rounded-[1.6rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-            <div className="mb-3 flex items-center gap-2">
-              <Zap className="h-4 w-4 text-purple-200" />
-              <p className="text-sm font-semibold text-white">O que vamos organizar?</p>
+        <section className="mb-4">
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
+
+            <div className="relative">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <Sparkles className="h-3.5 w-3.5" />
+                Memória e contexto
+              </div>
+
+              <h1 className="text-[2.05rem] font-semibold leading-[1.02] tracking-[-0.06em] text-white">
+                Organize suas conversas por assunto.
+              </h1>
+
+              <p className="mt-3 text-sm leading-6 text-white/50">
+                Crie chats separados para rotina, foco, projetos, estudos ou
+                qualquer área que precise de acompanhamento.
+              </p>
             </div>
-            <p className="text-sm leading-6 text-white/45">
-              Peça ajuda para priorizar, replanejar, criar blocos de foco ou transformar ideias soltas em próximas ações.
-            </p>
           </div>
-
-          <div className="mb-5 grid grid-cols-2 gap-2">
-            {quickPrompts.map((prompt) => (
-              <button
-                key={prompt}
-                onClick={() => sendMessage(prompt)}
-                disabled={isStreaming}
-                className="min-h-[54px] rounded-[1.25rem] border border-white/10 bg-white/[0.05] px-3 py-3 text-left text-xs font-medium leading-5 text-white/62 backdrop-blur-2xl active:scale-[0.98] disabled:opacity-40"
-              >
-                {prompt}
-              </button>
-            ))}
-          </div>
-
-          <div className="space-y-4">
-            {messages.map((message) => (
-              <MessageBubble key={message.id} message={message} />
-            ))}
-          </div>
-          <div ref={messagesEndRef} />
         </section>
 
-        <ChatInput
-          input={input}
-          setInput={setInput}
-          sendMessage={() => sendMessage()}
-          disabled={isStreaming}
-        />
+        <section className="mb-4">
+          <label className="flex min-h-13 items-center gap-3 rounded-2xl border border-white/10 bg-[#1b1b27]/76 px-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+            <Search className="h-4 w-4 text-white/35" />
+
+            <input
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+              placeholder="Buscar conversa..."
+              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+            />
+          </label>
+        </section>
+
+        <section className="mb-4">
+          <div className="flex rounded-2xl border border-white/10 bg-black/20 p-1">
+            <button
+              onClick={() => setView("all")}
+              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                view === "all"
+                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                  : "text-white/42"
+              }`}
+            >
+              Todas
+            </button>
+
+            <button
+              onClick={() => setView("archived")}
+              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                view === "archived"
+                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                  : "text-white/42"
+              }`}
+            >
+              Arquivadas
+            </button>
+          </div>
+        </section>
+
+        <section className="space-y-3">
+          {filteredConversations.map((conversation) => (
+            <ConversationCard
+              key={conversation.id}
+              conversation={conversation}
+              onClick={() => navigate(`/chat/${conversation.id}`)}
+            />
+          ))}
+        </section>
+
+        {filteredConversations.length === 0 && (
+          <section className="mt-6 rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
+            <MessageCircle className="mx-auto mb-3 h-6 w-6 text-purple-200" />
+
+            <p className="text-sm font-semibold text-white">
+              {view === "archived"
+                ? "Nenhuma conversa arquivada"
+                : "Nenhuma conversa encontrada"}
+            </p>
+
+            <p className="mt-2 text-xs leading-5 text-white/42">
+              {view === "archived"
+                ? "Quando você arquivar uma conversa, ela aparecerá aqui."
+                : "Tente buscar por outro termo ou crie uma nova conversa."}
+            </p>
+          </section>
+        )}
       </div>
 
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
-        chronotypeLabel={chronotypeLabel}
-        energyPeak={energyPeak}
+        chronotypeLabel={result.label}
+        energyPeak={result.energyPeak}
+      />
+
+      <CreateConversationModal
+        isOpen={isCreateModalOpen}
+        onClose={() => setIsCreateModalOpen(false)}
       />
     </main>
   );
 }
 
-function ChatInput({
-  input,
-  setInput,
-  sendMessage,
-  disabled,
+function ConversationCard({
+  conversation,
+  onClick,
 }: {
-  input: string;
-  setInput: (value: string) => void;
-  sendMessage: () => void;
-  disabled: boolean;
+  conversation: Conversation;
+  onClick: () => void;
 }) {
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  }
+  const Icon = getConversationIcon(conversation.type);
 
   return (
-    <footer className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-[#05050b]/88 px-4 pb-4 pt-3 backdrop-blur-2xl">
-      <div className="flex items-end gap-2 rounded-[1.55rem] border border-white/10 bg-white/[0.055] p-2 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-        <textarea
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          onKeyDown={handleKeyDown}
-          placeholder="Digite o que quer organizar..."
-          rows={1}
-          className="max-h-24 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-sm leading-5 text-white outline-none placeholder:text-white/28"
-        />
-        <button
-          onClick={sendMessage}
-          disabled={!input.trim() || disabled}
-          className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/40 transition active:scale-[0.96] disabled:bg-white/10 disabled:text-white/30 disabled:shadow-none"
-        >
-          <ArrowUp className="h-5 w-5" />
-        </button>
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 rounded-[1.7rem] border p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99] ${
+        conversation.archived
+          ? "border-white/10 bg-white/[0.04]"
+          : "border-white/10 bg-[#1b1b27]/76"
+      }`}
+    >
+      <div className="relative flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+        <Icon className="h-5 w-5" />
+
+        {conversation.unread && !conversation.archived ? (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-purple-500 px-1 text-[0.65rem] font-semibold text-white">
+            {conversation.unread}
+          </span>
+        ) : null}
       </div>
-    </footer>
+
+      <div className="min-w-0 flex-1">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <p className="truncate text-sm font-semibold text-white">
+            {conversation.title}
+          </p>
+
+          <p className="shrink-0 text-[0.68rem] text-white/32">
+            {conversation.time}
+          </p>
+        </div>
+
+        <div className="mb-2 flex items-center gap-2">
+          <p className="truncate text-xs text-white/38">
+            {conversation.description}
+          </p>
+
+          {conversation.archived && (
+            <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.045] px-2 py-0.5 text-[0.6rem] font-semibold text-white/38">
+              Arquivada
+            </span>
+          )}
+        </div>
+
+        <p className="line-clamp-1 text-xs leading-5 text-white/50">
+          {conversation.lastMessage}
+        </p>
+      </div>
+
+      <ChevronRight className="h-5 w-5 shrink-0 text-white/22" />
+    </button>
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
-  const isUser = message.role === "user";
+function getConversationIcon(type: ConversationType) {
+  if (type === "planning") return CalendarDays;
+  if (type === "focus") return Focus;
+  if (type === "project") return Briefcase;
+  return MessageCircle;
+}
+
+function CreateConversationModal({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const navigate = useNavigate();
+  const [selectedType, setSelectedType] =
+    useState<ConversationType>("general");
+  const [title, setTitle] = useState("");
+
+  if (!isOpen) return null;
+
+  function handleCreate() {
+    const id =
+      title.trim().toLowerCase().replace(/\s+/g, "-") ||
+      `nova-conversa-${Date.now()}`;
+
+    onClose();
+    navigate(`/chat/${id}`);
+  }
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
-      <div
-        className={`max-w-[84%] rounded-[1.45rem] px-4 py-3 shadow-xl ${
-          isUser
-            ? "rounded-br-md bg-purple-500 text-white shadow-purple-950/30"
-            : "rounded-bl-md border border-white/10 bg-white/[0.055] text-white/58 shadow-black/20 backdrop-blur-2xl"
-        }`}
-      >
-        {!isUser && (
-          <div className="mb-2 flex items-center gap-2">
-            <div className="flex h-6 w-6 items-center justify-center rounded-xl bg-purple-500/15 text-purple-200">
-              <Brain className="h-3.5 w-3.5" />
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
+      <div className="relative flex max-h-[88vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+
+        <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
+          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <Plus className="h-3.5 w-3.5" />
+                Nova conversa
+              </div>
+
+              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+                Criar aba de conversa
+              </h2>
+
+              <p className="mt-2 text-xs leading-5 text-white/45">
+                Separe assuntos para o Axon acompanhar cada contexto com mais
+                clareza.
+              </p>
             </div>
-            <p className="text-xs font-semibold text-purple-100">Axon</p>
+
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
+              aria-label="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </button>
           </div>
-        )}
-        <p className="text-sm leading-6">
-          {message.streaming && !message.text ? (
-            <span className="flex items-center gap-1.5 text-white/40">
-              <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-purple-300 [animation-delay:0ms]" />
-              <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-purple-300 [animation-delay:150ms]" />
-              <span className="inline-block h-1.5 w-1.5 animate-bounce rounded-full bg-purple-300 [animation-delay:300ms]" />
+        </div>
+
+        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+          <div className="mb-4 grid grid-cols-2 gap-2">
+            <ConversationTypeButton
+              active={selectedType === "general"}
+              icon={MessageCircle}
+              label="Geral"
+              onClick={() => setSelectedType("general")}
+            />
+
+            <ConversationTypeButton
+              active={selectedType === "planning"}
+              icon={CalendarDays}
+              label="Planejamento"
+              onClick={() => setSelectedType("planning")}
+            />
+
+            <ConversationTypeButton
+              active={selectedType === "focus"}
+              icon={Focus}
+              label="Foco"
+              onClick={() => setSelectedType("focus")}
+            />
+
+            <ConversationTypeButton
+              active={selectedType === "project"}
+              icon={Briefcase}
+              label="Projeto"
+              onClick={() => setSelectedType("project")}
+            />
+          </div>
+
+          <label className="block">
+            <span className="mb-2 block text-xs font-medium text-white/42">
+              Nome da conversa
             </span>
-          ) : (
-            <>
-              {message.text}
-              {message.streaming && (
-                <span className="ml-1 inline-block h-3 w-0.5 animate-pulse bg-purple-300" />
-              )}
-            </>
-          )}
-        </p>
+
+            <input
+              value={title}
+              onChange={(event) => setTitle(event.target.value)}
+              type="text"
+              placeholder="Ex: Estudos, Trabalho, Rotina..."
+              className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+            />
+          </label>
+
+          <div className="mt-4 rounded-2xl border border-purple-300/15 bg-purple-500/10 p-4">
+            <div className="mb-2 flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-purple-200" />
+              <p className="text-sm font-semibold text-purple-100">
+                Como o Axon usa isso
+              </p>
+            </div>
+
+            <p className="text-xs leading-5 text-white/50">
+              Cada conversa pode manter um contexto específico. Isso evita
+              misturar decisões de trabalho, rotina pessoal e foco profundo no
+              mesmo chat.
+            </p>
+          </div>
+        </div>
+
+        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
+          <button
+            type="button"
+            onClick={handleCreate}
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
+          >
+            Criar conversa
+            <Plus className="ml-2 h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
     </div>
+  );
+}
+
+function ConversationTypeButton({
+  active,
+  icon: Icon,
+  label,
+  onClick,
+}: {
+  active: boolean;
+  icon: React.ElementType;
+  label: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex min-h-[4.6rem] flex-col items-center justify-center gap-2 rounded-2xl border text-xs font-semibold transition active:scale-[0.98] ${
+        active
+          ? "border-purple-300/30 bg-purple-500/20 text-purple-100 shadow-lg shadow-purple-950/20"
+          : "border-white/10 bg-white/[0.045] text-white/42"
+      }`}
+    >
+      <Icon className="h-[18px] w-[18px]" />
+      {label}
+    </button>
   );
 }
 
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute left-1/2 top-[-16rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-purple-700/25 blur-[120px]" />
-      <div className="absolute right-[-14rem] top-[14rem] h-[26rem] w-[26rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
+
+      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
+      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
       <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:28px_28px] opacity-20" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,11,0.05),#05050b_88%)]" />
+
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
     </div>
   );
 }
