@@ -1,8 +1,10 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowRight, Brain, Mail, Lock, Sparkles, AlertCircle, Eye, EyeOff } from "lucide-react";
+import { ArrowRight, Mail, Lock, Sparkles, AlertCircle, Eye, EyeOff } from "lucide-react";
+import AuthLogo from "../components/auth/AuthLogo";
 import * as api from "../lib/api";
+import GoogleAuthButton from "../components/auth/GoogleAuthButton";
 
 function AuthBackground() {
   return (
@@ -107,7 +109,7 @@ export default function Login() {
       api.saveSession(res);
 
       if (res.has_chronotype) {
-        navigate("/dashboard");
+        navigate("/app-loading");
       } else {
         navigate("/questionnaire-intro");
       }
@@ -123,18 +125,7 @@ export default function Login() {
       <AuthBackground />
 
       <div className="relative z-10 w-full max-w-[420px]">
-        <Link
-          to="/"
-          className="mx-auto mb-8 flex w-fit items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.045] px-4 py-3 backdrop-blur-2xl transition hover:bg-white/[0.07]"
-        >
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-purple-500/15 text-purple-200">
-            <Brain className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-sm font-semibold text-white">Axon</p>
-            <p className="text-xs text-white/40">Personal OS</p>
-          </div>
-        </Link>
+        <AuthLogo />
 
         <motion.section
           initial={{ opacity: 0, y: 24, scale: 0.98 }}
@@ -182,7 +173,6 @@ export default function Login() {
                 />
 
                 <span className="flex h-5 w-5 items-center justify-center rounded-md border border-white/10 bg-white/[0.055] transition peer-checked:border-purple-300/30 peer-checked:bg-purple-500">
-                  {rememberMe && <span className="h-2.5 w-2.5 rounded-sm bg-white" />}
                 </span>
 
                 <span className="text-xs font-medium text-white/45">
@@ -190,9 +180,9 @@ export default function Login() {
                 </span>
               </label>
 
-              <a href="#" className="text-xs font-medium text-purple-200">
+              <Link to="/forgotpassword" className="text-xs font-medium transition" style={{ color: '#a855f7' }}>
                 Esqueci minha senha
-              </a>
+              </Link>
             </div>
 
             {error && (
@@ -202,19 +192,28 @@ export default function Login() {
               </div>
             )}
 
+            <div className="pt-4">
+              <GoogleAuthButton label="Entrar com o Google" />
+              <div className="my-5 flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="text-xs font-medium text-white/42">ou</span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+            </div>
+
             <button
               type="submit"
               disabled={loading}
-              className="mt-3 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-1 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
             >
               {loading ? "Entrando..." : "Entrar"}
               {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
             </button>
           </form>
 
-          <p className="mt-6 text-center text-sm text-white/45">
+          <p className="mt-6 text-center text-xs text-white/40">
             Ainda não tem conta?{" "}
-            <Link to="/signup" className="font-medium text-purple-200">
+            <Link to="/signup" className="font-medium" style={{ color: '#a855f7' }}>
               Criar conta
             </Link>
           </p>
