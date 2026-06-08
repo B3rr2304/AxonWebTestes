@@ -4,8 +4,10 @@ import {
   Archive,
   ArrowLeft,
   Brain,
+  Check,
   Edit3,
   Info,
+  Loader2,
   Menu,
   MoreVertical,
   Send,
@@ -19,10 +21,18 @@ import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 
+type ToolActivity = {
+  tool: string;
+  label: string;
+  status: "running" | "done";
+  ok?: boolean;
+};
+
 type Message = {
   id: number;
   sender: "user" | "axon";
   text: string;
+  tools?: ToolActivity[];
 };
 
 type ConfirmAction = "clear" | "archive" | "delete" | null;
@@ -55,7 +65,7 @@ const initialMessages: Message[] = [
 
 export default function ChatConversation() {
   const navigate = useNavigate();
-  const { conversationId } = useParams();
+  const { chatId: conversationId } = useParams();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
@@ -129,7 +139,31 @@ export default function ChatConversation() {
           )
         );
       },
-      conversationId
+      conversationId,
+      (event) => {
+        setMessages((prev) =>
+          prev.map((m) => {
+            if (m.id !== axonId) return m;
+            const tools = [...(m.tools ?? [])];
+            if (event.status === "running") {
+              tools.push({
+                tool: event.tool,
+                label: event.label ?? event.tool,
+                status: "running",
+              });
+            } else {
+              // marca a última execução pendente desta ferramenta como concluída
+              for (let i = tools.length - 1; i >= 0; i--) {
+                if (tools[i].tool === event.tool && tools[i].status === "running") {
+                  tools[i] = { ...tools[i], status: "done", ok: event.ok };
+                  break;
+                }
+              }
+            }
+            return { ...m, tools };
+          })
+        );
+      }
     );
   }
 
@@ -688,14 +722,52 @@ function MessageBubble({ message }: { message: Message }) {
           </div>
         )}
 
+        {!isUser && message.tools && message.tools.length > 0 && (
+          <div className="mb-2 flex flex-col gap-1.5">
+            {message.tools.map((activity, index) => {
+              const failed = activity.status === "done" && activity.ok === false;
+              return (
+                <div
+                  key={`${activity.tool}-${index}`}
+                  className={`inline-flex items-center gap-2 self-start rounded-full border px-3 py-1 text-[0.68rem] font-medium ${
+                    failed
+                      ? "border-rose-300/25 bg-rose-500/10 text-rose-100"
+                      : activity.status === "done"
+                      ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
+                      : "border-purple-300/25 bg-purple-500/12 text-purple-100"
+                  }`}
+                >
+                  {activity.status === "running" ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : failed ? (
+                    <X className="h-3 w-3" />
+                  ) : (
+                    <Check className="h-3 w-3" />
+                  )}
+                  {activity.status === "running"
+                    ? `${activity.label}…`
+                    : failed
+                    ? `${activity.label}: falhou`
+                    : `${activity.label} ✓`}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
         {message.text}
       </div>
     </div>
   );
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 function formatChatTitle(chatId?: string) {
   if (!chatId) return "Conversa";
+
+  // IDs reais de conversa são UUIDs — não viram título legível.
+  if (UUID_RE.test(chatId)) return "Conversa";
 
   return chatId
     .split("-")

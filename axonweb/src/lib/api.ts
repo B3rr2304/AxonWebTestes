@@ -202,6 +202,81 @@ export function getDashboard() {
   return request<DashboardData>("/dashboard/");
 }
 
+// --- Tasks ---
+
+export type TaskType = "task" | "event" | "routine";
+export type TaskStatus = "todo" | "progress" | "done" | "scheduled";
+export type TaskPriority = "low" | "medium" | "high";
+
+export interface Task {
+  id: string;
+  title: string;
+  description?: string | null;
+  task_type: TaskType;
+  status: TaskStatus;
+  priority?: TaskPriority | null;
+  scheduled_date?: string | null;
+  start_time?: string | null;
+  end_time?: string | null;
+  progress: number;
+  recurrence?: "daily" | "weekly" | "monthly" | null;
+  location?: string | null;
+  parent_task_id?: string | null;
+  group_name?: string | null;
+  deadline?: string | null;
+  created_by: "user" | "agent";
+  created_at: string;
+}
+
+export interface TaskCreateInput {
+  title: string;
+  description?: string;
+  task_type?: TaskType;
+  priority?: TaskPriority;
+  scheduled_date?: string;
+  start_time?: string;
+  end_time?: string;
+  recurrence?: "daily" | "weekly" | "monthly";
+  location?: string;
+  deadline?: string;
+}
+
+export type TaskUpdateInput = Partial<TaskCreateInput> & {
+  status?: TaskStatus;
+  progress?: number;
+};
+
+export function getTasks(params?: {
+  scheduled_date?: string;
+  status?: TaskStatus;
+  task_type?: TaskType;
+}) {
+  const query = new URLSearchParams();
+  if (params?.scheduled_date) query.set("scheduled_date", params.scheduled_date);
+  if (params?.status) query.set("status", params.status);
+  if (params?.task_type) query.set("task_type", params.task_type);
+  const qs = query.toString();
+  return request<Task[]>(`/tasks${qs ? `?${qs}` : ""}`);
+}
+
+export function createTask(body: TaskCreateInput) {
+  return request<Task>("/tasks", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function updateTask(id: string, body: TaskUpdateInput) {
+  return request<Task>(`/tasks/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteTask(id: string) {
+  return request<void>(`/tasks/${id}`, { method: "DELETE" });
+}
+
 // --- Conversations ---
 
 export interface ConversationData {
@@ -258,13 +333,23 @@ export function chat(message: string, history: ChatMessage[], conversationId?: s
   });
 }
 
+export interface ToolEvent {
+  tool: string;
+  status: "running" | "done";
+  label?: string;
+  ok?: boolean;
+  mutating?: boolean;
+  input?: Record<string, unknown>;
+}
+
 export function streamChat(
   message: string,
   history: ChatMessage[],
   onChunk: (text: string) => void,
   onDone: () => void,
   onError: (err: Error) => void,
-  conversationId?: string
+  conversationId?: string,
+  onTool?: (event: ToolEvent) => void
 ): void {
   const token = getToken();
   fetch(`${BASE_URL}/chat/message`, {
@@ -303,7 +388,11 @@ export function streamChat(
           }
           try {
             const parsed = JSON.parse(payload);
-            if (parsed.text) onChunk(parsed.text);
+            if (parsed.text) {
+              onChunk(parsed.text);
+            } else if (parsed.tool) {
+              onTool?.(parsed as ToolEvent);
+            }
           } catch {
             // ignore malformed SSE lines
           }

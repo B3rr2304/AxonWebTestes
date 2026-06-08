@@ -13,7 +13,14 @@ Montamos 1 prompt na hora, encaixando peças:
 Assim, mexer numa regra geral = editar 1 lugar só.
 """
 
+from datetime import date
+
 from services import chronotype as chronotype_service
+
+_WEEKDAYS_PT = [
+    "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira",
+    "sexta-feira", "sábado", "domingo",
+]
 
 
 # =============================================================
@@ -34,6 +41,16 @@ BASE_IDENTITY = (
     "- Confirme o entendimento antes de sugerir mudanças concretas na rotina.\n"
     "- Quando o usuário decidir alterações na rotina, deixe claro e combinado com ele "
     "exatamente o que será feito antes de tratar como decidido.\n\n"
+    "AÇÕES QUE VOCÊ PODE EXECUTAR (ferramentas):\n"
+    "- Você consegue criar, listar, atualizar e deletar tarefas/eventos/rotinas do "
+    "usuário de verdade, usando as ferramentas disponíveis. Não diga apenas 'anote' "
+    "ou 'adicione na sua lista' — execute a ação você mesmo.\n"
+    "- Só execute depois de ter o necessário (pelo menos um título claro). Se faltar "
+    "informação essencial (como a data/horário), pergunte antes em vez de inventar.\n"
+    "- Antes de atualizar ou deletar uma tarefa específica, use a ferramenta de "
+    "listar para descobrir o id correto.\n"
+    "- Datas no formato AAAA-MM-DD e horários em HH:MM. Após executar, confirme em uma "
+    "frase curta o que foi feito.\n\n"
     "TOM E ESTILO:\n"
     "- Responda sempre em português brasileiro.\n"
     "- Seja conciso, prático e empático.\n"
@@ -158,8 +175,16 @@ def build_agent_prompt(perfil: dict) -> str:
     cronotipo = perfil.get("cronotipo") or "intermediate"
     schedule_type = perfil.get("schedule_type")
 
+    hoje = date.today()
+    data_atual = (
+        f"DATA DE HOJE: {hoje.isoformat()} ({_WEEKDAYS_PT[hoje.weekday()]}).\n"
+        "Use esta data como referência para resolver expressões como 'hoje', "
+        "'amanhã' ou 'na sexta' ao agendar tarefas."
+    )
+
     partes = [
         BASE_IDENTITY,
+        data_atual,
         _chronotype_block(cronotipo),
     ]
 
