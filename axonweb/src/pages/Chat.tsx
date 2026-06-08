@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Brain,
   Briefcase,
   CalendarDays,
   ChevronRight,
@@ -83,7 +82,7 @@ export default function Chat() {
             className="flex items-center gap-3 text-left active:scale-[0.98]"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <Brain className="h-5 w-5" />
+              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
             </div>
 
             <div>
