@@ -5,7 +5,7 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import classify, chat, conversations, auth, profile
+from routers import classify, chat, conversations, auth, profile, google_auth
 
 app = FastAPI(title="Axon API")
 
@@ -28,6 +28,7 @@ app.include_router(conversations.router)
 app.include_router(chat.router)
 app.include_router(auth.router)
 app.include_router(profile.router)
+app.include_router(google_auth.router)
 
 
 @app.get("/")

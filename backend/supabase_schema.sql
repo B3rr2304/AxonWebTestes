@@ -73,9 +73,15 @@ create table if not exists public.profiles (
   chronotype  text check (chronotype in ('morning', 'intermediate', 'evening', 'night')),
   chronotype_scores     jsonb,
   questionnaire_answers jsonb,
+  google_access_token   text,
+  google_refresh_token  text,
   created_at  timestamp with time zone default now(),
   updated_at  timestamp with time zone default now()
 );
+
+-- Se a tabela já existir, rode estas migrações separadamente:
+-- alter table public.profiles add column if not exists google_access_token text;
+-- alter table public.profiles add column if not exists google_refresh_token text;
 
 -- Atualiza updated_at automaticamente
 create or replace function public.handle_updated_at()

@@ -1,20 +1,21 @@
+const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+
 type GoogleAuthButtonProps = {
   label: string;
-  onClick?: () => void;
 };
 
-export default function GoogleAuthButton({
-  label,
-  onClick,
-}: GoogleAuthButtonProps) {
+export default function GoogleAuthButton({ label }: GoogleAuthButtonProps) {
+  function handleClick() {
+    window.location.href = `${API_URL}/auth/google`;
+  }
+
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={handleClick}
       className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/72 shadow-xl shadow-black/20 backdrop-blur-2xl transition hover:bg-white/[0.08] active:scale-[0.98]"
     >
       <GoogleIcon />
-
       <span>{label}</span>
     </button>
   );
@@ -22,11 +23,7 @@ export default function GoogleAuthButton({
 
 function GoogleIcon() {
   return (
-    <svg
-      className="h-5 w-5 shrink-0"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
+    <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">
       <path
         fill="#EA4335"
         d="M12 10.2v3.9h5.5c-.2 1.3-1.6 3.9-5.5 3.9-3.3 0-6-2.7-6-6s2.7-6 6-6c1.9 0 3.1.8 3.8 1.5l2.6-2.5C16.7 3.5 14.6 2.5 12 2.5 6.8 2.5 2.5 6.8 2.5 12s4.3 9.5 9.5 9.5c5.5 0 9.1-3.8 9.1-9.2 0-.6-.1-1.1-.2-1.6H12Z"
