@@ -93,6 +93,7 @@ export default function Planning() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
+  const [carriedCount, setCarriedCount] = useState(0);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -117,7 +118,13 @@ export default function Planning() {
   }, []);
 
   useEffect(() => {
-    loadTasks();
+    // Primeiro arrasta pendentes de ontem, depois carrega a lista atualizada
+    api.carryForwardTasks()
+      .then((moved) => {
+        if (moved.length > 0) setCarriedCount(moved.length);
+      })
+      .catch(() => null)
+      .finally(() => loadTasks());
   }, [loadTasks]);
 
   const taskDates = useMemo(
@@ -198,6 +205,21 @@ export default function Planning() {
             <Menu className="h-5 w-5" />
           </button>
         </header>
+
+        {carriedCount > 0 && (
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3">
+            <p className="text-xs leading-5 text-amber-100">
+              <span className="font-semibold">{carriedCount} {carriedCount === 1 ? "tarefa pendente" : "tarefas pendentes"}</span> de ontem {carriedCount === 1 ? "foi movida" : "foram movidas"} para hoje.
+            </p>
+            <button
+              onClick={() => setCarriedCount(0)}
+              className="shrink-0 text-amber-200/60 active:scale-95"
+              aria-label="Fechar aviso"
+            >
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+        )}
 
         <section className="mb-4">
           <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">

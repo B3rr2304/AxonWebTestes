@@ -277,6 +277,10 @@ export function deleteTask(id: string) {
   return request<void>(`/tasks/${id}`, { method: "DELETE" });
 }
 
+export function carryForwardTasks() {
+  return request<Task[]>("/tasks/carry-forward", { method: "POST" });
+}
+
 // --- Conversations ---
 
 export interface ConversationData {
@@ -313,6 +317,17 @@ export function deleteConversation(id: string) {
 
 export function clearConversationMessages(id: string) {
   return request<void>(`/chat/conversations/${id}/messages`, { method: "DELETE" });
+}
+
+export interface StoredMessage {
+  id: string;
+  role: "user" | "assistant";
+  content: string;
+  created_at: string;
+}
+
+export function getConversationMessages(id: string) {
+  return request<StoredMessage[]>(`/chat/conversations/${id}/messages`);
 }
 
 // --- Chat ---
