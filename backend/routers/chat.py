@@ -20,7 +20,7 @@ def _stream_and_save(user_id: str, conversation_id: str, user_message: str, hist
     import json as json_module
     response_text = ""
     try:
-        for chunk in claude_service.stream_chat(history, system_prompt):
+        for chunk in claude_service.stream_chat_with_tools(history, system_prompt, user_id):
             # chunk é no formato: "data: {\"text\": \"...\"}\n\n" ou "data: [DONE]\n\n"
             yield chunk
 
@@ -41,8 +41,10 @@ def _stream_and_save(user_id: str, conversation_id: str, user_message: str, hist
             {"user_id": user_id, "conversation_id": conversation_id, "role": "assistant", "content": response_text},
         ]).execute()
     except Exception as e:
-        # Se houver erro ao salvar, log mas não interrompe o streaming
-        pass
+        import traceback
+        traceback.print_exc()  # aparece no log do servidor para debug
+        yield f"data: {json_module.dumps({'text': f'\\n\\n⚠️ Erro interno: {e}'})}\n\n"
+        yield "data: [DONE]\n\n"
 
 
 def _load_perfil(user_id: str) -> dict:
