@@ -62,6 +62,11 @@ def delete_task(
         raise HTTPException(status_code=404, detail=str(e))
 
 
+@router.post("/carry-forward", response_model=list[TaskResponse])
+def carry_forward(current_user: dict = Depends(get_current_user)):
+    return tasks_service.carry_forward_tasks(current_user["id"])
+
+
 @router.get("/{task_id}/subtasks", response_model=list[TaskResponse])
 def list_subtasks(
     task_id: str,

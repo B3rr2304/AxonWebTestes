@@ -138,6 +138,33 @@ def delete_conversation(
     supabase.table("conversations").delete().eq("id", conversation_id).eq("user_id", user_id).execute()
 
 
+@router.get("/{conversation_id}/messages")
+def get_messages(
+    conversation_id: str,
+    current_user: dict = Depends(get_current_user),
+):
+    user_id = current_user["id"]
+
+    existing = (
+        supabase.table("conversations")
+        .select("id")
+        .eq("id", conversation_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not existing.data:
+        raise HTTPException(status_code=404, detail="Conversa não encontrada")
+
+    res = (
+        supabase.table("messages")
+        .select("id, role, content, created_at")
+        .eq("conversation_id", conversation_id)
+        .order("created_at", desc=False)
+        .execute()
+    )
+    return res.data or []
+
+
 @router.delete("/{conversation_id}/messages", status_code=204)
 def clear_messages(
     conversation_id: str,

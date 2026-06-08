@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   Archive,
@@ -45,23 +45,6 @@ const validKeys: ChronotypeResultKey[] = [
   "Bimodal",
 ];
 
-const initialMessages: Message[] = [
-  {
-    id: 1,
-    sender: "axon",
-    text: "Essa conversa está separada para manter o contexto mais limpo. Me diga o que você quer organizar por aqui.",
-  },
-  {
-    id: 2,
-    sender: "user",
-    text: "Quero organizar melhor minhas prioridades de hoje.",
-  },
-  {
-    id: 3,
-    sender: "axon",
-    text: "Perfeito. Podemos começar separando o que é urgente, importante e o que pode ficar para depois.",
-  },
-];
 
 export default function ChatConversation() {
   const navigate = useNavigate();
@@ -74,9 +57,37 @@ export default function ChatConversation() {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
 
   const [message, setMessage] = useState("");
-  const [messages, setMessages] = useState<Message[]>(initialMessages);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const historyRef = useRef<api.ChatMessage[]>([]);
+
+  // Carrega o histórico real da conversa ao abrir
+  useEffect(() => {
+    if (!conversationId) {
+      setLoadingHistory(false);
+      return;
+    }
+    setLoadingHistory(true);
+    api.getConversationMessages(conversationId)
+      .then((stored) => {
+        const loaded: Message[] = stored.map((m, i) => ({
+          id: i + 1,
+          sender: m.role === "user" ? "user" : "axon",
+          text: m.content,
+        }));
+        setMessages(loaded);
+        // Reconstrói o historyRef para que o contexto da conversa seja mantido
+        historyRef.current = stored.map((m) => ({
+          role: m.role,
+          content: m.content,
+        }));
+      })
+      .catch(() => {
+        // Falha silenciosa — conversa começa vazia, o que é aceitável
+      })
+      .finally(() => setLoadingHistory(false));
+  }, [conversationId]);
 
   const [chatTitle, setChatTitle] = useState(formatChatTitle(conversationId));
   const [draftTitle, setDraftTitle] = useState(formatChatTitle(conversationId));
@@ -267,7 +278,12 @@ export default function ChatConversation() {
         </section>
 
         <section className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-4">
-          {messages.length > 0 ? (
+          {loadingHistory ? (
+            <div className="flex h-full items-center justify-center gap-2 text-sm text-white/40">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Carregando conversa…
+            </div>
+          ) : messages.length > 0 ? (
             messages.map((item) => (
               <MessageBubble key={item.id} message={item} />
             ))
@@ -276,11 +292,10 @@ export default function ChatConversation() {
               <div className="max-w-[18rem] rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/82 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
                 <Brain className="mx-auto mb-3 h-6 w-6 text-purple-200" />
                 <p className="text-sm font-semibold text-white">
-                  Conversa limpa
+                  Conversa nova
                 </p>
                 <p className="mt-2 text-xs leading-5 text-white/42">
-                  As mensagens foram removidas. Você pode começar um novo
-                  assunto por aqui.
+                  Comece digitando sua mensagem abaixo.
                 </p>
               </div>
             </div>
