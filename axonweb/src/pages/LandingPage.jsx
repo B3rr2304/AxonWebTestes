@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
+import AuthLogo from "../components/auth/AuthLogo";
 import {
   ArrowRight,
   BarChart3,
@@ -8,7 +9,6 @@ import {
   CheckCircle2,
   Clock3,
   Focus,
-  Menu,
   MessageCircle,
   Sparkles,
   Target,
@@ -342,25 +342,15 @@ function ProductOrbit() {
   );
 }
 
-function MobileMenuButton() {
-  return (
-    <button className="flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/70 backdrop-blur-xl md:hidden">
-      <Menu className="h-5 w-5" />
-    </button>
-  );
-}
-
 export default function LandingPage() {
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05050b] pb-28 text-white sm:pb-0">
       <Background />
 
       <div className="relative z-10">
-        <header className="mx-auto flex max-w-7xl items-center justify-between px-4 py-5 sm:px-8 sm:py-6">
+        <header className="mx-auto flex max-w-7xl items-center justify-center px-4 py-5 sm:px-8 sm:py-6">
           <Link to="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 shadow-[0_0_26px_rgba(168,85,247,0.35)] sm:h-11 sm:w-11">
-              <Brain className="h-5 w-5 text-purple-200" />
-            </div>
+            <AuthLogo variant="header" className="[transform:scale(1.15)]" />
 
             <div>
               <p className="text-base font-semibold tracking-tight text-white sm:text-lg">
@@ -371,39 +361,6 @@ export default function LandingPage() {
               </p>
             </div>
           </Link>
-
-          <nav className="hidden items-center gap-8 text-sm text-white/50 md:flex">
-            <a href="#problema" className="transition hover:text-white">
-              O problema
-            </a>
-            <a href="#solucao" className="transition hover:text-white">
-              Solução
-            </a>
-            <a href="#recursos" className="transition hover:text-white">
-              Recursos
-            </a>
-            <a href="#como-funciona" className="transition hover:text-white">
-              Como funciona
-            </a>
-          </nav>
-
-          <div className="flex items-center gap-2">
-            <Link
-              to="/login"
-              className="hidden rounded-2xl px-4 py-3 text-sm font-medium text-white/60 transition hover:bg-white/10 hover:text-white sm:inline-flex"
-            >
-              Entrar
-            </Link>
-
-            <Link
-              to="/signup"
-              className="hidden rounded-2xl bg-purple-500 px-5 py-3 text-sm font-semibold text-white shadow-[0_0_28px_rgba(168,85,247,0.45)] transition hover:bg-purple-400 sm:inline-flex"
-            >
-              Começar
-            </Link>
-
-            <MobileMenuButton />
-          </div>
         </header>
 
         <section className="px-4 pb-12 pt-8 sm:px-8 sm:pb-24 sm:pt-20">
@@ -683,8 +640,8 @@ export default function LandingPage() {
       </div>
 
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#05050b]/85 p-4 backdrop-blur-2xl sm:hidden">
-        <PrimaryButton to="/signup" className="w-full">
-          Começar agora
+        <PrimaryButton to="/login" className="w-full">
+          Entrar
           <ArrowRight className="ml-2 h-4 w-4" />
         </PrimaryButton>
       </div>

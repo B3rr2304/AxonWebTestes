@@ -8,7 +8,7 @@ export default function AppLoading() {
   useEffect(() => {
     const redirectTimeout = window.setTimeout(() => {
       navigate("/dashboard");
-    }, 1800);
+    }, 3000);
 
     return () => {
       window.clearTimeout(redirectTimeout);
@@ -20,70 +20,68 @@ export default function AppLoading() {
       <Background />
 
       <section className="relative z-10 flex h-full w-full items-center justify-center px-4">
-        <div className="relative flex h-56 w-56 items-center justify-center">
+        <div className="relative flex h-72 w-72 items-center justify-center">
           <motion.div
             animate={{
-              scale: [1, 1.18, 1],
-              opacity: [0.18, 0.48, 0.18],
+              scale: [1, 1.08, 1],
+              opacity: [0.28, 0.48, 0.28],
             }}
             transition={{
-              duration: 2.8,
+              duration: 3.2,
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute h-52 w-52 rounded-full border border-purple-300/10"
+            className="absolute h-56 w-56 rounded-full bg-purple-500/10 blur-2xl"
           />
 
-          <motion.div
-            animate={{
-              scale: [1, 1.34, 1],
-              opacity: [0.08, 0.24, 0.08],
-            }}
-            transition={{
-              duration: 3.6,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: 0.15,
-            }}
-            className="absolute h-40 w-40 rounded-full border border-fuchsia-300/10"
-          />
-
-          <motion.div
+          <motion.svg
+            viewBox="0 0 260 260"
+            className="absolute h-72 w-72"
             animate={{ rotate: 360 }}
             transition={{
-              duration: 14,
+              duration: 18,
               repeat: Infinity,
               ease: "linear",
             }}
-            className="absolute h-44 w-44 rounded-full border border-transparent border-t-purple-200/35"
-          />
+          >
+            <circle
+              cx="130"
+              cy="130"
+              r="104"
+              fill="none"
+              stroke="rgba(216,180,254,0.10)"
+              strokeWidth="1"
+            />
 
-          <motion.div
-            animate={{ rotate: -360 }}
-            transition={{
-              duration: 22,
-              repeat: Infinity,
-              ease: "linear",
-            }}
-            className="absolute h-32 w-32 rounded-full border border-transparent border-b-fuchsia-200/20"
-          />
+            <circle
+              cx="130"
+              cy="130"
+              r="104"
+              fill="none"
+              stroke="rgba(216,180,254,0.72)"
+              strokeWidth="1.6"
+              strokeLinecap="round"
+              strokeDasharray="100 560"
+            />
+          </motion.svg>
 
           <motion.div
             animate={{
-              y: [-4, 4, -4],
               scale: [1, 1.035, 1],
             }}
             transition={{
-              duration: 3,
+              duration: 3.2,
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="relative flex h-24 w-24 rotate-45 items-center justify-center rounded-[1.9rem] border border-purple-300/25 bg-white/[0.045] shadow-[0_0_90px_rgba(168,85,247,0.38)] backdrop-blur-2xl"
+            className="relative flex h-32 w-32 rotate-45 items-center justify-center rounded-[2.15rem] border border-purple-300/25 bg-white/[0.045] shadow-[0_0_110px_rgba(168,85,247,0.48)] backdrop-blur-2xl"
           >
+            <div className="absolute inset-0 rounded-[2.15rem] bg-gradient-to-br from-white/[0.08] to-transparent" />
+
             <img
               src="/axon-logo.svg"
               alt="Axon"
-              className="h-20 w-20 -rotate-45 object-contain"
+              className="relative h-28 w-28 -rotate-45 object-contain"
             />
           </motion.div>
         </div>
@@ -97,15 +95,15 @@ function Background() {
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#0f1018_50%,#11111a_100%)]" />
 
-      <div className="absolute left-1/2 top-1/2 h-[24rem] w-[24rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-700/20 blur-[120px]" />
+      <div className="absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-700/22 blur-[130px]" />
 
-      <div className="absolute right-[-10rem] top-[20%] h-[22rem] w-[22rem] rounded-full bg-fuchsia-500/8 blur-[110px]" />
+      <div className="absolute right-[-10rem] top-[18%] h-[22rem] w-[22rem] rounded-full bg-fuchsia-500/8 blur-[110px]" />
 
       <div className="absolute bottom-[-12rem] left-[-12rem] h-[24rem] w-[24rem] rounded-full bg-indigo-500/8 blur-[120px]" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:34px_34px] opacity-[0.06]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:34px_34px] opacity-[0.055]" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(15,16,24,0.55)_72%,rgba(15,16,24,0.9)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(15,16,24,0.45)_68%,rgba(15,16,24,0.92)_100%)]" />
     </div>
   );
 }

@@ -87,6 +87,7 @@ export default function Sidebar({
 }: SidebarProps) {
   const navigate = useNavigate();
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   // Busca o perfil real assim que o menu abre (fonte da verdade: backend).
   useEffect(() => {
@@ -107,9 +108,18 @@ export default function Sidebar({
   }
 
   function handleLogout() {
+    setShowLogoutConfirm(true);
+  }
+
+  function confirmLogout() {
     api.logout();
-    navigate("/");
+    setShowLogoutConfirm(false);
     onClose();
+    navigate("/");
+  }
+
+  function cancelLogout() {
+    setShowLogoutConfirm(false);
   }
 
   return (
@@ -274,6 +284,56 @@ export default function Sidebar({
               </footer>
             </div>
           </motion.aside>
+          
+          <AnimatePresence>
+            {showLogoutConfirm && (
+              <motion.div
+                className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+              >
+                <motion.div
+                  initial={{ opacity: 0, y: 18, scale: 0.96 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 18, scale: 0.96 }}
+                  transition={{ duration: 0.22, ease: "easeOut" }}
+                  className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
+                >
+                  <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+                    <LogOut className="h-6 w-6" />
+                  </div>
+
+                  <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
+                    Deseja sair da sua conta?
+                  </h2>
+
+                  <p className="mt-3 text-sm leading-6 text-white/45">
+                    Você será desconectado do Axon e precisará fazer login novamente para
+                    acessar seu ambiente.
+                  </p>
+
+                  <div className="mt-6 grid grid-cols-2 gap-3">
+                    <button
+                      type="button"
+                      onClick={cancelLogout}
+                      className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
+                    >
+                      Cancelar
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={confirmLogout}
+                      className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
+                    >
+                      Sair
+                    </button>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </>
       )}
     </AnimatePresence>
