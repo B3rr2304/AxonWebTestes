@@ -1,7 +1,6 @@
 import os
-from urllib.parse import urlencode
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
 
 from database import supabase
@@ -12,7 +11,8 @@ router = APIRouter(prefix="/auth/google", tags=["google-auth"])
 
 @router.get("")
 def google_login():
-    return RedirectResponse(google_service.build_auth_url())
+    state = google_service.generate_and_store_state()
+    return RedirectResponse(google_service.build_auth_url(state))
 
 
 @router.get("/callback")
@@ -21,6 +21,9 @@ def google_callback(code: str = None, error: str = None, state: str = None):
 
     if error or not code:
         return RedirectResponse(f"{frontend_url}/login?error=google_denied")
+
+    if not state or not google_service.verify_and_consume_state(state):
+        return RedirectResponse(f"{frontend_url}/login?error=invalid_state")
 
     try:
         tokens = google_service.exchange_code(code)
@@ -44,23 +47,31 @@ def google_callback(code: str = None, error: str = None, state: str = None):
         update = {"id": user_id, "name": name, "email": email}
         if refresh_token:
             update["google_refresh_token"] = refresh_token
-        update["google_access_token"] = access_token
 
         supabase.table("profiles").upsert(update).execute()
 
         profile = supabase.table("profiles").select("chronotype").eq("id", user_id).single().execute()
         has_chronotype = bool((profile.data or {}).get("chronotype"))
 
-        params = urlencode({
+        # Armazena a sessão temporariamente e redireciona com código de uso único
+        session_code = google_service.store_session({
             "access_token": supabase_access,
             "refresh_token": supabase_refresh,
             "user_id": user_id,
             "email": email,
             "name": name,
-            "has_chronotype": "true" if has_chronotype else "false",
+            "has_chronotype": has_chronotype,
         })
-        return RedirectResponse(f"{frontend_url}/auth/callback?{params}")
 
-    except Exception as exc:
-        params = urlencode({"error": str(exc)})
-        return RedirectResponse(f"{frontend_url}/login?{params}")
+        return RedirectResponse(f"{frontend_url}/auth/callback?session_code={session_code}")
+
+    except Exception:
+        return RedirectResponse(f"{frontend_url}/login?error=authentication_failed")
+
+
+@router.get("/session")
+def exchange_session_code(code: str):
+    data = google_service.consume_session(code)
+    if data is None:
+        raise HTTPException(status_code=400, detail="Código inválido ou expirado")
+    return data

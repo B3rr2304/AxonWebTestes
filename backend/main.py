@@ -5,9 +5,21 @@ load_dotenv()
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
 from routers import classify, chat, conversations, auth, profile, google_auth
+from limiter import limiter
 
-app = FastAPI(title="Axon API")
+_env = os.getenv("ENV", "production")
+app = FastAPI(
+    title="Axon API",
+    docs_url="/docs" if _env == "development" else None,
+    redoc_url="/redoc" if _env == "development" else None,
+    openapi_url="/openapi.json" if _env == "development" else None,
+)
+
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
