@@ -70,11 +70,14 @@ create table if not exists public.profiles (
   id          uuid references auth.users(id) on delete cascade primary key,
   email       text,
   name        text,
-  chronotype  text check (chronotype in ('morning', 'intermediate', 'evening', 'night')),
+  chronotype  text check (chronotype in ('morning', 'intermediate', 'evening', 'night', 'Matutino', 'Vespertino', 'Noturno', 'Misto', 'Bimodal')),
   chronotype_scores     jsonb,
   questionnaire_answers jsonb,
   google_access_token   text,
   google_refresh_token  text,
+  qualidade_sono       text,
+  schedule_type        text check (schedule_type in ('flexible', 'fixed')),
+  onboarding_completed boolean default false,
   created_at  timestamp with time zone default now(),
   updated_at  timestamp with time zone default now()
 );

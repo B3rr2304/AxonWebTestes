@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Brain,
@@ -15,6 +15,21 @@ import {
 
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
+import * as api from "../lib/api";
+import type { ProfileData } from "../lib/api";
+
+// Cronotipo vindo do backend (pt ou en legado) -> chave dos resultados locais
+const CHRONOTYPE_TO_KEY: Record<string, ChronotypeResultKey> = {
+  Matutino: "Matutino",
+  Vespertino: "Vespertino",
+  Noturno: "Noturno",
+  Misto: "Misto",
+  Bimodal: "Bimodal",
+  morning: "Matutino",
+  evening: "Vespertino",
+  night: "Noturno",
+  intermediate: "Misto",
+};
 
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
@@ -42,21 +57,41 @@ const profileDetails = [
 export default function Profile() {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+
+  useEffect(() => {
+    if (!api.isLoggedIn()) {
+      navigate("/login");
+      return;
+    }
+
+    api
+      .getProfile()
+      .then(setProfile)
+      .catch(() => setProfile(null));
+  }, [navigate]);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
-    const stored = localStorage.getItem("axon_chronotype");
+    // Fonte da verdade: cronotipo do banco (conta logada).
+    const fromBackend = profile?.chronotype
+      ? CHRONOTYPE_TO_KEY[profile.chronotype]
+      : undefined;
+    if (fromBackend) return fromBackend;
 
+    // Fallback legado: cache do navegador.
+    const stored = localStorage.getItem("axon_chronotype");
     if (stored && validKeys.includes(stored as ChronotypeResultKey)) {
       return stored as ChronotypeResultKey;
     }
 
     return "Misto";
-  }, []);
+  }, [profile]);
 
   const result = results[resultKey];
+  const hasChronotype = Boolean(profile?.chronotype);
 
-  const userName = "Bernardo";
-  const userEmail = "bernardo@axon.app";
+  const userName = profile?.name || "Usuário";
+  const userEmail = profile?.email || "";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
@@ -133,11 +168,13 @@ export default function Profile() {
           </div>
 
           <h2 className="text-[1.75rem] font-semibold leading-[1.05] tracking-[-0.055em] text-white">
-            {result.label}
+            {hasChronotype ? result.label : "Cronotipo não definido"}
           </h2>
 
           <p className="mt-3 text-sm leading-6 text-white/55">
-            {result.subtitle}
+            {hasChronotype
+              ? result.subtitle
+              : "Você ainda não respondeu o questionário nesta conta. Responda para o Axon conhecer seu ritmo."}
           </p>
 
           <button

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft,
   ArrowRight,
+  Briefcase,
   Brain,
   Check,
   Clock3,
@@ -268,6 +269,22 @@ const questions: Question[] = [
       { id: "G", label: "Em horários alternados, dependendo do dia." },
     ],
   },
+  {
+    id: "SCHED",
+    category: "Sua rotina",
+    title: "Como são seus horários de trabalho ou estudo atualmente?",
+    icon: Briefcase,
+    options: [
+      {
+        id: "flexible",
+        label: "Tenho horários flexíveis — posso organizar meu dia do meu jeito.",
+      },
+      {
+        id: "fixed",
+        label: "Tenho horários fixos — trabalho ou estudo em horários determinados.",
+      },
+    ],
+  },
 ];
 
 function ProgressBar({ progress }: { progress: number }) {
@@ -302,17 +319,30 @@ export default function Questionnaire() {
   }
 
   async function handleFinish(finalAnswers: Record<string, string>) {
-    const { P9: qualidade_sono = "F", ...respostas } = finalAnswers;
+    const { P9: qualidade_sono = "F", SCHED: schedule_type, ...respostas } = finalAnswers;
+
+    const logged = api.isLoggedIn();
+    console.log("[questionario] isLoggedIn:", logged, "| respostas:", respostas, "| sono:", qualidade_sono, "| sched:", schedule_type);
 
     navigate("/analyzing");
 
     try {
-      const result = api.isLoggedIn()
-        ? await api.classifyAndSave(respostas, qualidade_sono)
-        : await api.classify(respostas, qualidade_sono);
+      const result = logged
+        ? await api.classifyAndSave(respostas, qualidade_sono, schedule_type)
+        : await api.classify(respostas, qualidade_sono, schedule_type);
+      console.log("[questionario] salvo com sucesso. cronotipo:", result.cronotipo);
       localStorage.setItem("axon_chronotype", result.cronotipo);
-    } catch {
-      // /result usa o valor que já estiver no localStorage
+      if (schedule_type) {
+        localStorage.setItem("axon_schedule_type", schedule_type);
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("[questionario] ERRO ao salvar:", msg, err);
+      if (!logged) {
+        alert("Você não está logado — o questionário não pôde ser salvo no banco. Faça login e refaça o questionário.");
+      } else {
+        alert("Erro ao salvar o questionário: " + msg);
+      }
     }
   }
 

@@ -1,3 +1,4 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -15,6 +16,9 @@ import {
   X,
   Zap,
 } from "lucide-react";
+
+import * as api from "../../lib/api";
+import type { ProfileData } from "../../lib/api";
 
 type SidebarProps = {
   isOpen: boolean;
@@ -75,16 +79,36 @@ const secondaryItems = [
 export default function Sidebar({
   isOpen,
   onClose,
-  chronotypeLabel = "Perfil Intermediário",
-  energyPeak = "Entre 9h e 15h",
-  userName = "Bernardo",
-  userEmail = "bernardo@axon.app",
+  chronotypeLabel,
+  energyPeak,
+  userName,
+  userEmail,
   userAvatar,
 }: SidebarProps) {
   const navigate = useNavigate();
+  const [profile, setProfile] = useState<ProfileData | null>(null);
+
+  // Busca o perfil real assim que o menu abre (fonte da verdade: backend).
+  useEffect(() => {
+    if (isOpen && api.isLoggedIn() && !profile) {
+      api.getProfile().then(setProfile).catch(() => {});
+    }
+  }, [isOpen, profile]);
+
+  // Prioridade: dado do backend > prop passada pela página > genérico.
+  const displayName = profile?.name || userName || "Usuário";
+  const displayEmail = profile?.email || userEmail || "";
+  const displayChronotype =
+    profile?.chronotype_label || chronotypeLabel || "Cronotipo não definido";
 
   function goTo(path: string) {
     navigate(path);
+    onClose();
+  }
+
+  function handleLogout() {
+    api.logout();
+    navigate("/");
     onClose();
   }
 
@@ -139,7 +163,7 @@ export default function Sidebar({
                     {userAvatar ? (
                       <img
                         src={userAvatar}
-                        alt={userName}
+                        alt={displayName}
                         className="h-full w-full object-cover"
                       />
                     ) : (
@@ -158,11 +182,11 @@ export default function Sidebar({
                     </div>
 
                     <p className="truncate text-sm font-semibold text-white">
-                      {userName}
+                      {displayName}
                     </p>
 
                     <p className="truncate text-xs text-white/38">
-                      {userEmail}
+                      {displayEmail}
                     </p>
                   </div>
                 </div>
@@ -173,7 +197,7 @@ export default function Sidebar({
                   </p>
 
                   <p className="mt-1 text-sm font-semibold text-white">
-                    {chronotypeLabel}
+                    {displayChronotype}
                   </p>
                 </div>
               </section>
@@ -241,7 +265,7 @@ export default function Sidebar({
 
               <footer className="mt-4">
                 <button
-                  onClick={() => goTo("/")}
+                  onClick={handleLogout}
                   className="flex w-full items-center justify-center gap-2 rounded-[1.35rem] border border-white/10 bg-white/[0.045] px-4 py-3 text-sm font-semibold text-white/45 active:scale-[0.98]"
                 >
                   <LogOut className="h-4 w-4" />

@@ -1,5 +1,6 @@
 from pydantic import BaseModel, EmailStr
 from typing import Optional
+from datetime import date, time
 
 
 # --- Auth ---
@@ -24,13 +25,12 @@ class AuthResponse(BaseModel):
     has_chronotype: bool = False
 
 
-# --- Chronotype ---
-
 # --- Classify ---
 
 class ClassifyRequest(BaseModel):
     respostas: dict[str, str]
     qualidade_sono: str
+    schedule_type: Optional[str] = None  # 'flexible' | 'fixed'
 
 
 class ClassifyResponse(BaseModel):
@@ -47,7 +47,62 @@ class ProfileResponse(BaseModel):
     chronotype_label: Optional[str] = None
     energy_peak: Optional[str] = None
     focus_window: Optional[str] = None
+    schedule_type: Optional[str] = None
     has_chronotype: bool = False
+
+
+# --- Tasks ---
+
+class TaskCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    task_type: str = "task"          # 'task' | 'event' | 'routine'
+    priority: Optional[str] = "medium"  # 'low' | 'medium' | 'high'
+    scheduled_date: Optional[date] = None
+    start_time: Optional[str] = None   # "HH:MM"
+    end_time: Optional[str] = None     # "HH:MM"
+    recurrence: Optional[str] = None   # 'daily' | 'weekly' | 'monthly'
+    location: Optional[str] = None
+    parent_task_id: Optional[str] = None
+    group_name: Optional[str] = None
+    deadline: Optional[date] = None
+    created_by: str = "user"           # 'user' | 'agent'
+
+
+class TaskUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    task_type: Optional[str] = None
+    status: Optional[str] = None       # 'todo' | 'progress' | 'done' | 'scheduled'
+    priority: Optional[str] = None
+    scheduled_date: Optional[date] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    progress: Optional[int] = None
+    recurrence: Optional[str] = None
+    location: Optional[str] = None
+    group_name: Optional[str] = None
+    deadline: Optional[date] = None
+
+
+class TaskResponse(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+    task_type: str
+    status: str
+    priority: Optional[str] = None
+    scheduled_date: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    progress: int = 0
+    recurrence: Optional[str] = None
+    location: Optional[str] = None
+    parent_task_id: Optional[str] = None
+    group_name: Optional[str] = None
+    deadline: Optional[str] = None
+    created_by: str
+    created_at: str
 
 
 # --- Conversations ---
