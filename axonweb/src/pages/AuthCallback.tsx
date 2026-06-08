@@ -15,25 +15,25 @@ export default function AuthCallback() {
       return;
     }
 
-    const access_token = params.get("access_token");
-    const refresh_token = params.get("refresh_token") ?? "";
-    const user_id = params.get("user_id");
-    const email = params.get("email") ?? "";
-    const name = params.get("name") ?? undefined;
-    const has_chronotype = params.get("has_chronotype") === "true";
-
-    if (!access_token || !user_id) {
+    const sessionCode = params.get("session_code");
+    if (!sessionCode) {
       navigate("/login?error=Falha+na+autenticação+com+Google");
       return;
     }
 
-    api.saveSession({ access_token, refresh_token, user_id, email, name, has_chronotype });
-
-    if (has_chronotype) {
-      navigate("/app-loading");
-    } else {
-      navigate("/questionnaire-intro");
-    }
+    api
+      .exchangeGoogleSession(sessionCode)
+      .then((session) => {
+        api.saveSession(session);
+        if (session.has_chronotype) {
+          navigate("/app-loading");
+        } else {
+          navigate("/questionnaire-intro");
+        }
+      })
+      .catch(() => {
+        navigate("/login?error=Falha+na+autenticação+com+Google");
+      });
   }, []);
 
   return (

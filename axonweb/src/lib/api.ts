@@ -77,6 +77,10 @@ export function login(email: string, password: string) {
   });
 }
 
+export function exchangeGoogleSession(code: string) {
+  return request<AuthResponse>(`/auth/google/session?code=${encodeURIComponent(code)}`);
+}
+
 export function logout() {
   localStorage.removeItem("axon_token");
   localStorage.removeItem("axon_refresh_token");

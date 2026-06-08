@@ -1,12 +1,16 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from models.schemas import ChatRequest, ChatResponse
 from auth_helper import get_current_user
 from database import supabase
 from services import chronotype as chronotype_service
 from services import claude_service
+from limiter import chat_limiter
 
 router = APIRouter(prefix="/chat", tags=["chat"])
+
+_MAX_MESSAGE_LEN = 4_000
+_MAX_HISTORY = 50
 
 
 def _build_system_prompt(chronotype: str) -> str:
@@ -26,10 +30,16 @@ def _build_system_prompt(chronotype: str) -> str:
 
 
 @router.post("/message")
+@chat_limiter.limit("30/minute")
 def chat_message(
+    request: Request,
     body: ChatRequest,
     current_user: dict = Depends(get_current_user),
 ):
+    if len(body.message) > _MAX_MESSAGE_LEN:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Mensagem muito longa (máximo 4000 caracteres)")
+
     user_id = current_user["id"]
 
     profile = supabase.table("profiles").select("chronotype").eq("id", user_id).single().execute()
@@ -37,7 +47,7 @@ def chat_message(
 
     system_prompt = _build_system_prompt(chronotype)
 
-    history = [{"role": m.role, "content": m.content} for m in body.history]
+    history = [{"role": m.role, "content": m.content} for m in body.history[-_MAX_HISTORY:]]
     history.append({"role": "user", "content": body.message})
 
     return StreamingResponse(
@@ -51,10 +61,16 @@ def chat_message(
 
 
 @router.post("", response_model=ChatResponse)
+@chat_limiter.limit("30/minute")
 def chat(
+    request: Request,
     body: ChatRequest,
     current_user: dict = Depends(get_current_user),
 ):
+    if len(body.message) > _MAX_MESSAGE_LEN:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Mensagem muito longa (máximo 4000 caracteres)")
+
     user_id = current_user["id"]
 
     profile_res = supabase.table("profiles").select("name, chronotype, qualidade_sono").eq("id", user_id).single().execute()
@@ -73,7 +89,7 @@ def chat(
 
     system_prompt = claude_service.build_system_prompt(perfil)
 
-    history = [{"role": m.role, "content": m.content} for m in body.history[-50:]]
+    history = [{"role": m.role, "content": m.content} for m in body.history[-_MAX_HISTORY:]]
     history.append({"role": "user", "content": body.message})
 
     response_text = claude_service.call_chat(history, system_prompt)
