@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { AnimatePresence, motion } from "framer-motion";
 import {
   Bell,
   Brain,
@@ -17,7 +18,6 @@ import {
   Shield,
   Sparkles,
   User,
-  X,
 } from "lucide-react";
 
 import { results, type ChronotypeResultKey } from "../data/results";
@@ -407,56 +407,56 @@ function LogoutConfirmModal({
   onClose: () => void;
   onConfirm: () => void;
 }) {
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative w-full max-w-[430px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(239,68,68,0.16),transparent_48%)]" />
-
-        <div className="relative">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
-
-          <div className="mb-5 flex items-start justify-between gap-4">
-            <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-red-300/15 bg-red-500/10 text-red-100">
-              <LogOut className="h-5 w-5" />
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
+          >
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+              <LogOut className="h-6 w-6" />
             </div>
 
-            <button
-              onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
-              aria-label="Fechar"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+            <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
+              Deseja sair da sua conta?
+            </h2>
 
-          <h2 className="text-[1.65rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
-            Tem certeza que deseja sair?
-          </h2>
+            <p className="mt-3 text-sm leading-6 text-white/45">
+              Você será desconectado do Axon e precisará fazer login novamente
+              para acessar seu ambiente.
+            </p>
 
-          <p className="mt-3 text-sm leading-6 text-white/48">
-            Você será redirecionado para a página inicial e precisará entrar
-            novamente para acessar seu Axon.
-          </p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
+              >
+                Cancelar
+              </button>
 
-          <button
-            onClick={onConfirm}
-            className="mt-6 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-red-500 px-6 text-sm font-semibold text-white shadow-xl shadow-red-950/30 active:scale-[0.98]"
-          >
-            Sim, sair da conta
-            <LogOut className="ml-2 h-4 w-4" />
-          </button>
-
-          <button
-            onClick={onClose}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
+              >
+                Sair
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }
 
