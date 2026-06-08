@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Activity,
   BarChart3,
-  Brain,
   CalendarDays,
   Clock3,
   Focus,
@@ -97,7 +96,7 @@ export default function Insights() {
             className="flex items-center gap-3 text-left active:scale-[0.98]"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <Brain className="h-5 w-5" />
+              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
             </div>
 
             <div>
@@ -137,7 +136,7 @@ export default function Insights() {
 
               <div className="mt-6 rounded-[1.5rem] border border-purple-300/20 bg-purple-500/10 p-4">
                 <div className="mb-3 flex items-center gap-2">
-                  <Brain className="h-4 w-4 text-purple-200" />
+                  <img src="/axon-logo.svg" alt="Axon" className="h-6 w-6 object-contain" />
                   <p className="text-sm font-semibold text-purple-100">
                     {result.label}
                   </p>
