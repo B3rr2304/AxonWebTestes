@@ -50,14 +50,37 @@ CHRONOTYPE_META: dict[str, dict] = {
         "focus_window": "noite",
         "low_energy": "manhã",
     },
+    "Matutino": {
+        "label": "Perfil Matutino",
+        "energy_peak": "entre 7h e 11h",
+        "focus_window": "manhã",
+        "low_energy": "fim da tarde e noite",
+    },
+    "Vespertino": {
+        "label": "Perfil Vespertino",
+        "energy_peak": "entre 14h e 20h",
+        "focus_window": "tarde e início da noite",
+        "low_energy": "início da manhã",
+    },
+    "Noturno": {
+        "label": "Perfil Noturno",
+        "energy_peak": "entre 20h e 01h",
+        "focus_window": "noite",
+        "low_energy": "manhã",
+    },
+    "Misto": {
+        "label": "Perfil Misto",
+        "energy_peak": "entre 9h e 15h (com variabilidade)",
+        "focus_window": "múltiplas janelas ao longo do dia",
+        "low_energy": "depende do dia",
+    },
+    "Bimodal": {
+        "label": "Perfil Bimodal",
+        "energy_peak": "duas fases de pico ao longo do dia",
+        "focus_window": "duas janelas distintas de foco",
+        "low_energy": "entre os dois picos",
+    },
 }
-
-# Aliases em português para compatibilidade com o banco após classificar_cronotipo
-CHRONOTYPE_META["Matutino"] = CHRONOTYPE_META["morning"]
-CHRONOTYPE_META["Vespertino"] = CHRONOTYPE_META["evening"]
-CHRONOTYPE_META["Noturno"] = CHRONOTYPE_META["night"]
-CHRONOTYPE_META["Misto"] = CHRONOTYPE_META["intermediate"]
-CHRONOTYPE_META["Bimodal"] = CHRONOTYPE_META["intermediate"]
 
 
 def get_chronotype_context(chronotype: str, hour: int) -> dict:

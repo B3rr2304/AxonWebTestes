@@ -145,17 +145,25 @@ export interface ClassifyResponse {
   pontos: Record<string, number>;
 }
 
-export function classify(respostas: Record<string, string>, qualidade_sono: string) {
+export function classify(
+  respostas: Record<string, string>,
+  qualidade_sono: string,
+  schedule_type?: string
+) {
   return request<ClassifyResponse>("/classify/", {
     method: "POST",
-    body: JSON.stringify({ respostas, qualidade_sono }),
+    body: JSON.stringify({ respostas, qualidade_sono, schedule_type }),
   });
 }
 
-export function classifyAndSave(respostas: Record<string, string>, qualidade_sono: string) {
+export function classifyAndSave(
+  respostas: Record<string, string>,
+  qualidade_sono: string,
+  schedule_type?: string
+) {
   return request<ClassifyResponse>("/classify/save", {
     method: "POST",
-    body: JSON.stringify({ respostas, qualidade_sono }),
+    body: JSON.stringify({ respostas, qualidade_sono, schedule_type }),
   });
 }
 

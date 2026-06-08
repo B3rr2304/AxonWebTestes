@@ -28,9 +28,14 @@ def classify_and_save(
     ]
     supabase.table("respostas").insert(rows).execute()
 
-    supabase.table("profiles").update({
+    profile_update = {
         "chronotype": cronotipo,
         "qualidade_sono": body.qualidade_sono,
-    }).eq("id", user_id).execute()
+        "onboarding_completed": True,
+    }
+    if body.schedule_type:
+        profile_update["schedule_type"] = body.schedule_type
+
+    supabase.table("profiles").update(profile_update).eq("id", user_id).execute()
 
     return ClassifyResponse(cronotipo=cronotipo, pontos=pontos)
