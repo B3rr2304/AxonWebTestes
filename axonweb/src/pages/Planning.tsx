@@ -1719,6 +1719,8 @@ function EditPlanningItemModal({
       return;
     }
 
+    if (!task) return;
+
     setSubmitting(true);
     setFormError(null);
 
