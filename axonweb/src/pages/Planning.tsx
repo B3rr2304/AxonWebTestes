@@ -87,7 +87,8 @@ export default function Planning() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
+const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,14 +167,29 @@ export default function Planning() {
     }
   }
 
-  async function handleDelete(task: Task) {
-    if (!window.confirm(`Remover "${task.title}"?`)) return;
+  function handleDelete(task: Task) {
+    setTaskToDelete(task);
+  }
+
+  async function confirmDeleteTask() {
+    if (!taskToDelete) return;
+
+    setIsDeletingTask(true);
+
     try {
-      await api.deleteTask(task.id);
+      await api.deleteTask(taskToDelete.id);
+      setTaskToDelete(null);
       await loadTasks();
     } catch {
-      // ignore
+      // depois podemos colocar um toast/erro visual aqui
+    } finally {
+      setIsDeletingTask(false);
     }
+  }
+
+  function cancelDeleteTask() {
+    if (isDeletingTask) return;
+    setTaskToDelete(null);
   }
 
   return (
@@ -393,6 +409,13 @@ export default function Planning() {
           setIsCreateModalOpen(false);
           await loadTasks();
         }}
+      />
+
+      <DeletePlanningItemModal
+        task={taskToDelete}
+        isDeleting={isDeletingTask}
+        onClose={cancelDeleteTask}
+        onConfirm={confirmDeleteTask}
       />
     </main>
   );
@@ -1297,6 +1320,86 @@ function TypeButton({
       <Icon className="h-4.5 w-4.5" />
       {label}
     </button>
+  );
+}
+
+function DeletePlanningItemModal({
+  task,
+  isDeleting,
+  onClose,
+  onConfirm,
+}: {
+  task: Task | null;
+  isDeleting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!task) return null;
+
+  const itemLabel = typeLabels[task.task_type].toLowerCase();
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+          <Trash2 className="h-6 w-6" />
+        </div>
+
+        <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
+          Remover {itemLabel}?
+        </h2>
+
+        <p className="mt-3 text-sm leading-6 text-white/45">
+          Essa ação vai excluir{" "}
+          <span className="font-semibold text-white/75">"{task.title}"</span>{" "}
+          do seu planejamento.
+        </p>
+
+        <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+            Item selecionado
+          </p>
+
+          <p className="mt-2 truncate text-sm font-semibold text-white">
+            {task.title}
+          </p>
+
+          <p className="mt-1 text-xs text-white/38">
+            {typeLabels[task.task_type]} · {statusLabels[task.status]}
+          </p>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isDeleting}
+            className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Excluindo
+              </>
+            ) : (
+              <>
+                Excluir
+                <Trash2 className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
