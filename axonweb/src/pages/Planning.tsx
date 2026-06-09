@@ -6,10 +6,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Circle,
+  Edit3,
   ListTodo,
   Loader2,
   Menu,
-  MoreVertical,
   Plus,
   Repeat,
   Sparkles,
@@ -23,6 +23,7 @@ import * as api from "../lib/api";
 import type { Task, TaskType, TaskStatus } from "../lib/api";
 
 type ViewMode = "month" | "week";
+type DisplayStatus = "todo" | "progress" | "done" | "scheduled";
 
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
@@ -65,6 +66,100 @@ function toISODate(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
+function getTaskEndDate(task: Task): string | undefined {
+  return (task as Task & { end_date?: string | null }).end_date || undefined;
+}
+
+function getDisplayStatus(task: Task, selectedIso: string): DisplayStatus {
+  const isDone = task.status === "done";
+
+  if (isDone) {
+    return "done";
+  }
+
+  const endDate = getTaskEndDate(task);
+  const isMultiDayEvent =
+    task.task_type === "event" &&
+    task.scheduled_date &&
+    endDate &&
+    endDate !== task.scheduled_date;
+
+  if (isMultiDayEvent && task.scheduled_date && endDate) {
+    if (selectedIso > task.scheduled_date && selectedIso < endDate) {
+      return "progress";
+    }
+
+    if (selectedIso === endDate) {
+      return "progress";
+    }
+
+    return "scheduled";
+  }
+
+  if (task.task_type === "event") {
+    return "scheduled";
+  }
+
+  return task.status as DisplayStatus;
+}
+
+function isTaskOnDate(task: Task, isoDate: string): boolean {
+  if (!task.scheduled_date) return false;
+
+  const startDate = task.scheduled_date;
+  const endDate = getTaskEndDate(task);
+
+  if (task.task_type === "event" && endDate) {
+    return isoDate >= startDate && isoDate <= endDate;
+  }
+
+  return isoDate === startDate;
+}
+
+function daysBetweenInclusive(startIso: string, endIso: string): number {
+  const start = new Date(`${startIso}T00:00:00`);
+  const end = new Date(`${endIso}T00:00:00`);
+
+  const diffMs = end.getTime() - start.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  return Math.max(diffDays + 1, 1);
+}
+
+function getDayIndexInRange(startIso: string, currentIso: string): number {
+  const start = new Date(`${startIso}T00:00:00`);
+  const current = new Date(`${currentIso}T00:00:00`);
+
+  const diffMs = current.getTime() - start.getTime();
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+  return Math.max(diffDays + 1, 1);
+}
+
+function getMultiDayEventProgress(task: Task, selectedIso: string) {
+  const endDate = getTaskEndDate(task);
+
+  if (!task.scheduled_date || !endDate || endDate === task.scheduled_date) {
+    return null;
+  }
+
+  const totalDays = daysBetweenInclusive(task.scheduled_date, endDate);
+  const currentDay = Math.min(
+    getDayIndexInRange(task.scheduled_date, selectedIso),
+    totalDays
+  );
+
+  const progress = Math.round((currentDay / totalDays) * 100);
+  const isLastDay = selectedIso === endDate;
+
+  return {
+    totalDays,
+    currentDay,
+    progress,
+    isLastDay,
+  };
+}
+
 function hhmm(value?: string | null): string | undefined {
   return value ? value.slice(0, 5) : undefined;
 }
@@ -87,8 +182,10 @@ export default function Planning() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
-const [isDeletingTask, setIsDeletingTask] = useState(false);
+
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+  const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,16 +224,37 @@ const [isDeletingTask, setIsDeletingTask] = useState(false);
       .finally(() => loadTasks());
   }, [loadTasks]);
 
-  const taskDates = useMemo(
-    () => new Set(tasks.map((t) => t.scheduled_date).filter(Boolean) as string[]),
-    [tasks]
-  );
+  const taskDates = useMemo(() => {
+    const dates = new Set<string>();
+
+    tasks.forEach((task) => {
+      if (!task.scheduled_date) return;
+
+      const endDate = getTaskEndDate(task);
+
+      if (task.task_type === "event" && endDate) {
+        const current = new Date(`${task.scheduled_date}T00:00:00`);
+        const last = new Date(`${endDate}T00:00:00`);
+
+        while (current <= last) {
+          dates.add(toISODate(current));
+          current.setDate(current.getDate() + 1);
+        }
+
+        return;
+      }
+
+      dates.add(task.scheduled_date);
+    });
+
+    return dates;
+  }, [tasks]);
 
   const selectedIso = toISODate(selectedDate);
   const dayTasks = useMemo(
     () =>
       tasks
-        .filter((t) => t.scheduled_date === selectedIso)
+        .filter((task) => isTaskOnDate(task, selectedIso))
         .sort((a, b) => (a.start_time ?? "").localeCompare(b.start_time ?? "")),
     [tasks, selectedIso]
   );
@@ -169,6 +287,10 @@ const [isDeletingTask, setIsDeletingTask] = useState(false);
 
   function handleDelete(task: Task) {
     setTaskToDelete(task);
+  }
+
+  function handleEdit(task: Task) {
+    setTaskToEdit(task);
   }
 
   async function confirmDeleteTask() {
@@ -348,7 +470,9 @@ const [isDeletingTask, setIsDeletingTask] = useState(false);
                       <TimelineItem
                         key={task.id}
                         task={task}
+                        selectedIso={selectedIso}
                         onToggle={handleToggleDone}
+                        onEdit={handleEdit}
                         onDelete={handleDelete}
                       />
                     ))}
@@ -363,6 +487,8 @@ const [isDeletingTask, setIsDeletingTask] = useState(false);
                             <TimelineItem
                               key={task.id}
                               task={task}
+                              selectedIso={selectedIso}
+                              onEdit={handleEdit}
                               onToggle={handleToggleDone}
                               onDelete={handleDelete}
                             />
@@ -407,6 +533,15 @@ const [isDeletingTask, setIsDeletingTask] = useState(false);
         onClose={() => setIsCreateModalOpen(false)}
         onCreated={async () => {
           setIsCreateModalOpen(false);
+          await loadTasks();
+        }}
+      />
+
+      <EditPlanningItemModal
+        task={taskToEdit}
+        onClose={() => setTaskToEdit(null)}
+        onUpdated={async () => {
+          setTaskToEdit(null);
           await loadTasks();
         }}
       />
@@ -775,11 +910,15 @@ function WeekCalendar({
 
 function TimelineItem({
   task,
+  selectedIso,
   onToggle,
+  onEdit,
   onDelete,
 }: {
   task: Task;
+  selectedIso: string;
   onToggle: (t: Task) => void;
+  onEdit: (t: Task) => void;
   onDelete: (t: Task) => void;
 }) {
   const Icon =
@@ -798,9 +937,25 @@ function TimelineItem({
   const isEvent = task.task_type === "event";
   const isRoutine = task.task_type === "routine";
 
+  const displayStatus = getDisplayStatus(task, selectedIso);
+const isDisplayDone = displayStatus === "done";
+const isDisplayProgress = displayStatus === "progress";
+const isDisplayScheduled = displayStatus === "scheduled";
+
+  const multiDayProgress = isEvent
+    ? getMultiDayEventProgress(task, selectedIso)
+    : null;
+
+  const isMultiDayEvent = Boolean(multiDayProgress);
+  const canCompleteMultiDayEvent = multiDayProgress?.isLastDay;
+
+  const taskEndDate = getTaskEndDate(task);
+
   const detailLabel =
     isRoutine && task.recurrence
       ? recurrenceLabels[task.recurrence] ?? task.recurrence
+      : isMultiDayEvent && task.scheduled_date && taskEndDate
+      ? `${task.scheduled_date} até ${taskEndDate}`
       : isEvent
       ? `${start ?? "—"}${end ? ` - ${end}` : ""}`
       : start ?? "Sem horário";
@@ -842,7 +997,7 @@ function TimelineItem({
                   ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
                   : isRoutine
                   ? "border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100"
-                  : isDone
+                  : isDisplayDone
                   ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
                   : isProgress
                   ? "border-purple-300/25 bg-purple-500/15 text-purple-100"
@@ -853,35 +1008,61 @@ function TimelineItem({
               {typeLabels[task.task_type]}
             </span>
 
-            <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[0.65rem] font-semibold text-white/45">
-              {statusLabels[task.status]}
+            <span
+              className={`rounded-full border px-3 py-1 text-[0.65rem] font-semibold ${
+                isDisplayDone
+                  ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+                  : isDisplayProgress
+                  ? "border-purple-300/25 bg-purple-500/15 text-purple-100"
+                  : isDisplayScheduled
+                  ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+                  : "border-white/10 bg-white/[0.055] text-white/52"
+              }`}
+            >
+              {statusLabels[displayStatus]}
             </span>
           </div>
 
-          <button
-            onClick={() => onDelete(task)}
-            className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/45 active:scale-[0.94]"
-            aria-label="Remover tarefa"
-          >
-            <Trash2 className="h-4 w-4" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onEdit(task)}
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/45 active:scale-[0.94]"
+              aria-label="Editar item"
+            >
+              <Edit3 className="h-4 w-4" />
+            </button>
+
+            <button
+              onClick={() => onDelete(task)}
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/45 active:scale-[0.94]"
+              aria-label="Remover item"
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
+          </div>
         </div>
 
         <div className="mb-4 flex items-center gap-3">
           <div
-            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
-              isEvent
-                ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
+            className={`rounded-[1.55rem] border p-4 shadow-xl shadow-black/20 ${
+              isDisplayDone
+                ? "border-emerald-300/20 bg-emerald-400/10"
+                : isEvent && isDisplayProgress
+                ? "border-purple-300/25 bg-purple-500/12"
+                : isEvent
+                ? "border-cyan-300/20 bg-cyan-400/10"
                 : isRoutine
-                ? "border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100"
-                : isDone
-                ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
-                : isProgress
-                ? "border-purple-300/20 bg-purple-500/15 text-purple-100"
-                : "border-white/10 bg-white/[0.055] text-white/50"
+                ? "border-fuchsia-300/20 bg-fuchsia-400/10"
+                : isDisplayProgress
+                ? "border-purple-300/25 bg-purple-500/12"
+                : "border-white/10 bg-white/[0.055]"
             }`}
           >
-            {isDone ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-5 w-5" />}
+            {isDisplayDone ? (
+              <CheckCircle2 className="h-5 w-5" />
+            ) : (
+              <Icon className="h-5 w-5" />
+            )}
           </div>
 
           <div className="min-w-0">
@@ -895,7 +1076,40 @@ function TimelineItem({
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="truncate text-xs text-white/38">{detailLabel}</p>
 
-          {!isEvent && (
+          {isMultiDayEvent ? (
+            <button
+              onClick={() => {
+                if (canCompleteMultiDayEvent) {
+                  onToggle(task);
+                }
+              }}
+              disabled={!canCompleteMultiDayEvent}
+              className={`inline-flex items-center gap-1.5 text-xs font-semibold active:scale-[0.97] disabled:cursor-not-allowed ${
+                isDone
+                  ? "text-emerald-200"
+                  : canCompleteMultiDayEvent
+                  ? "text-purple-200"
+                  : "text-white/28"
+              }`}
+            >
+              {isDone ? (
+                <>
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Concluído
+                </>
+              ) : canCompleteMultiDayEvent ? (
+                <>
+                  <Circle className="h-3.5 w-3.5" />
+                  Marcar
+                </>
+              ) : (
+                <>
+                  <Circle className="h-3.5 w-3.5" />
+                  Em andamento
+                </>
+              )}
+            </button>
+          ) : !isEvent ? (
             <button
               onClick={() => onToggle(task)}
               className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-200 active:scale-[0.97]"
@@ -912,7 +1126,48 @@ function TimelineItem({
                 </>
               )}
             </button>
-          )}
+          ) : null}
+        </div>
+
+        {isMultiDayEvent ? (
+          <div>
+            <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/35">
+              <span>
+                Dia {multiDayProgress?.currentDay} de {multiDayProgress?.totalDays}
+              </span>
+
+              <span>{isDone ? "100" : multiDayProgress?.progress}%</span>
+            </div>
+
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                className={`h-full rounded-full ${
+                  isDone
+                    ? "bg-emerald-300"
+                    : "bg-gradient-to-r from-cyan-300 to-purple-300"
+                }`}
+                style={{
+                  width: `${isDone ? 100 : multiDayProgress?.progress ?? 0}%`,
+                }}
+              />
+            </div>
+          </div>
+        ) : !isEvent ? (
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className={`h-full rounded-full ${
+                isDone
+                  ? "bg-emerald-300"
+                  : isRoutine
+                  ? "bg-gradient-to-r from-fuchsia-300 to-purple-300"
+                  : isProgress
+                  ? "bg-gradient-to-r from-purple-400 to-fuchsia-300"
+                  : "bg-white/30"
+              }`}
+              style={{ width: `${Math.max(task.progress ?? 0, 6)}%` }}
+            />
+          </div>
+        ) : null}
         </div>
 
         {!isEvent && (
@@ -932,7 +1187,6 @@ function TimelineItem({
           </div>
         )}
       </div>
-    </div>
   );
 }
 
@@ -1323,6 +1577,7 @@ function TypeButton({
   );
 }
 
+
 function DeletePlanningItemModal({
   task,
   isDeleting,
@@ -1396,6 +1651,353 @@ function DeletePlanningItemModal({
                 <Trash2 className="ml-2 h-4 w-4" />
               </>
             )}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EditPlanningItemModal({
+  task,
+  onClose,
+  onUpdated,
+}: {
+  task: Task | null;
+  onClose: () => void;
+  onUpdated: () => void | Promise<void>;
+}) {
+  const [title, setTitle] = useState("");
+  const [date, setDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [location, setLocation] = useState("");
+  const [recurrence, setRecurrence] = useState<"daily" | "weekly" | "monthly">(
+    "daily"
+  );
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!task) return;
+
+    setTitle(task.title ?? "");
+    setDate(task.scheduled_date ?? "");
+    setEndDate((task as Task & { end_date?: string | null }).end_date ?? task.scheduled_date ?? "");
+    setStartTime(hhmm(task.start_time) ?? "");
+    setEndTime(hhmm(task.end_time) ?? "");
+    setPriority((task.priority as "low" | "medium" | "high") ?? "medium");
+    setLocation(task.location ?? "");
+    setRecurrence((task.recurrence as "daily" | "weekly" | "monthly") ?? "daily");
+    setDescription(task.description ?? "");
+    setFormError(null);
+  }, [task]);
+
+  if (!task) return null;
+
+  const isEvent = task.task_type === "event";
+  const isTask = task.task_type === "task";
+  const isRoutine = task.task_type === "routine";
+
+  const descriptionText = isTask
+    ? "Atualize os detalhes dessa tarefa pontual."
+    : isEvent
+    ? "Atualize data, horário e informações desse evento."
+    : "Atualize os detalhes dessa rotina recorrente.";
+
+  async function handleSubmit() {
+    if (!title.trim()) {
+      setFormError("Dê um nome para o item.");
+      return;
+    }
+
+    if (isEvent && endDate && date && endDate < date) {
+      setFormError("A data final do evento não pode ser anterior à data inicial.");
+      return;
+    }
+
+    setSubmitting(true);
+    setFormError(null);
+
+    try {
+      await api.updateTask(
+        task.id,
+        {
+          title: title.trim(),
+          scheduled_date: date || undefined,
+
+          // Campo preparado para eventos de vários dias.
+          // Se o api.ts ainda não tipar end_date, o "as any" evita erro temporário.
+          end_date: isEvent ? endDate || date : undefined,
+
+          start_time: startTime || undefined,
+          end_time: !isTask ? endTime || undefined : undefined,
+          priority: isTask ? priority : undefined,
+          location: isEvent ? location || undefined : undefined,
+          recurrence: isRoutine ? recurrence : undefined,
+          description: description || undefined,
+        } as any
+      );
+
+      await onUpdated();
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Erro ao atualizar item");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
+      <div className="relative flex max-h-[88vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+
+        <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
+          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 flex-1">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <Edit3 className="h-3.5 w-3.5" />
+                Editar {typeLabels[task.task_type].toLowerCase()}
+              </div>
+
+              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+                Ajustar planejamento
+              </h2>
+
+              <p className="mt-2 text-xs leading-5 text-white/45">
+                {descriptionText}
+              </p>
+            </div>
+
+            <button
+              onClick={onClose}
+              disabled={submitting}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96] disabled:opacity-50"
+              aria-label="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+          <div className="mb-4 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+              Tipo de item
+            </p>
+
+            <p className="mt-1 text-sm font-semibold text-white">
+              {typeLabels[task.task_type]}
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-white/35">
+              O tipo não pode ser alterado depois da criação. Para trocar de tipo,
+              exclua este item e crie um novo.
+            </p>
+          </div>
+
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-2 block text-xs font-medium text-white/42">
+                Nome
+              </span>
+
+              <input
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+              />
+            </label>
+
+            {isEvent ? (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-2 block text-xs font-medium text-white/42">
+                    Data inicial
+                  </span>
+
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => {
+                      setDate(e.target.value);
+
+                      if (!endDate || endDate < e.target.value) {
+                        setEndDate(e.target.value);
+                      }
+                    }}
+                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-xs font-medium text-white/42">
+                    Data final
+                  </span>
+
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={date}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  />
+                </label>
+              </div>
+            ) : (
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  Data
+                </span>
+
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                />
+              </label>
+            )}
+
+            <div className={isTask ? "grid grid-cols-1" : "grid grid-cols-2 gap-3"}>
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  {isTask ? "Horário" : "Início"}
+                </span>
+
+                <input
+                  type="time"
+                  value={startTime}
+                  onChange={(e) => setStartTime(e.target.value)}
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                />
+              </label>
+
+              {!isTask && (
+                <label className="block">
+                  <span className="mb-2 block text-xs font-medium text-white/42">
+                    Fim
+                  </span>
+
+                  <input
+                    type="time"
+                    value={endTime}
+                    onChange={(e) => setEndTime(e.target.value)}
+                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  />
+                </label>
+              )}
+            </div>
+
+            {isTask && (
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  Prioridade
+                </span>
+
+                <select
+                  value={priority}
+                  onChange={(e) =>
+                    setPriority(e.target.value as "low" | "medium" | "high")
+                  }
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                >
+                  <option value="low">Baixa</option>
+                  <option value="medium">Média</option>
+                  <option value="high">Alta</option>
+                </select>
+              </label>
+            )}
+
+            {isEvent && (
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  Local ou link
+                </span>
+
+                <input
+                  type="text"
+                  value={location}
+                  onChange={(e) => setLocation(e.target.value)}
+                  placeholder="Ex: Google Meet, sala 203..."
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                />
+              </label>
+            )}
+
+            {isRoutine && (
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  Repetição
+                </span>
+
+                <select
+                  value={recurrence}
+                  onChange={(e) =>
+                    setRecurrence(e.target.value as "daily" | "weekly" | "monthly")
+                  }
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                >
+                  <option value="daily">Todos os dias</option>
+                  <option value="weekly">Toda semana</option>
+                  <option value="monthly">Todo mês</option>
+                </select>
+              </label>
+            )}
+
+            <label className="block">
+              <span className="mb-2 block text-xs font-medium text-white/42">
+                Observação
+              </span>
+
+              <textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Adicione detalhes, contexto ou instruções..."
+                rows={3}
+                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+              />
+            </label>
+
+            {formError && (
+              <p className="text-xs font-medium text-rose-300">{formError}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando…
+              </>
+            ) : (
+              <>
+                Salvar alterações
+                <CheckCircle2 className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
+          >
+            Cancelar
           </button>
         </div>
       </div>

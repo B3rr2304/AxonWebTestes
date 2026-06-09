@@ -44,6 +44,13 @@ async function request<T>(
   }
 
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem("axon_token");
+      localStorage.removeItem("axon_refresh_token");
+      localStorage.removeItem("axon_user");
+      window.location.href = "/login";
+      throw new Error("Sessão expirada");
+    }
     const error = await res.json().catch(() => ({ detail: "Erro desconhecido" }));
     throw new Error(error.detail ?? "Erro na requisição");
   }
