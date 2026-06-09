@@ -67,12 +67,23 @@ def _load_perfil(user_id: str) -> dict:
     )
     respostas = {row["pergunta"]: row["alternativa"] for row in (answers_res.data or [])}
 
+    memories_res = (
+        supabase.table("user_memories")
+        .select("content")
+        .eq("user_id", user_id)
+        .order("created_at", desc=False)
+        .limit(60)
+        .execute()
+    )
+    memories = [row["content"] for row in (memories_res.data or [])]
+
     return {
         "nome": profile_data.get("name"),
         "cronotipo": profile_data.get("chronotype", "intermediate"),
         "schedule_type": profile_data.get("schedule_type"),
         "qualidade_sono": profile_data.get("qualidade_sono"),
         "respostas": respostas,
+        "memories": memories,
     }
 
 
@@ -94,7 +105,7 @@ def chat_message(
     user_id = current_user["id"]
 
     perfil = _load_perfil(user_id)
-    system_prompt = claude_service.build_agent_prompt(perfil)
+    system_prompt = claude_service.build_agent_prompt(perfil, perfil.get("memories", []))
 
     history = [{"role": m.role, "content": m.content} for m in body.history[-_MAX_HISTORY:]]
     history.append({"role": "user", "content": body.message})
@@ -160,7 +171,7 @@ def chat(
     user_id = current_user["id"]
 
     perfil = _load_perfil(user_id)
-    system_prompt = claude_service.build_agent_prompt(perfil)
+    system_prompt = claude_service.build_agent_prompt(perfil, perfil.get("memories", []))
 
     history = [{"role": m.role, "content": m.content} for m in body.history[-_MAX_HISTORY:]]
     history.append({"role": "user", "content": body.message})

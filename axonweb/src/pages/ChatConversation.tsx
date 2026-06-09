@@ -30,6 +30,7 @@ type ToolActivity = {
   label: string;
   status: "running" | "done";
   ok?: boolean;
+  summary?: string;
 };
 
 type Message = {
@@ -240,10 +241,14 @@ export default function ChatConversation() {
                 status: "running",
               });
             } else {
-              // marca a última execução pendente desta ferramenta como concluída
               for (let i = tools.length - 1; i >= 0; i--) {
                 if (tools[i].tool === event.tool && tools[i].status === "running") {
-                  tools[i] = { ...tools[i], status: "done", ok: event.ok };
+                  tools[i] = {
+                    ...tools[i],
+                    status: "done",
+                    ok: event.ok,
+                    summary: event.summary,
+                  };
                   break;
                 }
               }
@@ -832,11 +837,18 @@ function MessageBubble({ message }: { message: Message }) {
                   ) : (
                     <Check className="h-3 w-3" />
                   )}
-                  {activity.status === "running"
-                    ? `${activity.label}…`
-                    : failed
-                    ? `${activity.label}: falhou`
-                    : `${activity.label} ✓`}
+                  <span>
+                    {activity.status === "running"
+                      ? `${activity.label}…`
+                      : failed
+                      ? `${activity.label}: falhou`
+                      : `${activity.label} ✓`}
+                    {activity.summary && (
+                      <span className="ml-1 opacity-75">
+                        — "{activity.summary}"
+                      </span>
+                    )}
+                  </span>
                 </div>
               );
             })}
