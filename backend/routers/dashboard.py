@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends
@@ -16,13 +16,14 @@ _CURVE_KEY = {
     "Matutino": "morning",
     "Vespertino": "evening",
     "Noturno": "night",
-    "Misto": "intermediate",
-    "Bimodal": "intermediate",
-    # chaves em inglês mapeiam para elas mesmas
+    "Misto": "misto",
+    "Bimodal": "bimodal",
     "morning": "morning",
     "evening": "evening",
     "night": "night",
     "intermediate": "intermediate",
+    "bimodal": "bimodal",
+    "misto": "misto",
 }
 
 # Chave de ritmo que o frontend usa (night/morning/evening senão "Estável").
@@ -69,7 +70,7 @@ def get_dashboard(current_user: dict = Depends(get_current_user)):
     ctx = chronotype_service.get_chronotype_context(curve_key, hour)
 
     return {
-        "greeting": _greeting(hour),
+        "greeting": f"{_greeting(hour)}, {data['name']}" if data.get("name") else _greeting(hour),
         "chronotype_label": meta["label"],
         "chronotype_key": _RHYTHM_KEY.get(chronotype or "", "intermediate"),
         "energy_percent": ctx["energy"],
@@ -81,5 +82,34 @@ def get_dashboard(current_user: dict = Depends(get_current_user)):
             "Aproveite sua janela de foco para a tarefa mais importante do dia."
         ),
         "next_focus": None,
-        "day_blocks": [],
+        "day_blocks": _today_blocks(user_id, now),
     }
+
+
+_TYPE_LABEL = {"task": "Tarefa", "event": "Evento", "routine": "Rotina"}
+
+
+def _today_blocks(user_id: str, now: datetime) -> list[dict]:
+    today = str(date.today())
+    result = (
+        supabase.table("tasks")
+        .select("title, task_type, status, start_time")
+        .eq("user_id", user_id)
+        .eq("scheduled_date", today)
+        .neq("status", "done")
+        .order("start_time", desc=False)
+        .limit(5)
+        .execute()
+    )
+    blocks = []
+    for row in (result.data or []):
+        start = row.get("start_time")
+        time_label = start[:5] if start else "—"
+        is_active = row.get("status") == "progress"
+        blocks.append({
+            "time": time_label,
+            "title": row["title"],
+            "type": _TYPE_LABEL.get(row.get("task_type", "task"), "Tarefa"),
+            "active": is_active,
+        })
+    return blocks

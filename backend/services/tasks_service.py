@@ -13,9 +13,9 @@ Erros de validação/posse levantam ValueError com mensagem amigável:
 from database import supabase
 
 # Campos de data que o Supabase devolve como date/datetime e precisam virar str.
-_DATE_FIELDS = ("scheduled_date", "deadline", "start_time", "end_time", "created_at")
+_DATE_FIELDS = ("scheduled_date", "end_date", "deadline", "start_time", "end_time", "created_at")
 # Campos de data que enviamos ao Supabase e precisam ser serializados antes.
-_WRITE_DATE_FIELDS = ("scheduled_date", "deadline")
+_WRITE_DATE_FIELDS = ("scheduled_date", "end_date", "deadline")
 
 
 def serialize(row: dict) -> dict:

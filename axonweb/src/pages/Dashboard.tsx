@@ -8,6 +8,7 @@ import {
   Menu,
   MessageCircle,
   Moon,
+  Plus,
   Sparkles,
   Target,
   Zap,
@@ -31,26 +32,6 @@ type DayBlock = {
   active?: boolean;
 };
 
-const fallbackBlocks: DayBlock[] = [
-  {
-    time: "09:30",
-    title: "Organizar prioridades",
-    type: "Clareza",
-    active: false,
-  },
-  {
-    time: "10:40",
-    title: "Foco profundo",
-    type: "Prioridade",
-    active: true,
-  },
-  {
-    time: "14:00",
-    title: "Demandas leves",
-    type: "Operação",
-    active: false,
-  },
-];
 
 export default function Dashboard() {
   const navigate = useNavigate();
@@ -88,7 +69,7 @@ export default function Dashboard() {
   const focusPercent = data?.focus_percent ?? 64;
 
   const nextFocus = data?.next_focus;
-  const dayBlocks = data?.day_blocks?.length ? data.day_blocks : fallbackBlocks;
+  const dayBlocks = data?.day_blocks ?? [];
 
   const rhythmLabel = useMemo(() => {
     if (chronotypeKey === "night") return "Noturno";
@@ -258,39 +239,55 @@ export default function Dashboard() {
             <CalendarDays className="h-5 w-5 text-purple-200" />
           </div>
 
-          <div className="space-y-3">
-            {dayBlocks.slice(0, 3).map((block) => (
-              <div
-                key={`${block.time}-${block.title}`}
-                className={`flex items-center gap-3 rounded-[1.45rem] border p-3 ${
-                  block.active
-                    ? "border-purple-300/25 bg-purple-500/10"
-                    : "border-white/10 bg-black/20"
-                }`}
+          {dayBlocks.length === 0 ? (
+            <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-5 py-8 text-center">
+              <p className="text-sm font-semibold text-white">Nenhuma tarefa para hoje</p>
+              <p className="mt-1 text-xs leading-5 text-white/42">
+                Converse com o Axon para organizar seu dia ou adicione tarefas no Planejamento.
+              </p>
+              <button
+                onClick={() => navigate("/planning")}
+                className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-purple-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.97]"
               >
+                <Plus className="h-4 w-4" />
+                Adicionar tarefa
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {dayBlocks.slice(0, 5).map((block) => (
                 <div
-                  className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${
+                  key={`${block.time}-${block.title}`}
+                  className={`flex items-center gap-3 rounded-[1.45rem] border p-3 ${
                     block.active
-                      ? "border-purple-300/25 bg-purple-500/20 text-purple-100"
-                      : "border-white/10 bg-white/[0.05] text-white/45"
+                      ? "border-purple-300/25 bg-purple-500/10"
+                      : "border-white/10 bg-black/20"
                   }`}
                 >
-                  {block.time}
-                </div>
+                  <div
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${
+                      block.active
+                        ? "border-purple-300/25 bg-purple-500/20 text-purple-100"
+                        : "border-white/10 bg-white/[0.05] text-white/45"
+                    }`}
+                  >
+                    {block.time}
+                  </div>
 
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-white">
-                    {block.title}
-                  </p>
-                  <p className="mt-1 text-xs text-white/38">{block.type}</p>
-                </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-white">
+                      {block.title}
+                    </p>
+                    <p className="mt-1 text-xs text-white/38">{block.type}</p>
+                  </div>
 
-                {block.active && (
-                  <CheckCircle2 className="h-5 w-5 shrink-0 text-purple-200" />
-                )}
-              </div>
-            ))}
-          </div>
+                  {block.active && (
+                    <CheckCircle2 className="h-5 w-5 shrink-0 text-purple-200" />
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
 
           <button
             onClick={() => navigate("/planning")}
