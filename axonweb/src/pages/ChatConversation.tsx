@@ -15,6 +15,10 @@ import {
   Trash2,
   X,
   Eraser,
+  Bell,
+  CalendarDays,
+  CheckCircle2,
+  Clock3,
 } from "lucide-react";
 
 import { results, type ChronotypeResultKey } from "../data/results";
@@ -35,6 +39,17 @@ type Message = {
   tools?: ToolActivity[];
 };
 
+type NotificationItem = {
+  id: number;
+  title: string;
+  description: string;
+  time: string;
+  category: "planning" | "focus" | "insight" | "system";
+  unread?: boolean;
+  actionLabel?: string;
+  actionPath?: string;
+};
+
 type ConfirmAction = "clear" | "archive" | "delete" | null;
 
 const validKeys: ChronotypeResultKey[] = [
@@ -43,6 +58,51 @@ const validKeys: ChronotypeResultKey[] = [
   "Noturno",
   "Misto",
   "Bimodal",
+];
+
+const systemNotifications: NotificationItem[] = [
+  {
+    id: 1,
+    title: "Seu planejamento de hoje está pronto",
+    description:
+      "Organizamos uma sugestão inicial com base no seu ritmo e nas prioridades do dia.",
+    time: "Agora",
+    category: "planning",
+    unread: true,
+    actionLabel: "Ver planejamento",
+    actionPath: "/planning",
+  },
+  {
+    id: 2,
+    title: "Bom momento para foco profundo",
+    description:
+      "Seu perfil indica uma janela favorável para executar uma tarefa importante com menos distrações.",
+    time: "Há 12 min",
+    category: "focus",
+    unread: true,
+    actionLabel: "Iniciar Focus",
+    actionPath: "/focus",
+  },
+  {
+    id: 3,
+    title: "Novo insight disponível",
+    description:
+      "O Axon identificou um padrão inicial entre seus horários de energia e suas tarefas mais exigentes.",
+    time: "Hoje",
+    category: "insight",
+    unread: false,
+    actionLabel: "Ver insights",
+    actionPath: "/insights",
+  },
+  {
+    id: 4,
+    title: "Bem-vindo ao Axon",
+    description:
+      "Este será seu espaço fixo para avisos importantes, lembretes inteligentes e atualizações do seu ambiente.",
+    time: "Primeiro acesso",
+    category: "system",
+    unread: false,
+  },
 ];
 
 
@@ -64,20 +124,24 @@ export default function ChatConversation() {
 
   // Carrega o histórico real da conversa ao abrir
   useEffect(() => {
-    if (!conversationId) {
+    if (!conversationId || conversationId === "axon-notifications") {
       setLoadingHistory(false);
       return;
     }
+
     setLoadingHistory(true);
-    api.getConversationMessages(conversationId)
+
+    api
+      .getConversationMessages(conversationId)
       .then((stored) => {
         const loaded: Message[] = stored.map((m, i) => ({
           id: i + 1,
           sender: m.role === "user" ? "user" : "axon",
           text: m.content,
         }));
+
         setMessages(loaded);
-        // Reconstrói o historyRef para que o contexto da conversa seja mantido
+
         historyRef.current = stored.map((m) => ({
           role: m.role,
           content: m.content,
@@ -103,6 +167,19 @@ export default function ChatConversation() {
   }, []);
 
   const result = results[resultKey];
+  const isNotificationsChat = conversationId === "axon-notifications";
+  if (isNotificationsChat) {
+    return (
+      <NotificationsConversation
+        onBack={() => navigate("/chat")}
+        onOpenSidebar={() => setIsSidebarOpen(true)}
+        isSidebarOpen={isSidebarOpen}
+        onCloseSidebar={() => setIsSidebarOpen(false)}
+        chronotypeLabel={result.label}
+        energyPeak={result.energyPeak}
+      />
+    );
+  }
 
   function handleSend() {
     const text = message.trim();
@@ -802,4 +879,202 @@ function Background() {
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
     </div>
   );
+}
+
+function NotificationsConversation({
+  onBack,
+  onOpenSidebar,
+  isSidebarOpen,
+  onCloseSidebar,
+  chronotypeLabel,
+  energyPeak,
+}: {
+  onBack: () => void;
+  onOpenSidebar: () => void;
+  isSidebarOpen: boolean;
+  onCloseSidebar: () => void;
+  chronotypeLabel: string;
+  energyPeak: string;
+}) {
+  const navigate = useNavigate();
+
+  const unreadCount = systemNotifications.filter(
+    (notification) => notification.unread
+  ).length;
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+      <Background />
+
+      <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
+        <header className="mb-4 flex items-center justify-between">
+          <div className="flex min-w-0 items-center gap-2">
+            <button
+              onClick={onBack}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+              aria-label="Voltar"
+            >
+              <ArrowLeft className="h-5 w-5" />
+            </button>
+
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-white">
+                Notificações do Axon
+              </p>
+              <p className="truncate text-xs text-white/38">
+                Avisos, lembretes e atualizações
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={onOpenSidebar}
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </header>
+
+        <section className="mb-4 overflow-hidden rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+
+          <div className="relative">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/25 bg-purple-500/15 text-purple-100 shadow-lg shadow-purple-950/30">
+                <Bell className="h-6 w-6" />
+              </div>
+
+              {unreadCount > 0 && (
+                <div className="rounded-full border border-purple-300/20 bg-purple-500/15 px-3 py-1.5 text-xs font-semibold text-purple-100">
+                  {unreadCount} novas
+                </div>
+              )}
+            </div>
+
+            <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.055em] text-white">
+              Sua central de avisos.
+            </h1>
+
+            <p className="mt-3 text-sm leading-6 text-white/50">
+              Aqui ficam os lembretes importantes, sugestões do Axon e
+              atualizações relacionadas ao seu ambiente de produtividade.
+            </p>
+          </div>
+        </section>
+
+        <section className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/28">
+            Recentes
+          </p>
+
+          <div className="space-y-3">
+            {systemNotifications.map((notification) => (
+              <NotificationCard
+                key={notification.id}
+                notification={notification}
+                onAction={() => {
+                  if (notification.actionPath) {
+                    navigate(notification.actionPath);
+                  }
+                }}
+              />
+            ))}
+          </div>
+
+          <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-center backdrop-blur-2xl">
+            <CheckCircle2 className="mx-auto h-5 w-5 text-purple-200/80" />
+
+            <p className="mt-3 text-sm font-semibold text-white/78">
+              Você está em dia.
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-white/38">
+              Novas notificações aparecerão aqui quando o Axon identificar algo
+              relevante para sua rotina.
+            </p>
+          </div>
+        </section>
+      </div>
+
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={onCloseSidebar}
+        chronotypeLabel={chronotypeLabel}
+        energyPeak={energyPeak}
+      />
+    </main>
+  );
+}
+
+function NotificationCard({
+  notification,
+  onAction,
+}: {
+  notification: NotificationItem;
+  onAction: () => void;
+}) {
+  const Icon = getNotificationIcon(notification.category);
+
+  return (
+    <article
+      className={`relative overflow-hidden rounded-[1.7rem] border p-4 shadow-xl shadow-black/20 backdrop-blur-2xl ${
+        notification.unread
+          ? "border-purple-300/20 bg-purple-500/10"
+          : "border-white/10 bg-[#1b1b27]/76"
+      }`}
+    >
+      {notification.unread && (
+        <span className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-purple-300 shadow-[0_0_16px_rgba(216,180,254,0.8)]" />
+      )}
+
+      <div className="flex gap-3">
+        <div
+          className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
+            notification.unread
+              ? "border-purple-300/25 bg-purple-500/20 text-purple-100"
+              : "border-white/10 bg-white/[0.05] text-white/45"
+          }`}
+        >
+          <Icon className="h-5 w-5" />
+        </div>
+
+        <div className="min-w-0 flex-1 pr-2">
+          <div className="mb-1 flex items-center gap-2">
+            <p className="truncate text-sm font-semibold text-white">
+              {notification.title}
+            </p>
+          </div>
+
+          <p className="text-xs leading-5 text-white/42">
+            {notification.description}
+          </p>
+
+          <div className="mt-3 flex items-center justify-between gap-3">
+            <div className="flex items-center gap-1.5 text-[0.68rem] text-white/30">
+              <Clock3 className="h-3.5 w-3.5" />
+              {notification.time}
+            </div>
+
+            {notification.actionLabel && (
+              <button
+                onClick={onAction}
+                className="rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-[0.68rem] font-semibold text-purple-100 active:scale-[0.98]"
+              >
+                {notification.actionLabel}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function getNotificationIcon(category: NotificationItem["category"]) {
+  if (category === "planning") return CalendarDays;
+  if (category === "focus") return Sparkles;
+  if (category === "insight") return CheckCircle2;
+
+  return Bell;
 }
