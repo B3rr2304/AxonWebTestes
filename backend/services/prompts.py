@@ -159,7 +159,19 @@ def _user_block(perfil: dict) -> str:
 # 5. MONTAGEM FINAL — junta todas as peças
 # =============================================================
 
-def build_agent_prompt(perfil: dict) -> str:
+def _memory_block(memories: list[str]) -> str:
+    linhas = ["O QUE VOCÊ JÁ APRENDEU SOBRE ESTE USUÁRIO:"]
+    for m in memories:
+        linhas.append(f"- {m}")
+    linhas.append(
+        "Use estes aprendizados para personalizar suas respostas sem precisar perguntar "
+        "de novo o que já sabe. Se algo tiver mudado (ex.: horário diferente), salve uma "
+        "nova memória corrigindo a informação anterior."
+    )
+    return "\n".join(linhas)
+
+
+def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> str:
     """
     Monta o system prompt do agente certo para o usuário.
 
@@ -198,6 +210,9 @@ def build_agent_prompt(perfil: dict) -> str:
             "Antes de organizar a rotina, descubra de forma natural se ele tem "
             "horários flexíveis ou compromissos fixos de trabalho/estudo."
         )
+
+    if memories:
+        partes.append(_memory_block(memories))
 
     partes.append(_user_block(perfil))
 

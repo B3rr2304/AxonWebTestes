@@ -8,7 +8,7 @@ usuário logado.
 Datas devem ser passadas pelo modelo no formato YYYY-MM-DD e horários como HH:MM.
 """
 
-from services import tasks_service
+from services import tasks_service, memory_service
 
 # Nomes das tools que ALTERAM o estado das tarefas (usado pelo chat para sinalizar
 # ao frontend que o Planejamento precisa ser recarregado).
@@ -20,6 +20,9 @@ TOOL_LABELS = {
     "listar_tarefas": "Consultando tarefas",
     "atualizar_tarefa": "Atualizando tarefa",
     "deletar_tarefa": "Removendo tarefa",
+    "salvar_memoria": "Registrando aprendizado",
+    "listar_memorias": "Consultando aprendizados",
+    "atualizar_memoria": "Atualizando aprendizado",
 }
 
 _TASK_TYPE = {"type": "string", "enum": ["task", "event", "routine"]}
@@ -107,6 +110,61 @@ TOOLS = [
             "required": ["task_id"],
         },
     },
+    {
+        "name": "listar_memorias",
+        "description": (
+            "Lista todas as memórias salvas sobre o usuário, com seus IDs. "
+            "Use antes de atualizar_memoria para descobrir o id da memória que precisa ser alterada."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+        },
+    },
+    {
+        "name": "atualizar_memoria",
+        "description": (
+            "Atualiza uma memória existente quando uma informação sobre o usuário mudar. "
+            "Use listar_memorias antes para descobrir o id correto. "
+            "Escreva o novo conteúdo em terceira pessoa, de forma concisa (máx. 120 caracteres)."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "memory_id": {
+                    "type": "string",
+                    "description": "id (UUID) da memória a atualizar",
+                },
+                "new_content": {
+                    "type": "string",
+                    "description": "Novo conteúdo corrigido da memória (máx. 120 chars)",
+                },
+            },
+            "required": ["memory_id", "new_content"],
+        },
+    },
+    {
+        "name": "salvar_memoria",
+        "description": (
+            "Salva um aprendizado ou informação relevante sobre o usuário para uso futuro. "
+            "Use quando o usuário revelar algo que muda como você deve interagir com ele: "
+            "preferências, padrões de comportamento, contexto de vida, metas, dificuldades "
+            "recorrentes ou qualquer informação que tornaria futuras respostas mais úteis. "
+            "NÃO use para registrar tarefas — use criar_tarefa para isso. "
+            "Escreva o conteúdo em terceira pessoa, de forma concisa (máx. 120 caracteres). "
+            "Exemplo: 'Tem dificuldade para iniciar tarefas complexas antes das 10h.'"
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string",
+                    "description": "Frase concisa em português descrevendo o aprendizado (máx. 120 chars)",
+                }
+            },
+            "required": ["content"],
+        },
+    },
 ]
 
 
@@ -136,6 +194,20 @@ def execute_tool(name: str, tool_input: dict, user_id: str) -> dict:
         if name == "deletar_tarefa":
             tasks_service.delete_task(user_id, tool_input["task_id"])
             return {"ok": True, "deleted": tool_input["task_id"]}
+
+        if name == "listar_memorias":
+            memories = memory_service.list_memories_with_ids(user_id)
+            return {"ok": True, "count": len(memories), "memories": memories}
+
+        if name == "atualizar_memoria":
+            mem = memory_service.update_memory(
+                user_id, tool_input["memory_id"], tool_input["new_content"]
+            )
+            return {"ok": True, "memory": mem}
+
+        if name == "salvar_memoria":
+            mem = memory_service.save_memory(user_id, tool_input["content"])
+            return {"ok": True, "memory": mem}
 
         return {"ok": False, "error": f"Ferramenta desconhecida: {name}"}
     except ValueError as e:

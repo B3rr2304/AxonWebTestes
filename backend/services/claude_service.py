@@ -108,12 +108,16 @@ def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: st
                 "content": json.dumps(out, ensure_ascii=False),
             })
 
-            yield _sse({
+            done_event: dict = {
                 "tool": block.name,
                 "status": "done",
                 "ok": out.get("ok", False),
                 "mutating": block.name in agent_tools.MUTATING_TOOLS,
-            })
+            }
+            # Para tools de memória, inclui o conteúdo para exibir ao usuário.
+            if block.name in ("salvar_memoria", "atualizar_memoria") and out.get("ok"):
+                done_event["summary"] = out.get("memory", {}).get("content")
+            yield _sse(done_event)
 
         convo.append({"role": "user", "content": tool_results})
 

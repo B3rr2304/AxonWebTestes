@@ -355,6 +355,7 @@ export interface ToolEvent {
   ok?: boolean;
   mutating?: boolean;
   input?: Record<string, unknown>;
+  summary?: string;
 }
 
 export function streamChat(
