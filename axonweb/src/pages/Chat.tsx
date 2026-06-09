@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Bell,
   Briefcase,
   CalendarDays,
   ChevronRight,
@@ -27,6 +28,16 @@ const validKeys: ChronotypeResultKey[] = [
   "Misto",
   "Bimodal",
 ];
+
+const notificationsConversation = {
+  id: "axon-notifications",
+  title: "Notificações do Axon",
+  type: "general",
+  archived: false,
+  created_at: new Date().toISOString(),
+  last_message:
+    "Avisos importantes, lembretes e atualizações do seu ambiente aparecem aqui.",
+} as ConversationData;
 
 export default function Chat() {
   const navigate = useNavigate();
@@ -58,17 +69,26 @@ export default function Chat() {
 
   const result = results[resultKey];
 
-  const filteredConversations = conversations.filter((conversation) => {
+  const orderedConversations = useMemo(() => {
+    if (view === "archived") {
+      return conversations.filter((conversation) => conversation.archived);
+    }
+
+    const userConversations = conversations.filter(
+      (conversation) => conversation.id !== notificationsConversation.id
+    );
+
+    return [notificationsConversation, ...userConversations];
+  }, [conversations, view]);
+
+  const filteredConversations = orderedConversations.filter((conversation) => {
     const query = search.toLowerCase();
 
     const matchesSearch =
       conversation.title.toLowerCase().includes(query) ||
       (conversation.last_message ?? "").toLowerCase().includes(query);
 
-    const matchesView =
-      view === "all" ? !conversation.archived : conversation.archived;
-
-    return matchesSearch && matchesView;
+    return matchesSearch;
   });
 
   return (
@@ -180,6 +200,7 @@ export default function Chat() {
               <ConversationCard
                 key={conversation.id}
                 conversation={conversation}
+                isFixed={conversation.id === notificationsConversation.id}
                 onClick={() => navigate(`/chat/${conversation.id}`)}
               />
             ))
@@ -226,12 +247,17 @@ export default function Chat() {
 
 function ConversationCard({
   conversation,
+  isFixed = false,
   onClick,
 }: {
   conversation: ConversationData;
+  isFixed?: boolean;
   onClick: () => void;
 }) {
-  const Icon = getConversationIcon(conversation.type as ConversationType);
+
+  const Icon = isFixed
+    ? Bell
+    : getConversationIcon(conversation.type as ConversationType);
 
   const formattedDate = useMemo(() => {
     const date = new Date(conversation.created_at);
@@ -247,20 +273,42 @@ function ConversationCard({
     <button
       onClick={onClick}
       className={`flex w-full items-center gap-3 rounded-[1.7rem] border p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99] ${
-        conversation.archived
-          ? "border-white/10 bg-white/[0.04]"
-          : "border-white/10 bg-[#1b1b27]/76"
+        isFixed
+          ? "border-purple-300/20 bg-purple-500/10"
+          : conversation.archived
+            ? "border-white/10 bg-white/[0.04]"
+            : "border-white/10 bg-[#1b1b27]/76"
       }`}
     >
-      <div className="relative flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+      <div
+        className={`relative flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border ${
+          isFixed
+            ? "border-purple-300/25 bg-purple-500/20 text-purple-100"
+            : "border-purple-300/15 bg-purple-500/10 text-purple-200"
+        }`}
+      >
         <Icon className="h-5 w-5" />
+
+        {isFixed && (
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border border-[#1b1b27] bg-purple-400 px-1 text-[0.58rem] font-bold text-white">
+            1
+          </span>
+        )}
       </div>
 
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center justify-between gap-3">
-          <p className="truncate text-sm font-semibold text-white">
-            {conversation.title}
-          </p>
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-sm font-semibold text-white">
+              {conversation.title}
+            </p>
+
+            {isFixed && (
+              <span className="shrink-0 rounded-full border border-purple-300/20 bg-purple-500/15 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-purple-100">
+                Fixo
+              </span>
+            )}
+          </div>
 
           <p className="shrink-0 text-[0.68rem] text-white/32">
             {formattedDate}
