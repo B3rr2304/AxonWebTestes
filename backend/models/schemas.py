@@ -59,6 +59,7 @@ class TaskCreate(BaseModel):
     task_type: str = "task"          # 'task' | 'event' | 'routine'
     priority: Optional[str] = "medium"  # 'low' | 'medium' | 'high'
     scheduled_date: Optional[date] = None
+    end_date: Optional[date] = None
     start_time: Optional[str] = None   # "HH:MM"
     end_time: Optional[str] = None     # "HH:MM"
     recurrence: Optional[str] = None   # 'daily' | 'weekly' | 'monthly'
@@ -76,6 +77,7 @@ class TaskUpdate(BaseModel):
     status: Optional[str] = None       # 'todo' | 'progress' | 'done' | 'scheduled'
     priority: Optional[str] = None
     scheduled_date: Optional[date] = None
+    end_date: Optional[date] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     progress: Optional[int] = None
@@ -93,6 +95,7 @@ class TaskResponse(BaseModel):
     status: str
     priority: Optional[str] = None
     scheduled_date: Optional[str] = None
+    end_date: Optional[str] = None
     start_time: Optional[str] = None
     end_time: Optional[str] = None
     progress: int = 0

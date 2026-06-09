@@ -216,6 +216,7 @@ export interface Task {
   status: TaskStatus;
   priority?: TaskPriority | null;
   scheduled_date?: string | null;
+  end_date?: string | null;
   start_time?: string | null;
   end_time?: string | null;
   progress: number;
@@ -234,6 +235,7 @@ export interface TaskCreateInput {
   task_type?: TaskType;
   priority?: TaskPriority;
   scheduled_date?: string;
+  end_date?: string;
   start_time?: string;
   end_time?: string;
   recurrence?: "daily" | "weekly" | "monthly";

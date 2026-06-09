@@ -23,6 +23,30 @@ ENERGY_CURVES: dict[str, dict[int, int]] = {
         12: 45, 13: 48, 14: 52, 15: 55, 16: 58, 17: 62,
         18: 68, 19: 75, 20: 82, 21: 88, 22: 92, 23: 90,
     },
+    # Bimodal: dois picos distintos de energia com vale entre eles.
+    # Base cronobiológica: o ritmo ultradiano de ~90 min produz dois janelas
+    # principais de alta performance — manhã (9-11h) e tarde (16-18h) —
+    # separadas por um vale pós-prandial (13-14h). Estudos de Kleitman (1963)
+    # e Peretz Lavie (1986) documentam esses "portões" de alerta e sono.
+    "bimodal": {
+        0: 12, 1: 8,  2: 8,  3: 10, 4: 20, 5: 35, 6: 52,
+        7: 68, 8: 80, 9: 90, 10: 92, 11: 85,
+        12: 72, 13: 55, 14: 52, 15: 60, 16: 82, 17: 90,
+        18: 85, 19: 72, 20: 58, 21: 44, 22: 30, 23: 18,
+    },
+    # Misto: perfil com platô amplo e sem pico único pronunciado.
+    # Característica central: variabilidade intra-individual alta — o usuário
+    # funciona razoavelmente bem em várias janelas, mas sem o pico acentuado
+    # dos perfis puros. Baseado nos achados de Roenneberg et al. (2004) sobre
+    # distribuição dos cronotipos: o cluster "intermediário-variável" apresenta
+    # menor amplitude circadiana e maior resposividade a fatores externos
+    # (luz, alimentação, demanda social).
+    "misto": {
+        0: 18, 1: 12, 2: 10, 3: 12, 4: 22, 5: 38, 6: 52,
+        7: 64, 8: 74, 9: 80, 10: 84, 11: 85,
+        12: 82, 13: 74, 14: 78, 15: 82, 16: 80, 17: 75,
+        18: 68, 19: 60, 20: 52, 21: 42, 22: 32, 23: 22,
+    },
 }
 
 CHRONOTYPE_META: dict[str, dict] = {
@@ -76,9 +100,21 @@ CHRONOTYPE_META: dict[str, dict] = {
     },
     "Bimodal": {
         "label": "Perfil Bimodal",
-        "energy_peak": "duas fases de pico ao longo do dia",
-        "focus_window": "duas janelas distintas de foco",
-        "low_energy": "entre os dois picos",
+        "energy_peak": "entre 9h–11h e 16h–18h",
+        "focus_window": "manhã e fim de tarde",
+        "low_energy": "entre 12h e 15h",
+    },
+    "bimodal": {
+        "label": "Perfil Bimodal",
+        "energy_peak": "entre 9h–11h e 16h–18h",
+        "focus_window": "manhã e fim de tarde",
+        "low_energy": "entre 12h e 15h",
+    },
+    "misto": {
+        "label": "Perfil Misto",
+        "energy_peak": "entre 10h e 17h (platô amplo)",
+        "focus_window": "múltiplas janelas ao longo do dia",
+        "low_energy": "depende do dia e contexto",
     },
 }
 
@@ -86,7 +122,16 @@ CHRONOTYPE_META: dict[str, dict] = {
 def get_chronotype_context(chronotype: str, hour: int) -> dict:
     curve = ENERGY_CURVES.get(chronotype, ENERGY_CURVES["intermediate"])
     energy = curve.get(hour, 50)
-    focus = max(0, min(100, energy - 14))
+
+    # Foco reflete a capacidade de atenção sustentada — sobe ~1h depois da
+    # energia (tempo de aquecimento cognitivo) e cai antes dela ao final do
+    # dia (fadiga de decisão). Calculamos usando a energia da hora anterior
+    # e suavizamos com a hora atual para aproximar essa defasagem.
+    prev_energy = curve.get((hour - 1) % 24, energy)
+    raw_focus = round(prev_energy * 0.55 + energy * 0.45)
+    # O foco raramente atinge o mesmo teto que a energia — teto em ~88.
+    focus = max(0, min(88, raw_focus))
+
     meta = CHRONOTYPE_META.get(chronotype, CHRONOTYPE_META["intermediate"])
     return {
         "energy": energy,

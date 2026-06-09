@@ -182,7 +182,8 @@ export default function ChatConversation() {
     );
   }
 
-  function handleSend() {
+  function handleSend(e?: React.FormEvent) {
+    e?.preventDefault();
     const text = message.trim();
     if (!text || isSending) return;
 
@@ -376,7 +377,7 @@ export default function ChatConversation() {
 
         <footer className="shrink-0 pt-3">
           <form
-            onSubmit={handleSend}
+            onSubmit={(e) => handleSend(e)}
             className="flex items-end gap-2 rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/86 p-2 shadow-2xl shadow-black/30 backdrop-blur-2xl"
           >
             <textarea

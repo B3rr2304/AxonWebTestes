@@ -127,6 +127,13 @@ create trigger tasks_updated_at
 -- RLS
 alter table public.tasks enable row level security;
 
+-- =============================================
+-- MIGRAÇÃO 4: Adicionar end_date à tabela tasks
+-- =============================================
+
+alter table public.tasks
+  add column if not exists end_date date null;
+
 create policy "Usuários veem apenas suas próprias tarefas"
   on public.tasks for select
   using (auth.uid() = user_id);
