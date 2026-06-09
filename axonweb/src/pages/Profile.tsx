@@ -178,7 +178,9 @@ export default function Profile() {
           </p>
 
           <button
-            onClick={() => navigate("/result")}
+            onClick={() =>
+              navigate(`/result?from=profile&chronotype=${resultKey}`)
+            }
             className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/10 px-5 text-sm font-semibold text-purple-100 active:scale-[0.98]"
           >
             Ver resultado completo

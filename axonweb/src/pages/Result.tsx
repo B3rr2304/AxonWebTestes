@@ -1,7 +1,8 @@
 import { useMemo } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
+  ArrowLeft,
   ArrowRight,
   BarChart3,
   Brain,
@@ -29,8 +30,19 @@ const validKeys: ChronotypeResultKey[] = [
 
 export default function Result() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  const fromProfile = searchParams.get("from") === "profile";
+  const chronotypeFromUrl = searchParams.get("chronotype");
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
+    if (
+      chronotypeFromUrl &&
+      validKeys.includes(chronotypeFromUrl as ChronotypeResultKey)
+    ) {
+      return chronotypeFromUrl as ChronotypeResultKey;
+    }
+
     const stored = localStorage.getItem("axon_chronotype");
 
     if (stored && validKeys.includes(stored as ChronotypeResultKey)) {
@@ -38,7 +50,7 @@ export default function Result() {
     }
 
     return "Misto";
-  }, []);
+  }, [chronotypeFromUrl]);
 
   const result = results[resultKey];
   const ResultIcon = getResultIcon(resultKey);
@@ -55,7 +67,9 @@ export default function Result() {
 
           <div>
             <p className="text-sm font-semibold text-white">Axon</p>
-            <p className="text-xs text-white/40">Resultado inicial</p>
+            <p className="text-xs text-white/40">
+              {fromProfile ? "Resultado completo" : "Resultado inicial"}
+            </p>
           </div>
         </header>
 
@@ -276,21 +290,43 @@ export default function Result() {
         </section>
 
         <footer className="mt-5 shrink-0 space-y-3">
-          <button
-            onClick={() => navigate("/dashboard-loading")}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition active:scale-[0.98]"
-          >
-            Montar meu Dashboard
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </button>
+          {fromProfile ? (
+            <>
+              <button
+                onClick={() => navigate("/profile")}
+                className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition active:scale-[0.98]"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Voltar para o perfil
+              </button>
 
-          <button
-            onClick={() => navigate("/questionnaire")}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
-          >
-            Refazer questionário
-            <RefreshCcw className="ml-2 h-4 w-4" />
-          </button>
+              <button
+                onClick={() => navigate("/questionnaire")}
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
+              >
+                Refazer questionário
+                <RefreshCcw className="ml-2 h-4 w-4" />
+              </button>
+            </>
+          ) : (
+            <>
+              <button
+                onClick={() => navigate("/dashboard-loading")}
+                className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition active:scale-[0.98]"
+              >
+                Montar meu Dashboard
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </button>
+
+              <button
+                onClick={() => navigate("/questionnaire")}
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
+              >
+                Refazer questionário
+                <RefreshCcw className="ml-2 h-4 w-4" />
+              </button>
+            </>
+          )}
         </footer>
       </div>
     </main>

@@ -87,7 +87,8 @@ export default function Planning() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
+const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
+const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -166,14 +167,29 @@ export default function Planning() {
     }
   }
 
-  async function handleDelete(task: Task) {
-    if (!window.confirm(`Remover "${task.title}"?`)) return;
+  function handleDelete(task: Task) {
+    setTaskToDelete(task);
+  }
+
+  async function confirmDeleteTask() {
+    if (!taskToDelete) return;
+
+    setIsDeletingTask(true);
+
     try {
-      await api.deleteTask(task.id);
+      await api.deleteTask(taskToDelete.id);
+      setTaskToDelete(null);
       await loadTasks();
     } catch {
-      // ignore
+      // depois podemos colocar um toast/erro visual aqui
+    } finally {
+      setIsDeletingTask(false);
     }
+  }
+
+  function cancelDeleteTask() {
+    if (isDeletingTask) return;
+    setTaskToDelete(null);
   }
 
   return (
@@ -304,7 +320,7 @@ export default function Planning() {
             <MonthCalendar
               selectedDate={selectedDate}
               onSelect={setSelectedDate}
-              taskDates={taskDates}
+              tasks={tasks}
             />
           ) : (
             <>
@@ -393,6 +409,13 @@ export default function Planning() {
           setIsCreateModalOpen(false);
           await loadTasks();
         }}
+      />
+
+      <DeletePlanningItemModal
+        task={taskToDelete}
+        isDeleting={isDeletingTask}
+        onClose={cancelDeleteTask}
+        onConfirm={confirmDeleteTask}
       />
     </main>
   );
@@ -488,11 +511,11 @@ function LegendItem({ color, label }: { color: string; label: string }) {
 function MonthCalendar({
   selectedDate,
   onSelect,
-  taskDates,
+  tasks,
 }: {
   selectedDate: Date;
   onSelect: (d: Date) => void;
-  taskDates: Set<string>;
+  tasks: Task[];
 }) {
   const year = selectedDate.getFullYear();
   const month = selectedDate.getMonth();
@@ -502,6 +525,41 @@ function MonthCalendar({
 
   function shiftMonth(delta: number) {
     onSelect(new Date(year, month + delta, 1));
+  }
+
+  function getItemsForDay(date: Date) {
+    const iso = toISODate(date);
+
+    return tasks.filter((task) => {
+      if (!task.scheduled_date) return false;
+
+      const startDate = task.scheduled_date;
+
+      /**
+       * Preparado para eventos de vários dias.
+       * Quando o backend tiver end_date, ele já funciona.
+       */
+      const endDate = (task as Task & { end_date?: string }).end_date;
+
+      if (endDate) {
+        return iso >= startDate && iso <= endDate;
+      }
+
+      return iso === startDate;
+    });
+  }
+
+  function isMultiDayEventOnDate(task: Task, date: Date) {
+    const iso = toISODate(date);
+    const endDate = (task as Task & { end_date?: string }).end_date;
+
+    return Boolean(
+      task.task_type === "event" &&
+        task.scheduled_date &&
+        endDate &&
+        iso >= task.scheduled_date &&
+        iso <= endDate
+    );
   }
 
   return (
@@ -545,31 +603,93 @@ function MonthCalendar({
         {Array.from({ length: daysInMonth }, (_, i) => i + 1).map((day) => {
           const date = new Date(year, month, day);
           const iso = toISODate(date);
+
           const isSelected = iso === toISODate(selectedDate);
           const isToday = iso === todayIso;
-          const hasTask = taskDates.has(iso);
+
+          const items = getItemsForDay(date);
+          const visibleItems = items.slice(0, 3);
+          const extraCount = items.length - visibleItems.length;
+
+          const hasMultiDayEvent = items.some((item) =>
+            isMultiDayEventOnDate(item, date)
+          );
 
           return (
             <button
               key={day}
               onClick={() => onSelect(date)}
-              className={`relative flex h-9 items-center justify-center rounded-xl text-xs font-medium transition active:scale-[0.96] ${
+              className={`relative flex min-h-[4.4rem] flex-col items-center justify-start rounded-xl border px-1.5 py-2 text-xs font-medium transition active:scale-[0.96] ${
                 isSelected
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/30"
+                  ? "border-purple-300/30 bg-purple-500 text-white shadow-lg shadow-purple-950/30"
                   : isToday
-                  ? "bg-white/[0.08] text-white ring-1 ring-purple-300/30"
-                  : "bg-white/[0.035] text-white/50"
+                  ? "border-purple-300/30 bg-white/[0.08] text-white"
+                  : "border-white/10 bg-white/[0.035] text-white/50"
               }`}
             >
-              {day}
+              <span className="text-sm font-semibold">{day}</span>
 
-              {hasTask && !isSelected && (
-                <span className="absolute bottom-1 h-1 w-1 rounded-full bg-purple-300" />
+              {hasMultiDayEvent && (
+                <span
+                  className={`mt-1 h-1.5 w-full rounded-full ${
+                    isSelected ? "bg-white/75" : "bg-cyan-300/70"
+                  }`}
+                />
+              )}
+
+              {items.length > 0 && (
+                <div className="mt-auto flex w-full flex-col items-center gap-1 pt-1">
+                  <div className="flex max-w-full justify-center gap-1">
+                    {visibleItems.map((item) => (
+                      <span
+                        key={item.id}
+                        className={`h-1.5 w-1.5 rounded-full ${getMonthItemColor(
+                          item.task_type,
+                          isSelected
+                        )}`}
+                      />
+                    ))}
+                  </div>
+
+                  {extraCount > 0 && (
+                    <span
+                      className={`text-[0.58rem] font-semibold leading-none ${
+                        isSelected ? "text-white/80" : "text-white/35"
+                      }`}
+                    >
+                      +{extraCount}
+                    </span>
+                  )}
+                </div>
               )}
             </button>
           );
         })}
       </div>
+
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-2">
+        <MonthLegendDot color="bg-purple-300" label="Tarefa" />
+        <MonthLegendDot color="bg-cyan-300" label="Evento" />
+        <MonthLegendDot color="bg-fuchsia-300" label="Rotina" />
+      </div>
+    </div>
+  );
+}
+
+function getMonthItemColor(taskType: TaskType, isSelected: boolean) {
+  if (isSelected) return "bg-white";
+
+  if (taskType === "event") return "bg-cyan-300";
+  if (taskType === "routine") return "bg-fuchsia-300";
+
+  return "bg-purple-300";
+}
+
+function MonthLegendDot({ color, label }: { color: string; label: string }) {
+  return (
+    <div className="flex items-center justify-center gap-1.5 rounded-xl bg-black/15 px-2 py-2">
+      <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
+      <span className="text-[0.62rem] font-medium text-white/42">{label}</span>
     </div>
   );
 }
@@ -616,7 +736,7 @@ function WeekCalendar({
         </button>
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="flex gap-2 overflow-x-auto pb-1 sm:grid sm:grid-cols-7 sm:overflow-visible sm:pb-0">
         {days.map((date) => {
           const iso = toISODate(date);
           const isSelected = iso === toISODate(selectedDate);
@@ -627,7 +747,7 @@ function WeekCalendar({
             <button
               key={iso}
               onClick={() => onSelect(date)}
-              className={`relative flex min-h-[82px] min-w-[62px] flex-col items-center justify-center rounded-[1.4rem] border transition active:scale-[0.98] ${
+              className={`relative flex min-h-[82px] min-w-[62px] flex-col items-center justify-center rounded-[1.4rem] border transition active:scale-[0.98] sm:min-w-0 sm:w-full ${
                 isSelected
                   ? "border-purple-300/25 bg-purple-300 text-[#161622]"
                   : isToday
@@ -832,6 +952,7 @@ function CreatePlanningItemModal({
   const [date, setDate] = useState(defaultDate);
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
+  const [endDate, setEndDate] = useState(defaultDate);
   const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
   const [location, setLocation] = useState("");
   const [recurrence, setRecurrence] = useState<"daily" | "weekly" | "monthly">(
@@ -853,6 +974,7 @@ function CreatePlanningItemModal({
       setRecurrence("daily");
       setDescription("");
       setFormError(null);
+      setEndDate(defaultDate);
     }
   }, [isOpen, defaultDate]);
 
@@ -877,6 +999,10 @@ function CreatePlanningItemModal({
       setFormError("Dê um nome para o item.");
       return;
     }
+    if (selectedType === "event" && endDate && date && endDate < date) {
+      setFormError("A data final do evento não pode ser anterior à data inicial.");
+      return;
+    }
     setSubmitting(true);
     setFormError(null);
     try {
@@ -884,13 +1010,18 @@ function CreatePlanningItemModal({
         title: title.trim(),
         task_type: selectedType,
         scheduled_date: date || undefined,
+
+        // Campo novo para evento de vários dias.
+        // Vai funcionar corretamente depois que o Bernardo atualizar o api.ts.
+        end_date: selectedType === "event" ? endDate || date : undefined,
+
         start_time: startTime || undefined,
         end_time: selectedType !== "task" ? endTime || undefined : undefined,
         priority: selectedType === "task" ? priority : undefined,
         location: selectedType === "event" ? location || undefined : undefined,
         recurrence: selectedType === "routine" ? recurrence : undefined,
         description: description || undefined,
-      });
+      } as any);
       await onCreated();
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Erro ao criar item");
@@ -972,17 +1103,55 @@ function CreatePlanningItemModal({
               />
             </label>
 
-            <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">
-                Data
-              </span>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
-              />
-            </label>
+            {selectedType === "event" ? (
+              <div className="grid grid-cols-2 gap-3">
+                <label className="block">
+                  <span className="mb-2 block text-xs font-medium text-white/42">
+                    Data inicial
+                  </span>
+
+                  <input
+                    type="date"
+                    value={date}
+                    onChange={(e) => {
+                      setDate(e.target.value);
+
+                      if (!endDate || endDate < e.target.value) {
+                        setEndDate(e.target.value);
+                      }
+                    }}
+                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  />
+                </label>
+
+                <label className="block">
+                  <span className="mb-2 block text-xs font-medium text-white/42">
+                    Data final
+                  </span>
+
+                  <input
+                    type="date"
+                    value={endDate}
+                    min={date}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  />
+                </label>
+              </div>
+            ) : (
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  Data
+                </span>
+
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                />
+              </label>
+            )}
 
             <div
               className={
@@ -1151,6 +1320,86 @@ function TypeButton({
       <Icon className="h-4.5 w-4.5" />
       {label}
     </button>
+  );
+}
+
+function DeletePlanningItemModal({
+  task,
+  isDeleting,
+  onClose,
+  onConfirm,
+}: {
+  task: Task | null;
+  isDeleting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!task) return null;
+
+  const itemLabel = typeLabels[task.task_type].toLowerCase();
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+          <Trash2 className="h-6 w-6" />
+        </div>
+
+        <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
+          Remover {itemLabel}?
+        </h2>
+
+        <p className="mt-3 text-sm leading-6 text-white/45">
+          Essa ação vai excluir{" "}
+          <span className="font-semibold text-white/75">"{task.title}"</span>{" "}
+          do seu planejamento.
+        </p>
+
+        <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+            Item selecionado
+          </p>
+
+          <p className="mt-2 truncate text-sm font-semibold text-white">
+            {task.title}
+          </p>
+
+          <p className="mt-1 text-xs text-white/38">
+            {typeLabels[task.task_type]} · {statusLabels[task.status]}
+          </p>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isDeleting}
+            className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Excluindo
+              </>
+            ) : (
+              <>
+                Excluir
+                <Trash2 className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
