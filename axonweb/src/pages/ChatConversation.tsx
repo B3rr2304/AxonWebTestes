@@ -297,108 +297,101 @@ export default function ChatConversation() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+    <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
       <Background />
 
-      <div className="relative z-10 flex min-h-screen flex-col px-4 pb-4 pt-5">
-        <header className="mb-4 flex items-center justify-between">
-          <div className="flex min-w-0 items-center gap-2">
-            <button
-              onClick={() => navigate("/chat")}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-              aria-label="Voltar"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
+      <div className="relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
+        <header className="mb-4 shrink-0">
+          <div className="flex items-center justify-between">
+            <div className="flex min-w-0 items-center gap-2">
+              <button
+                onClick={() => navigate("/chat")}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+                aria-label="Voltar"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </button>
 
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">
-                {chatTitle}
-              </p>
-              <p className="truncate text-xs text-white/40">
-                Conversa com contexto próprio
-              </p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setIsOptionsOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-              aria-label="Mais opções"
-            >
-              <MoreVertical className="h-5 w-5" />
-            </button>
-
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-              aria-label="Abrir menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
-        </header>
-
-        <section className="mb-4 rounded-[1.7rem] border border-purple-300/20 bg-purple-500/10 p-4 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
-          <div className="mb-2 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-purple-200" />
-            <p className="text-sm font-semibold text-purple-100">
-              Contexto ativo
-            </p>
-          </div>
-
-          <p className="text-xs leading-5 text-white/52">
-            O Axon vai manter esta conversa focada em{" "}
-            <span className="font-semibold text-purple-100">{chatTitle}</span>.
-          </p>
-        </section>
-
-        <section className="min-h-0 flex-1 space-y-3 overflow-y-auto pb-4">
-          {loadingHistory ? (
-            <div className="flex h-full items-center justify-center gap-2 text-sm text-white/40">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              Carregando conversa…
-            </div>
-          ) : messages.length > 0 ? (
-            messages.map((item) => (
-              <MessageBubble key={item.id} message={item} />
-            ))
-          ) : (
-            <div className="flex h-full items-center justify-center">
-              <div className="max-w-[18rem] rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/82 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
-                <Brain className="mx-auto mb-3 h-6 w-6 text-purple-200" />
-                <p className="text-sm font-semibold text-white">
-                  Conversa nova
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-white">
+                  {chatTitle}
                 </p>
-                <p className="mt-2 text-xs leading-5 text-white/42">
-                  Comece digitando sua mensagem abaixo.
+                <p className="truncate text-xs text-white/38">
+                  Conversa com o Axon
                 </p>
               </div>
             </div>
-          )}
+
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsOptionsOpen(true)}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+                aria-label="Opções da conversa"
+              >
+                <MoreVertical className="h-5 w-5" />
+              </button>
+
+              <button
+                onClick={() => setIsSidebarOpen(true)}
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+                aria-label="Abrir menu"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            </div>
+          </div>
+        </header>
+
+        <section className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="space-y-3 pb-4">
+            {messages.length === 0 ? (
+              <div className="flex min-h-[56vh] items-center justify-center">
+                <div className="w-full rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-2xl shadow-black/30 backdrop-blur-2xl">
+                  <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/10 text-purple-100">
+                    <Sparkles className="h-6 w-6" />
+                  </div>
+
+                  <h2 className="text-xl font-semibold tracking-[-0.04em] text-white">
+                    Comece uma conversa.
+                  </h2>
+
+                  <p className="mx-auto mt-3 max-w-[260px] text-sm leading-6 text-white/45">
+                    Use o Axon para reorganizar seu dia, clarear prioridades ou
+                    transformar pensamentos soltos em ações.
+                  </p>
+                </div>
+              </div>
+            ) : (
+              messages.map((item) => (
+                <MessageBubble key={item.id} message={item} />
+              ))
+            )}
+          </div>
         </section>
 
-        <section className="rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/90 p-2 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-          <div className="flex items-end gap-2">
+        <footer className="shrink-0 pt-3">
+          <form
+            onSubmit={handleSend}
+            className="flex items-end gap-2 rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/86 p-2 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+          >
             <textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
+              placeholder="Mensagem para o Axon..."
               rows={1}
-              placeholder="Digite sua mensagem..."
-              className="max-h-32 min-h-12 flex-1 resize-none bg-transparent px-3 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/30"
+              className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-sm leading-5 text-white outline-none placeholder:text-white/28"
             />
 
             <button
-              onClick={handleSend}
-              disabled={isSending}
-              className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/35 active:scale-[0.96] disabled:opacity-50 disabled:cursor-not-allowed"
-              aria-label="Enviar"
+              type="submit"
+              disabled={!message.trim()}
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-lg shadow-purple-950/30 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-45"
+              aria-label="Enviar mensagem"
             >
-              <Send className="h-5 w-5" />
+              <Send className="h-4.5 w-4.5" />
             </button>
-          </div>
-        </section>
+          </form>
+        </footer>
       </div>
 
       <Sidebar
@@ -412,7 +405,6 @@ export default function ChatConversation() {
         isOpen={isOptionsOpen}
         onClose={() => setIsOptionsOpen(false)}
         onRename={() => {
-          setDraftTitle(chatTitle);
           setIsOptionsOpen(false);
           setIsRenameOpen(true);
         }}
@@ -448,6 +440,7 @@ export default function ChatConversation() {
         chatTitle={chatTitle}
         messageCount={messages.length}
         chronotypeLabel={result.label}
+        energyPeak={result.energyPeak}
       />
 
       <ConfirmActionModal
@@ -658,12 +651,14 @@ function ConversationContextModal({
   chatTitle,
   messageCount,
   chronotypeLabel,
+  energyPeak,
 }: {
   isOpen: boolean;
   onClose: () => void;
   chatTitle: string;
   messageCount: number;
   chronotypeLabel: string;
+  energyPeak: string;
 }) {
   if (!isOpen) return null;
 
@@ -687,6 +682,7 @@ function ConversationContextModal({
           <ContextRow label="Foco da aba" value={chatTitle} />
           <ContextRow label="Mensagens" value={`${messageCount}`} />
           <ContextRow label="Perfil ativo" value={chronotypeLabel} />
+          <ContextRow label="Pico de energia" value={energyPeak} />
           <ContextRow label="Memória" value="Contexto separado por conversa" />
         </div>
 
