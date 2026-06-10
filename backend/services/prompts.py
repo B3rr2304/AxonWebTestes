@@ -171,6 +171,16 @@ def _memory_block(memories: list[str]) -> str:
     return "\n".join(linhas)
 
 
+def _focus_block_context(block: dict) -> str:
+    return (
+        f"BLOCO DE FOCO ATUAL: {block['level_label']} ({block['start']}–{block['end']})\n"
+        f"- {block['description']}\n"
+        "Use este contexto para calibrar suas sugestões: num bloco de Sono ou "
+        "Recuperação, evite propor tarefas cognitivas pesadas; num bloco de Pico, "
+        "encoraje o usuário a dedicar tempo à sua tarefa mais importante."
+    )
+
+
 def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> str:
     """
     Monta o system prompt do agente certo para o usuário.
@@ -210,6 +220,10 @@ def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> str:
             "Antes de organizar a rotina, descubra de forma natural se ele tem "
             "horários flexíveis ou compromissos fixos de trabalho/estudo."
         )
+
+    current_block = perfil.get("current_block")
+    if current_block:
+        partes.append(_focus_block_context(current_block))
 
     if memories:
         partes.append(_memory_block(memories))
