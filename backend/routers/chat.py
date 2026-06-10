@@ -1,10 +1,22 @@
+from datetime import datetime
+from zoneinfo import ZoneInfo
+
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from models.schemas import ChatRequest, ChatResponse
 from auth_helper import get_current_user
 from database import supabase
-from services import claude_service
+from services import claude_service, chronotype as chronotype_service
 from limiter import chat_limiter
+
+_TZ = ZoneInfo("America/Sao_Paulo")
+
+_CURVE_KEY = {
+    "Matutino": "morning", "Vespertino": "evening", "Noturno": "night",
+    "Misto": "intermediate", "Bimodal": "bimodal",
+    "morning": "morning", "evening": "evening", "night": "night",
+    "intermediate": "intermediate", "bimodal": "bimodal",
+}
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -77,13 +89,35 @@ def _load_perfil(user_id: str) -> dict:
     )
     memories = [row["content"] for row in (memories_res.data or [])]
 
+    chronotype = profile_data.get("chronotype", "intermediate")
+    curve_key = _CURVE_KEY.get(chronotype, "intermediate")
+    hour = datetime.now(_TZ).hour
+    block_idx = (hour * 60) // 90
+    blocks = chronotype_service.CHRONOTYPE_BLOCKS.get(
+        curve_key, chronotype_service.CHRONOTYPE_BLOCKS["intermediate"]
+    )
+    level, description = blocks[block_idx]
+    level_label = chronotype_service.BLOCK_LEVELS[level]["label"]
+    start_min = block_idx * 90
+    end_min = (block_idx + 1) * 90
+    block_start = f"{start_min // 60:02d}:{start_min % 60:02d}"
+    block_end = f"{(end_min % 1440) // 60:02d}:{end_min % 60:02d}"
+    current_block = {
+        "level": level,
+        "level_label": level_label,
+        "start": block_start,
+        "end": block_end,
+        "description": description,
+    }
+
     return {
         "nome": profile_data.get("name"),
-        "cronotipo": profile_data.get("chronotype", "intermediate"),
+        "cronotipo": chronotype,
         "schedule_type": profile_data.get("schedule_type"),
         "qualidade_sono": profile_data.get("qualidade_sono"),
         "respostas": respostas,
         "memories": memories,
+        "current_block": current_block,
     }
 
 

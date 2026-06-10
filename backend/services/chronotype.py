@@ -1,51 +1,35 @@
-ENERGY_CURVES: dict[str, dict[int, int]] = {
+ENERGY_LEVELS = {
     "morning": {
-        0: 10, 1: 8, 2: 8, 3: 10, 4: 35, 5: 55, 6: 70,
-        7: 85, 8: 92, 9: 95, 10: 90, 11: 82,
-        12: 72, 13: 60, 14: 50, 15: 48, 16: 52, 17: 55,
-        18: 50, 19: 45, 20: 38, 21: 30, 22: 22, 23: 15,
+        0: 12, 1: 8,  2: 8,  3: 10, 4: 30, 5: 55,
+        6: 72, 7: 85, 8: 92, 9: 95, 10: 90, 11: 82,
+        12: 62, 13: 48, 14: 42, 15: 45, 16: 50, 17: 48,
+        18: 42, 19: 36, 20: 30, 21: 22, 22: 16, 23: 12,
     },
+    # Misto: platô amplo sem pico único. Fallback para cronotipos desconhecidos.
     "intermediate": {
-        0: 15, 1: 10, 2: 8, 3: 10, 4: 18, 5: 30, 6: 45,
-        7: 60, 8: 72, 9: 82, 10: 88, 11: 90,
-        12: 88, 13: 78, 14: 82, 15: 85, 16: 80, 17: 72,
-        18: 65, 19: 58, 20: 50, 21: 42, 22: 33, 23: 22,
+        0: 18, 1: 12, 2: 10, 3: 12, 4: 22, 5: 36,
+        6: 52, 7: 64, 8: 72, 9: 78, 10: 80, 11: 80,
+        12: 72, 13: 65, 14: 68, 15: 74, 16: 76, 17: 72,
+        18: 64, 19: 56, 20: 46, 21: 36, 22: 26, 23: 20,
     },
     "evening": {
-        0: 28, 1: 18, 2: 12, 3: 10, 4: 12, 5: 15, 6: 22,
-        7: 30, 8: 42, 9: 52, 10: 60, 11: 65,
-        12: 68, 13: 70, 14: 78, 15: 85, 16: 88, 17: 90,
-        18: 88, 19: 85, 20: 78, 21: 68, 22: 55, 23: 40,
+        0: 30, 1: 20, 2: 14, 3: 10, 4: 10, 5: 12,
+        6: 18, 7: 26, 8: 36, 9: 46, 10: 55, 11: 62,
+        12: 64, 13: 62, 14: 60, 15: 72, 16: 82, 17: 90,
+        18: 90, 19: 86, 20: 76, 21: 62, 22: 48, 23: 38,
     },
     "night": {
-        0: 85, 1: 75, 2: 60, 3: 40, 4: 20, 5: 10, 6: 12,
-        7: 18, 8: 25, 9: 32, 10: 38, 11: 42,
-        12: 45, 13: 48, 14: 52, 15: 55, 16: 58, 17: 62,
-        18: 68, 19: 75, 20: 82, 21: 88, 22: 92, 23: 90,
+        0: 70, 1: 55, 2: 40, 3: 28, 4: 18, 5: 10,
+        6: 10, 7: 14, 8: 20, 9: 28, 10: 34, 11: 40,
+        12: 44, 13: 46, 14: 50, 15: 54, 16: 60, 17: 68,
+        18: 76, 19: 84, 20: 88, 21: 90, 22: 88, 23: 80,
     },
-    # Bimodal: dois picos distintos de energia com vale entre eles.
-    # Base cronobiológica: o ritmo ultradiano de ~90 min produz dois janelas
-    # principais de alta performance — manhã (9-11h) e tarde (16-18h) —
-    # separadas por um vale pós-prandial (13-14h). Estudos de Kleitman (1963)
-    # e Peretz Lavie (1986) documentam esses "portões" de alerta e sono.
+    # Bimodal: dois picos distintos. Base: Kleitman (1963), Lavie (1986).
     "bimodal": {
-        0: 12, 1: 8,  2: 8,  3: 10, 4: 20, 5: 35, 6: 52,
-        7: 68, 8: 80, 9: 90, 10: 92, 11: 85,
-        12: 72, 13: 55, 14: 52, 15: 60, 16: 82, 17: 90,
-        18: 85, 19: 72, 20: 58, 21: 44, 22: 30, 23: 18,
-    },
-    # Misto: perfil com platô amplo e sem pico único pronunciado.
-    # Característica central: variabilidade intra-individual alta — o usuário
-    # funciona razoavelmente bem em várias janelas, mas sem o pico acentuado
-    # dos perfis puros. Baseado nos achados de Roenneberg et al. (2004) sobre
-    # distribuição dos cronotipos: o cluster "intermediário-variável" apresenta
-    # menor amplitude circadiana e maior resposividade a fatores externos
-    # (luz, alimentação, demanda social).
-    "misto": {
-        0: 18, 1: 12, 2: 10, 3: 12, 4: 22, 5: 38, 6: 52,
-        7: 64, 8: 74, 9: 80, 10: 84, 11: 85,
-        12: 82, 13: 74, 14: 78, 15: 82, 16: 80, 17: 75,
-        18: 68, 19: 60, 20: 52, 21: 42, 22: 32, 23: 22,
+        0: 14, 1: 8,  2: 8,  3: 10, 4: 22, 5: 38,
+        6: 55, 7: 70, 8: 82, 9: 92, 10: 92, 11: 84,
+        12: 65, 13: 48, 14: 46, 15: 58, 16: 80, 17: 90,
+        18: 88, 19: 76, 20: 60, 21: 44, 22: 28, 23: 18,
     },
 }
 
@@ -57,10 +41,10 @@ CHRONOTYPE_META: dict[str, dict] = {
         "low_energy": "fim da tarde e noite",
     },
     "intermediate": {
-        "label": "Perfil Intermediário",
-        "energy_peak": "entre 9h e 15h",
-        "focus_window": "meio do dia",
-        "low_energy": "após longos períodos sem pausa",
+        "label": "Perfil Misto",
+        "energy_peak": "entre 10h e 17h (platô amplo)",
+        "focus_window": "múltiplas janelas ao longo do dia",
+        "low_energy": "depende do dia e contexto",
     },
     "evening": {
         "label": "Perfil Vespertino",
@@ -110,36 +94,139 @@ CHRONOTYPE_META: dict[str, dict] = {
         "focus_window": "manhã e fim de tarde",
         "low_energy": "entre 12h e 15h",
     },
-    "misto": {
-        "label": "Perfil Misto",
-        "energy_peak": "entre 10h e 17h (platô amplo)",
-        "focus_window": "múltiplas janelas ao longo do dia",
-        "low_energy": "depende do dia e contexto",
-    },
+}
+
+
+# ---------------------------------------------------------------------------
+# Níveis de bloco — energia e foco associados a cada classificação
+# ---------------------------------------------------------------------------
+
+BLOCK_LEVELS: dict[str, dict] = {
+    "sono":          {"energy": 10, "focus":  5, "label": "Sono"},
+    "recuperacao":   {"energy": 30, "focus": 20, "label": "Recuperação"},
+    "foco_leve":     {"energy": 55, "focus": 48, "label": "Foco leve"},
+    "foco_moderado": {"energy": 70, "focus": 63, "label": "Foco moderado"},
+    "foco_profundo": {"energy": 85, "focus": 78, "label": "Foco profundo"},
+    "pico":          {"energy": 95, "focus": 88, "label": "Pico"},
+}
+
+# ---------------------------------------------------------------------------
+# Blocos de 90 minutos — 16 blocos cobrem as 24h do dia.
+# Índice → horário de início: 0=00:00, 1=01:30, 2=03:00, 3=04:30, 4=06:00,
+# 5=07:30, 6=09:00, 7=10:30, 8=12:00, 9=13:30, 10=15:00, 11=16:30,
+# 12=18:00, 13=19:30, 14=21:00, 15=22:30
+# Cada entrada: (nível, descrição do que o usuário deveria fazer nesse período).
+# Para editar: altere o nível ou a descrição do bloco correspondente.
+# ---------------------------------------------------------------------------
+
+CHRONOTYPE_BLOCKS: dict[str, list[tuple[str, str]]] = {
+    "morning": [
+        ("sono",          "Descanso e sono"),                                           # 00:00
+        ("sono",          "Descanso e sono"),                                           # 01:30
+        ("sono",          "Descanso e sono"),                                           # 03:00
+        ("sono",          ""),                                                          # 04:30
+        ("foco_profundo", "Rotina matinal — exercício, alimentação, planejamento"),     # 06:00
+        ("pico",          "Aquecimento cognitivo — estudo ou trabalho analítico"),      # 07:30
+        ("pico",          "Pico total — reserve para sua tarefa mais desafiadora"),     # 09:00
+        ("pico",          "Pico mantido — continue nas demandas de alto nível"),        # 10:30
+        ("foco_profundo", "Declínio gradual — finalize projetos iniciados"),            # 12:00
+        ("foco_moderado", "Vale energético — refeição leve e pausa ativa"),             # 13:30
+        ("foco_moderado", "Retomada suave — emails, revisões, reuniões de rotina"),     # 15:00
+        ("foco_moderado", "Tarefas operacionais e administrativas"),                    # 16:30
+        ("foco_moderado", "Descompressão — atividade física leve ou lazer"),            # 18:00
+        ("foco_leve",     "Rotina noturna — prepare o ambiente para o sono"),           # 19:30
+        ("foco_leve",     "Início do sono — evite telas e estimulantes"),               # 21:00
+        ("sono",          "Sono — ciclo inicial"),                                      # 22:30
+    ],
+    "evening": [
+        ("foco_leve",     "Sono leve — transição para o despertar"),                    # 00:00
+        ("sono",          "Sono profundo"),                                             # 01:30
+        ("sono",          "Sono profundo — fase REM"),                                  # 03:00
+        ("sono",          "Sono profundo — não interromper"),                           # 04:30
+        ("sono",          "Sono — evite acordar cedo se possível"),                     # 06:00
+        ("sono",          "Despertar lento — rotina leve, sem demandas cognitivas"),    # 07:30
+        ("foco_moderado", "Aquecimento — leituras, reuniões simples, planejamento"),    # 09:00
+        ("foco_moderado", "Produtividade iniciando — tarefas de baixa complexidade"),   # 10:30
+        ("foco_profundo", "Boa janela para colaboração e reuniões importantes"),         # 12:00
+        ("foco_profundo", "Manutenção do foco — projetos em andamento"),                # 13:30
+        ("foco_profundo", "Energia crescendo — tarefas de média-alta complexidade"),    # 15:00
+        ("pico",          "Pré-pico — tarefas desafiadoras e criativas"),               # 16:30
+        ("pico",          "Pico vespertino — sua tarefa mais importante aqui"),         # 18:00
+        ("pico",          "Alta performance — bom para escrita, análise e síntese"),    # 19:30
+        ("foco_profundo", "Foco residual — finalize o que começou"),                    # 21:00
+        ("foco_moderado", "Desaceleração — inicie a rotina de sono"),                   # 22:30
+    ],
+    "night": [
+        ("foco_profundo", "Janela noturna — trabalho com menos distrações"),            # 00:00
+        ("sono",          "Produtividade decline — finalize tarefas em andamento"),     # 01:30
+        ("sono",          "Desaceleração — inicie a rotina de sono"),                   # 03:00
+        ("sono",          "Sono — evite compromissos neste período"),                   # 04:30
+        ("sono",          "Sono profundo — não interromper"),                           # 06:00
+        ("sono",          "Sono — fase de transição"),                                  # 07:30
+        ("foco_leve",     "Despertar gradual — rotina leve, sem exigências"),           # 09:00
+        ("foco_leve",     "Aquecimento tardio — tarefas automáticas e rotineiras"),     # 10:30
+        ("foco_moderado", "Produtividade iniciando — emails e organização"),            # 12:00
+        ("foco_moderado", "Operacional — reuniões leves e tarefas repetitivas"),        # 13:30
+        ("foco_moderado", "Energia crescendo — planejamento e revisões"),               # 15:00
+        ("foco_moderado", "Pré-aquecimento noturno — prepare as tarefas do pico"),      # 16:30
+        ("pico",          "Energia elevada — trabalho analítico e criativo"),           # 18:00
+        ("pico",          "Foco noturno — tarefas de alto nível"),                      # 19:30
+        ("pico",          "Pico noturno — sua melhor janela cognitiva"),                # 21:00
+        ("pico",          "Alta performance — produtividade máxima"),                   # 22:30
+    ],
+    "bimodal": [
+        ("sono",          "Sono profundo — não interromper"),                           # 00:00
+        ("sono",          "Sono profundo — fase REM"),                                  # 01:30
+        ("sono",          "Sono profundo — consolidação de memória"),                   # 03:00
+        ("sono",          "Transição do sono — despertar gradual"),                     # 04:30
+        ("sono",          "Rotina matinal — ativação gradual, exercício leve"),         # 06:00
+        ("foco_profundo", "Aquecimento — tarefas de média exigência cognitiva"),        # 07:30
+        ("pico",          "Primeiro pico — sua tarefa mais importante da manhã"),       # 09:00
+        ("pico",          "Pico mantido — continue nas demandas de alto nível"),        # 10:30
+        ("foco_profundo", "Transição — finalize o que está em andamento"),              # 12:00
+        ("foco_moderado", "Vale bimodal — pausa estratégica, refeição e descanso"),     # 13:30
+        ("foco_moderado", "Retomada — segundo pico se aproximando"),                    # 15:00
+        ("pico",          "Segundo pico iniciando — trabalho profundo vespertino"),     # 16:30
+        ("pico",          "Segundo pico — criatividade e resolução de problemas"),      # 18:00
+        ("pico",          "Alta performance vespertina — execução de alto nível"),      # 19:30
+        ("foco_moderado", "Desaceleração — tarefas leves e organização"),               # 21:00
+        ("foco_leve",     "Rotina noturna — prepare o ambiente para o sono"),           # 22:30
+    ],
+    "intermediate": [
+        ("sono",          "Sono profundo — não interromper"),                           # 00:00
+        ("sono",          "Sono profundo — fase REM"),                                  # 01:30
+        ("sono",          "Sono profundo — consolidação de memória"),                   # 03:00
+        ("sono",          "Transição do sono — despertar gradual"),                     # 04:30
+        ("sono",          "Rotina matinal — ativação gradual, alimentação"),            # 06:00
+        ("foco_profundo", "Aquecimento cognitivo — planejamento e emails"),             # 07:30
+        ("pico",          "Alta performance — trabalho profundo e analítico"),          # 09:00
+        ("pico",          "Foco mantido — continue nas tarefas exigentes"),             # 10:30
+        ("foco_profundo", "Pós-almoço — reuniões e tarefas colaborativas"),             # 12:00
+        ("foco_profundo", "Segunda janela — projetos em andamento"),                    # 13:30
+        ("foco_profundo", "Foco moderado — tarefas de média complexidade"),             # 15:00
+        ("pico",          "Foco vespertino — boa janela para análise e criação"),       # 16:30
+        ("foco_profundo", "Produtividade declinando — finalize tarefas do dia"),        # 18:00
+        ("foco_moderado", "Tarefas leves — organização e planejamento do amanhã"),      # 19:30
+        ("foco_leve",     "Descompressão — lazer, atividade física, jantar"),           # 21:00
+        ("foco_leve",     "Rotina noturna — prepare o ambiente para o sono"),           # 22:30
+    ],
 }
 
 
 def get_chronotype_context(chronotype: str, hour: int) -> dict:
-    curve = ENERGY_CURVES.get(chronotype, ENERGY_CURVES["intermediate"])
-    energy = curve.get(hour, 50)
-
-    # Foco reflete a capacidade de atenção sustentada — sobe ~1h depois da
-    # energia (tempo de aquecimento cognitivo) e cai antes dela ao final do
-    # dia (fadiga de decisão). Calculamos usando a energia da hora anterior
-    # e suavizamos com a hora atual para aproximar essa defasagem.
-    prev_energy = curve.get((hour - 1) % 24, energy)
-    raw_focus = round(prev_energy * 0.55 + energy * 0.45)
-    # O foco raramente atinge o mesmo teto que a energia — teto em ~88.
-    focus = max(0, min(88, raw_focus))
-
+    block_idx = (hour * 60) // 90
+    blocks = CHRONOTYPE_BLOCKS.get(chronotype, CHRONOTYPE_BLOCKS["intermediate"])
+    level, _ = blocks[block_idx]
+    level_data = BLOCK_LEVELS[level]
     meta = CHRONOTYPE_META.get(chronotype, CHRONOTYPE_META["intermediate"])
     return {
-        "energy": energy,
-        "focus": focus,
-        "label": meta["label"],
-        "energy_peak": meta["energy_peak"],
+        "energy": level_data["energy"],
+        "focus":  level_data["focus"],
+        "level":  level,
+        "label":  meta["label"],
+        "energy_peak":  meta["energy_peak"],
         "focus_window": meta["focus_window"],
-        "low_energy": meta["low_energy"],
+        "low_energy":   meta["low_energy"],
     }
 
 
