@@ -348,20 +348,27 @@ export default function LandingPage() {
       <Background />
 
       <div className="relative z-10">
-        <header className="mx-auto flex max-w-7xl items-center justify-center px-4 py-5 sm:px-8 sm:py-6">
-          <Link to="/" className="flex items-center gap-3">
-            <AuthLogo variant="header" className="[transform:scale(1.15)]" />
+        <header className="relative mx-auto flex max-w-7xl items-center justify-center px-4 py-5 sm:px-8 sm:py-6">
+          <Link to="/" className="flex flex-col items-center justify-center text-center">
+            <AuthLogo variant="header" className="mb-2 [transform:scale(1.15)]" />
 
-            <div>
-              <p className="text-base font-semibold tracking-tight text-white sm:text-lg">
-                Axon
-              </p>
-              <p className="hidden text-xs text-white/40 sm:block">
-                Personal operating system
-              </p>
-            </div>
+            <p className="text-base font-semibold tracking-tight text-white sm:text-lg">
+              Axon
+            </p>
+
+            <p className="mt-0.5 hidden text-xs text-white/40 sm:block">
+              Personal operating system
+            </p>
+          </Link>
+
+          <Link
+            to="/login"
+            className="absolute right-8 hidden min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-5 text-sm font-semibold text-white/65 backdrop-blur-2xl transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98] sm:inline-flex"
+          >
+            Entrar
           </Link>
         </header>
+
 
         <section className="px-4 pb-12 pt-8 sm:px-8 sm:pb-24 sm:pt-20">
           <div className="mx-auto max-w-5xl text-center">

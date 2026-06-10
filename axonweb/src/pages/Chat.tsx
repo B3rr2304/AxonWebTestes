@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
+  Archive,
   Bell,
   Briefcase,
   CalendarDays,
@@ -46,6 +47,8 @@ export default function Chat() {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"all" | "archived">("all");
+  const [visibleCount, setVisibleCount] = useState(8);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
   const [conversations, setConversations] = useState<ConversationData[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
 
@@ -74,12 +77,12 @@ export default function Chat() {
       return conversations.filter((conversation) => conversation.archived);
     }
 
+    return conversations.filter((conversation) => !conversation.archived);
+  }, [conversations, view]);
+
     const userConversations = conversations.filter(
       (conversation) => conversation.id !== notificationsConversation.id
     );
-
-    return [notificationsConversation, ...userConversations];
-  }, [conversations, view]);
 
   const filteredConversations = orderedConversations.filter((conversation) => {
     const query = search.toLowerCase();
@@ -91,18 +94,30 @@ export default function Chat() {
     return matchesSearch;
   });
 
+  const visibleConversations = filteredConversations.slice(0, visibleCount);
+
+  const hasMoreConversations = filteredConversations.length > visibleCount;
+
+  useEffect(() => {
+    setVisibleCount(8);
+  }, [search, view]);
+
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+    <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
       <Background />
 
-      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-5 flex items-center justify-between">
+      <div className="relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
+        <header className="mb-4 flex shrink-0 items-center justify-between">
           <button
             onClick={() => navigate("/dashboard")}
             className="flex items-center gap-3 text-left active:scale-[0.98]"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
+              <img
+                src="/axon-logo.svg"
+                alt="Axon"
+                className="h-8 w-8 object-contain"
+              />
             </div>
 
             <div>
@@ -121,6 +136,16 @@ export default function Chat() {
             </button>
 
             <button
+              onClick={() => setIsNotificationsOpen(true)}
+              className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+              aria-label="Abrir notificações"
+            >
+              <Bell className="h-5 w-5" />
+
+              <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
+            </button>
+
+            <button
               onClick={() => setIsSidebarOpen(true)}
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
               aria-label="Abrir menu"
@@ -130,100 +155,113 @@ export default function Chat() {
           </div>
         </header>
 
-        <section className="mb-4">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
+        <section className="min-h-0 flex-1 overflow-y-auto pr-1">
+          <div className="mb-4">
+            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
 
-            <div className="relative">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
-                <Sparkles className="h-3.5 w-3.5" />
-                Memória e contexto
+              <div className="relative">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Memória e contexto
+                </div>
+
+                <h1 className="text-[2.05rem] font-semibold leading-[1.02] tracking-[-0.06em] text-white">
+                  Organize suas conversas por assunto.
+                </h1>
+
+                <p className="mt-3 text-sm leading-6 text-white/50">
+                  Crie chats separados para rotina, foco, projetos, estudos ou
+                  qualquer área que precise de acompanhamento.
+                </p>
               </div>
-
-              <h1 className="text-[2.05rem] font-semibold leading-[1.02] tracking-[-0.06em] text-white">
-                Organize suas conversas por assunto.
-              </h1>
-
-              <p className="mt-3 text-sm leading-6 text-white/50">
-                Crie chats separados para rotina, foco, projetos, estudos ou
-                qualquer área que precise de acompanhamento.
-              </p>
             </div>
           </div>
-        </section>
 
-        <section className="mb-4">
-          <label className="flex min-h-13 items-center gap-3 rounded-2xl border border-white/10 bg-[#1b1b27]/76 px-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-            <Search className="h-4 w-4 text-white/35" />
+          <div className="sticky top-0 z-30 -mx-1 mb-4 space-y-3 bg-transparent px-1 py-3">
+            <label className="flex min-h-13 items-center gap-3 rounded-2xl border border-white/10 bg-[#1b1b27]/90 px-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+              <Search className="h-4 w-4 text-white/35" />
 
-            <input
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-              placeholder="Buscar conversa..."
-              className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/30"
-            />
-          </label>
-        </section>
-
-        <section className="mb-4">
-          <div className="flex rounded-2xl border border-white/10 bg-black/20 p-1">
-            <button
-              onClick={() => setView("all")}
-              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                view === "all"
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
-              }`}
-            >
-              Todas
-            </button>
-
-            <button
-              onClick={() => setView("archived")}
-              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                view === "archived"
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
-              }`}
-            >
-              Arquivadas
-            </button>
-          </div>
-        </section>
-
-        <section className="space-y-3">
-          {loadingConversations ? (
-            <div className="py-8 text-center text-sm text-white/35">Carregando conversas...</div>
-          ) : (
-            filteredConversations.map((conversation) => (
-              <ConversationCard
-                key={conversation.id}
-                conversation={conversation}
-                isFixed={conversation.id === notificationsConversation.id}
-                onClick={() => navigate(`/chat/${conversation.id}`)}
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Buscar conversa..."
+                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/30"
               />
-            ))
-          )}
-        </section>
+            </label>
 
-        {!loadingConversations && filteredConversations.length === 0 && (
-          <section className="mt-6 rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
-            <MessageCircle className="mx-auto mb-3 h-6 w-6 text-purple-200" />
+            <div className="flex rounded-2xl border border-white/10 bg-[#1b1b27]/90 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl">
+              <button
+                onClick={() => setView("all")}
+                className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                  view === "all"
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                    : "text-white/42"
+                }`}
+              >
+                Todas
+              </button>
 
-            <p className="text-sm font-semibold text-white">
-              {view === "archived"
-                ? "Nenhuma conversa arquivada"
-                : "Nenhuma conversa encontrada"}
-            </p>
+              <button
+                onClick={() => setView("archived")}
+                className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                  view === "archived"
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                    : "text-white/42"
+                }`}
+              >
+                Arquivadas
+              </button>
+            </div>
+          </div>
 
-            <p className="mt-2 text-xs leading-5 text-white/42">
-              {view === "archived"
-                ? "Quando você arquivar uma conversa, ela aparecerá aqui."
-                : "Tente buscar por outro termo ou crie uma nova conversa."}
-            </p>
+          <section className="space-y-3 pb-4">
+            {loadingConversations ? (
+              <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
+                <p className="text-sm text-white/35">
+                  Carregando conversas...
+                </p>
+              </div>
+            ) : filteredConversations.length === 0 ? (
+              <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
+                <MessageCircle className="mx-auto mb-3 h-6 w-6 text-purple-200" />
+
+                <p className="text-sm font-semibold text-white">
+                  {view === "archived"
+                    ? "Nenhuma conversa arquivada"
+                    : "Nenhuma conversa encontrada"}
+                </p>
+
+                <p className="mt-2 text-xs leading-5 text-white/42">
+                  {view === "archived"
+                    ? "Quando você arquivar uma conversa, ela aparecerá aqui."
+                    : "Tente buscar por outro termo ou crie uma nova conversa."}
+                </p>
+              </div>
+            ) : (
+              <>
+                {visibleConversations.map((conversation) => (
+                  <ConversationCard
+                    key={conversation.id}
+                    conversation={conversation}
+                    onClick={() => navigate(`/chat/${conversation.id}`)}
+                  />
+                ))}
+
+                {hasMoreConversations && (
+                  <button
+                    type="button"
+                    onClick={() => setVisibleCount((current) => current + 8)}
+                    className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
+                  >
+                    Ver mais conversas
+                  </button>
+                )}
+              </>
+            )}
           </section>
-        )}
+        </section>
       </div>
 
       <Sidebar
@@ -240,6 +278,11 @@ export default function Chat() {
           setConversations((prev) => [conv, ...prev]);
           navigate(`/chat/${conv.id}`);
         }}
+      />
+
+      <NotificationsSheet
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
       />
     </main>
   );
@@ -536,6 +579,175 @@ function Background() {
       <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
 
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
+    </div>
+  );
+}
+
+function NotificationsSheet({
+  isOpen,
+  onClose,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+}) {
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      title: "Seu planejamento de hoje está pronto",
+      description:
+        "O Axon organizou uma sugestão inicial com base no seu ritmo e prioridades.",
+      time: "Agora",
+      unread: true,
+    },
+    {
+      id: 2,
+      title: "Bom momento para foco profundo",
+      description:
+        "Sua janela de energia indica um bom momento para executar uma tarefa importante.",
+      time: "Há 12 min",
+      unread: true,
+    },
+    {
+      id: 3,
+      title: "Novo insight disponível",
+      description:
+        "Identificamos um padrão inicial entre seus horários de energia e suas tarefas.",
+      time: "Hoje",
+      unread: false,
+    },
+  ]);
+
+  if (!isOpen) return null;
+
+  function markAsRead(notificationId: number) {
+    setNotifications((current) =>
+      current.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, unread: false }
+          : notification
+      )
+    );
+  }
+
+  function markAllAsRead() {
+    setNotifications((current) =>
+      current.map((notification) => ({
+        ...notification,
+        unread: false,
+      }))
+    );
+  }
+
+  const hasUnreadNotifications = notifications.some(
+    (notification) => notification.unread
+  );
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="relative flex max-h-[82vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+
+        <div className="relative border-b border-white/10 px-5 pb-4 pt-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <Bell className="h-3.5 w-3.5" />
+                Central do Axon
+              </div>
+
+              <h2 className="text-[1.65rem] font-semibold leading-[1.05] tracking-[-0.055em] text-white">
+                Notificações
+              </h2>
+
+              <p className="mt-2 text-xs leading-5 text-white/45">
+                Avisos importantes, lembretes inteligentes e atualizações do seu
+                ambiente.
+              </p>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
+              aria-label="Fechar notificações"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          {hasUnreadNotifications && (
+            <button
+              type="button"
+              onClick={markAllAsRead}
+              className="inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
+            >
+              Marcar todas como lidas
+            </button>
+          )}
+        </div>
+
+        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+          <div className="space-y-3">
+            {notifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`rounded-[1.45rem] border p-4 transition ${
+                  notification.unread
+                    ? "border-purple-300/20 bg-purple-500/10"
+                    : "border-white/10 bg-white/[0.035] opacity-45"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div
+                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                        notification.unread
+                          ? "bg-purple-300 shadow-[0_0_14px_rgba(216,180,254,0.9)]"
+                          : "bg-white/18"
+                      }`}
+                    />
+
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold leading-5 text-white">
+                          {notification.title}
+                        </p>
+                      </div>
+
+                      <p className="mt-1 text-xs leading-5 text-white/42">
+                        {notification.description}
+                      </p>
+
+                      {notification.unread && (
+                        <button
+                          type="button"
+                          onClick={() => markAsRead(notification.id)}
+                          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.055] px-3 text-[0.68rem] font-semibold text-purple-100 active:scale-[0.98]"
+                        >
+                          Marcar como lida
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="shrink-0 text-[0.65rem] font-medium text-white/30">
+                    {notification.time}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 active:scale-[0.98]"
+          >
+            Fechar
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
