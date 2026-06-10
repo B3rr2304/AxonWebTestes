@@ -191,6 +191,21 @@ export interface DayBlock {
   active: boolean;
 }
 
+export interface FocusBlock {
+  index: number;
+  start: string;
+  end: string;
+  level:
+    | "sono"
+    | "recuperacao"
+    | "foco_leve"
+    | "foco_moderado"
+    | "foco_profundo"
+    | "pico";
+  level_label: string;
+  description: string;
+}
+
 export interface DashboardData {
   greeting: string;
   chronotype_label: string;
@@ -202,6 +217,8 @@ export interface DashboardData {
   low_energy: string;
   recommendation: string;
   next_focus: NextFocusBlock;
+  current_block: FocusBlock;
+  next_block: FocusBlock;
   day_blocks: DayBlock[];
 }
 
