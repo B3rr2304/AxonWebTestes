@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Focus,
   Menu,
@@ -16,7 +18,7 @@ import {
 
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
-import type { DashboardData } from "../lib/api";
+import type { DashboardData, FocusBlock } from "../lib/api";
 
 type MetricCardProps = {
   icon: React.ElementType;
@@ -25,20 +27,13 @@ type MetricCardProps = {
   helper: string;
 };
 
-type DayBlock = {
-  time: string;
-  title: string;
-  type: string;
-  active?: boolean;
-};
-
-
 export default function Dashboard() {
   const navigate = useNavigate();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [showNextBlock, setShowNextBlock] = useState(false);
 
   useEffect(() => {
     if (!api.isLoggedIn()) {
@@ -46,13 +41,30 @@ export default function Dashboard() {
       return;
     }
 
-    api
-      .getDashboard()
-      .then(setData)
-      .catch(() => {
-        setData(null);
-      })
-      .finally(() => setLoading(false));
+    const load = () => {
+      api
+        .getDashboard()
+        .then(setData)
+        .catch(() => setData(null))
+        .finally(() => setLoading(false));
+    };
+
+    load();
+
+    const interval = window.setInterval(load, 30 * 60 * 1000);
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        load();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      window.clearInterval(interval);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, [navigate]);
 
   const chronotypeKey =
@@ -71,6 +83,9 @@ export default function Dashboard() {
   const nextFocus = data?.next_focus;
   const dayBlocks = data?.day_blocks ?? [];
 
+  const currentBlock = data?.current_block;
+  const nextBlock = data?.next_block;
+
   const rhythmLabel = useMemo(() => {
     if (chronotypeKey === "night") return "Noturno";
     if (chronotypeKey === "morning") return "Matutino";
@@ -85,9 +100,6 @@ export default function Dashboard() {
       ? "Sua melhor janela de foco está ativa agora."
       : "Sua próxima janela produtiva está chegando.";
 
-  const mainTask =
-    nextFocus?.label ?? "Comece pela tarefa que mais impacta seu dia.";
-
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
       <Background />
@@ -99,7 +111,11 @@ export default function Dashboard() {
             className="flex items-center gap-3 text-left active:scale-[0.98]"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
+              <img
+                src="/axon-logo.svg"
+                alt="Axon"
+                className="h-8 w-8 object-contain"
+              />
             </div>
 
             <div>
@@ -141,49 +157,33 @@ export default function Dashboard() {
                   <div>
                     <div className="mb-1 flex items-center gap-2">
                       <Focus className="h-4 w-4 text-purple-200" />
+
                       <p className="text-sm font-semibold text-purple-100">
                         Agora
                       </p>
                     </div>
 
                     <p className="text-xs text-white/42">
-                      Próximo movimento recomendado
+                      Seu bloco atual de energia
                     </p>
                   </div>
 
                   <div className="rounded-2xl border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
-                    {nextFocus?.status === "active" ? "ativo" : "próximo"}
+                    {currentBlock ? "ativo" : nextFocus?.status === "active" ? "ativo" : "próximo"}
                   </div>
                 </div>
 
-                <div className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
-                  <div className="mb-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-4 w-4 text-purple-200" />
-                      <p className="text-sm font-semibold text-white">
-                        Bloco de foco
-                      </p>
-                    </div>
-
-                    <p className="text-xs text-white/42">
-                      {nextFocus?.start ?? "10:40"}
-                    </p>
-                  </div>
-
-                  <p className="text-sm leading-6 text-white/58">{mainTask}</p>
-
-                  <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_18px_rgba(192,132,252,0.55)]"
-                      style={{
-                        width: `${Math.min(
-                          Math.max(energyPercent, 10),
-                          100
-                        )}%`,
-                      }}
-                    />
-                  </div>
-                </div>
+                <CurrentFocusBlockCard
+                  currentBlock={currentBlock}
+                  nextBlock={nextBlock}
+                  fallbackLabel={nextFocus?.label}
+                  fallbackStart={nextFocus?.start}
+                  fallbackProgress={energyPercent}
+                  showNextBlock={showNextBlock}
+                  onToggleNext={() =>
+                    setShowNextBlock((current) => !current)
+                  }
+                />
 
                 <button
                   onClick={() => navigate("/chat")}
@@ -241,10 +241,15 @@ export default function Dashboard() {
 
           {dayBlocks.length === 0 ? (
             <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-5 py-8 text-center">
-              <p className="text-sm font-semibold text-white">Nenhuma tarefa para hoje</p>
-              <p className="mt-1 text-xs leading-5 text-white/42">
-                Converse com o Axon para organizar seu dia ou adicione tarefas no Planejamento.
+              <p className="text-sm font-semibold text-white">
+                Nenhuma tarefa para hoje
               </p>
+
+              <p className="mt-1 text-xs leading-5 text-white/42">
+                Converse com o Axon para organizar seu dia ou adicione tarefas
+                no Planejamento.
+              </p>
+
               <button
                 onClick={() => navigate("/planning")}
                 className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-purple-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.97]"
@@ -278,7 +283,10 @@ export default function Dashboard() {
                     <p className="truncate text-sm font-semibold text-white">
                       {block.title}
                     </p>
-                    <p className="mt-1 text-xs text-white/38">{block.type}</p>
+
+                    <p className="mt-1 text-xs text-white/38">
+                      {block.type}
+                    </p>
                   </div>
 
                   {block.active && (
@@ -317,12 +325,182 @@ function MetricCard({ icon: Icon, label, value, helper }: MetricCardProps) {
       </div>
 
       <p className="text-xs text-white/38">{label}</p>
+
       <p className="mt-1 text-xl font-semibold tracking-tight text-white">
         {value}
       </p>
+
       <p className="mt-1 text-xs leading-5 text-white/35">{helper}</p>
     </div>
   );
+}
+
+function CurrentFocusBlockCard({
+  currentBlock,
+  nextBlock,
+  fallbackLabel,
+  fallbackStart,
+  fallbackProgress,
+  showNextBlock,
+  onToggleNext,
+}: {
+  currentBlock?: FocusBlock;
+  nextBlock?: FocusBlock;
+  fallbackLabel?: string;
+  fallbackStart?: string;
+  fallbackProgress: number;
+  showNextBlock: boolean;
+  onToggleNext: () => void;
+}) {
+  if (!currentBlock) {
+    return (
+      <div className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
+            <Target className="h-4 w-4 text-purple-200" />
+
+            <p className="text-sm font-semibold text-white">
+              Bloco de foco
+            </p>
+          </div>
+
+          <p className="text-xs text-white/42">{fallbackStart ?? "10:40"}</p>
+        </div>
+
+        <p className="text-sm leading-6 text-white/58">
+          {fallbackLabel ?? "Comece pela tarefa que mais impacta seu dia."}
+        </p>
+
+        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_18px_rgba(192,132,252,0.55)]"
+            style={{
+              width: `${Math.min(Math.max(fallbackProgress, 10), 100)}%`,
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  const progress = getCurrentBlockProgress(currentBlock);
+
+  return (
+    <div className="overflow-hidden rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="rounded-full border border-purple-300/25 bg-purple-500/15 px-3 py-1 text-xs font-semibold text-purple-100">
+              {currentBlock.level_label}
+            </span>
+
+            
+          </div>
+
+          <h3 className="text-lg font-semibold tracking-[-0.035em] text-white">
+            {currentBlock.start} – {currentBlock.end}
+          </h3>
+        </div>
+
+        <div className="shrink-0 rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-right">
+          <p className="text-xs font-semibold text-white/48">
+            Bloco {currentBlock.index}
+          </p>
+        </div>
+      </div>
+
+      <p className="mt-4 text-sm leading-6 text-white/54">
+        {currentBlock.description}
+      </p>
+
+      <div className="mt-5">
+        <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/32">
+          <span>Progresso</span>
+          <span>{progress}%</span>
+        </div>
+
+        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div
+            className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+      </div>
+
+      {nextBlock && (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={onToggleNext}
+            className="flex min-h-11 w-full items-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white/55 active:scale-[0.98]"
+          >
+            <span>{showNextBlock ? "Ocultar próximo" : "Próximo bloco"}</span>
+
+            {nextBlock && !showNextBlock && (
+              <span className="ml-auto mr-3 text-xs font-medium text-white/32">
+                {nextBlock.start} – {nextBlock.end}
+              </span>
+            )}
+
+            {showNextBlock ? (
+              <ChevronUp className="h-4 w-4" />
+            ) : (
+              <ChevronDown className="h-4 w-4" />
+            )}
+          </button>
+
+          {showNextBlock && (
+            <div className="mt-3 rounded-[1.25rem] border border-white/10 bg-white/[0.028] p-3.5">
+              <div className="mb-3 flex items-start justify-between gap-3">
+                <div>
+                  <span className="rounded-full border border-white/10 bg-white/[0.055] px-3 py-1 text-xs font-semibold text-white/45">
+                    {nextBlock.level_label}
+                  </span>
+
+                  <p className="mt-2 text-sm font-semibold tracking-[-0.02em] text-white/78">
+                    {nextBlock.start} – {nextBlock.end}
+                  </p>
+                </div>
+
+                <p className="shrink-0 text-xs font-semibold text-white/28">
+                  Bloco {nextBlock.index}
+                </p>
+              </div>
+
+              <p className="text-sm leading-6 text-white/42">
+                {nextBlock.description}
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function getCurrentBlockProgress(block: FocusBlock) {
+  const now = new Date();
+
+  const [startHour, startMinute] = block.start.split(":").map(Number);
+  const [endHour, endMinute] = block.end.split(":").map(Number);
+
+  const start = new Date(now);
+  start.setHours(startHour, startMinute, 0, 0);
+
+  const end = new Date(now);
+  end.setHours(endHour, endMinute, 0, 0);
+
+  if (end <= start) {
+    end.setDate(end.getDate() + 1);
+  }
+
+  const total = end.getTime() - start.getTime();
+  const elapsed = now.getTime() - start.getTime();
+
+  if (elapsed <= 0) return 0;
+  if (elapsed >= total) return 100;
+
+  return Math.round((elapsed / total) * 100);
 }
 
 function Background() {
