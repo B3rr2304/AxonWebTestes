@@ -124,33 +124,33 @@ CHRONOTYPE_BLOCKS: dict[str, list[tuple[str, str]]] = {
         ("sono",          "Descanso e sono"),                                           # 00:00
         ("sono",          "Descanso e sono"),                                           # 01:30
         ("sono",          "Descanso e sono"),                                           # 03:00
-        ("sono",          ""),                                                          # 04:30
-        ("foco_profundo", "Rotina matinal — exercício, alimentação, planejamento"),     # 06:00
-        ("pico",          "Aquecimento cognitivo — estudo ou trabalho analítico"),      # 07:30
+        ("sono",          "Despertar e atividades leves para acordar"),                                                          # 04:30
+        ("foco_profundo", "Projetos importantes, criação e trabalhos complexos "),     # 06:00
+        ("pico",          "Começo do pico - começar tarefas mais importantes ou desafiadoras"),      # 07:30
         ("pico",          "Pico total — reserve para sua tarefa mais desafiadora"),     # 09:00
         ("pico",          "Pico mantido — continue nas demandas de alto nível"),        # 10:30
-        ("foco_profundo", "Declínio gradual — finalize projetos iniciados"),            # 12:00
-        ("foco_moderado", "Vale energético — refeição leve e pausa ativa"),             # 13:30
-        ("foco_moderado", "Retomada suave — emails, revisões, reuniões de rotina"),     # 15:00
-        ("foco_moderado", "Tarefas operacionais e administrativas"),                    # 16:30
-        ("foco_moderado", "Descompressão — atividade física leve ou lazer"),            # 18:00
-        ("foco_leve",     "Rotina noturna — prepare o ambiente para o sono"),           # 19:30
-        ("foco_leve",     "Início do sono — evite telas e estimulantes"),               # 21:00
-        ("sono",          "Sono — ciclo inicial"),                                      # 22:30
+        ("foco_moderado", "Almoço e momento ideal para estudos"),            # 12:00
+        ("foco_moderado", "Momento idal para estudos, resposta de emails e reuniões"),             # 13:30
+        ("foco_moderado", "Momento idal para resposta de mensagens, reuniões e tarefas leves"),     # 15:00
+        ("foco_moderado", "Momento idal para resposta de mensagens, reuniões e tarefas leves"),                    # 16:30
+        ("foco_moderado", "Momento idal para resposta de mensagens, reuniões e tarefas leves"),            # 18:00
+        ("foco_leve",     "Comece a desacelerar, momento ideal para planejamento, atividade física leve e relaxar"),           # 19:30
+        ("recuperacao",   "Preparação para dormir evite atividade  cognitivas intensas"),               # 21:00
+        ("sono",          "Descanso e sono"),                                      # 22:30
     ],
     "evening": [
-        ("foco_leve",     "Sono leve — transição para o despertar"),                    # 00:00
-        ("sono",          "Sono profundo"),                                             # 01:30
-        ("sono",          "Sono profundo — fase REM"),                                  # 03:00
-        ("sono",          "Sono profundo — não interromper"),                           # 04:30
-        ("sono",          "Sono — evite acordar cedo se possível"),                     # 06:00
+        ("foco_leve",     "Desacelere comece a se preparar para descansar"),                    # 00:00
+        ("sono",          "Descanso e sono"),                                             # 01:30
+        ("sono",          "Descanso e sono"),                                  # 03:00
+        ("sono",          "Descanso e sono"),                           # 04:30
+        ("sono",          "Descanso e sono"),                     # 06:00
         ("sono",          "Despertar lento — rotina leve, sem demandas cognitivas"),    # 07:30
-        ("foco_moderado", "Aquecimento — leituras, reuniões simples, planejamento"),    # 09:00
-        ("foco_moderado", "Produtividade iniciando — tarefas de baixa complexidade"),   # 10:30
-        ("foco_profundo", "Boa janela para colaboração e reuniões importantes"),         # 12:00
-        ("foco_profundo", "Manutenção do foco — projetos em andamento"),                # 13:30
-        ("foco_profundo", "Energia crescendo — tarefas de média-alta complexidade"),    # 15:00
-        ("pico",          "Pré-pico — tarefas desafiadoras e criativas"),               # 16:30
+        ("foco_moderado", "Momento ideal para tarefas leves e fáceis ou planejamento do dia"),    # 09:00
+        ("foco_moderado", "Momento ideal para começar tarefas complexas"),   # 10:30
+        ("foco_profundo", "Almoço e descanso ativo ideal para estudos e retomar tarefas da manhã"),         # 12:00
+        ("foco_profundo", "Comece suas tarefas complexas ou reuniões"),                # 13:30
+        ("foco_profundo", "Momento ideal para fazer a principal tarefa do dia"),    # 15:00
+        ("pico",          ""),               # 16:30
         ("pico",          "Pico vespertino — sua tarefa mais importante aqui"),         # 18:00
         ("pico",          "Alta performance — bom para escrita, análise e síntese"),    # 19:30
         ("foco_profundo", "Foco residual — finalize o que começou"),                    # 21:00
