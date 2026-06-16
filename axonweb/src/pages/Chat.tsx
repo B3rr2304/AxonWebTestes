@@ -22,6 +22,34 @@ import type { ConversationData } from "../lib/api";
 
 type ConversationType = "general" | "planning" | "focus" | "project";
 
+type ProjectFolder = {
+  id: string;
+  name: string;
+  description: string;
+};
+
+type ProjectConversation = ConversationData & {
+  project_id?: string | null;
+};
+
+const projectFolders: ProjectFolder[] = [
+  {
+    id: "axon-webapp",
+    name: "AXON WebApp",
+    description: "Desenvolvimento do aplicativo, telas, fluxo e produto.",
+  },
+  {
+    id: "faculdade",
+    name: "Faculdade",
+    description: "Trabalhos, estudos, provas e atividades acadêmicas.",
+  },
+  {
+    id: "potencializa",
+    name: "Potencializa",
+    description: "Textos, estratégia, site, automações e propostas.",
+  },
+];
+
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
   "Vespertino",
@@ -30,27 +58,19 @@ const validKeys: ChronotypeResultKey[] = [
   "Bimodal",
 ];
 
-const notificationsConversation = {
-  id: "axon-notifications",
-  title: "Notificações do Axon",
-  type: "general",
-  archived: false,
-  created_at: new Date().toISOString(),
-  last_message:
-    "Avisos importantes, lembretes e atualizações do seu ambiente aparecem aqui.",
-} as ConversationData;
-
 export default function Chat() {
   const navigate = useNavigate();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [search, setSearch] = useState("");
-  const [view, setView] = useState<"all" | "archived">("all");
+  const [view, setView] = useState<"all" | "projects">("all");
   const [visibleCount, setVisibleCount] = useState(8);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [conversations, setConversations] = useState<ConversationData[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -58,6 +78,12 @@ export default function Chat() {
       .then(setConversations)
       .catch(() => setConversations([]))
       .finally(() => setLoadingConversations(false));
+  }, []);
+
+  useEffect(() => {
+    api.getUnreadCount()
+      .then((res) => setUnreadCount(res.unread))
+      .catch(() => null);
   }, []);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
@@ -72,19 +98,23 @@ export default function Chat() {
 
   const result = results[resultKey];
 
-  const orderedConversations = useMemo(() => {
-    if (view === "archived") {
-      return conversations.filter((conversation) => conversation.archived);
-    }
+  const looseConversations = useMemo(() => {
+    return conversations.filter((conversation) => {
+      const projectId = getConversationProjectId(conversation);
 
-    return conversations.filter((conversation) => !conversation.archived);
-  }, [conversations, view]);
+      return !conversation.archived && !projectId;
+    });
+  }, [conversations]);
 
-    const userConversations = conversations.filter(
-      (conversation) => conversation.id !== notificationsConversation.id
-    );
+  const projectConversations = useMemo(() => {
+    return conversations.filter((conversation) => {
+      const projectId = getConversationProjectId(conversation);
 
-  const filteredConversations = orderedConversations.filter((conversation) => {
+      return !conversation.archived && Boolean(projectId);
+    });
+  }, [conversations]);
+
+  const filteredConversations = looseConversations.filter((conversation) => {
     const query = search.toLowerCase();
 
     const matchesSearch =
@@ -94,13 +124,64 @@ export default function Chat() {
     return matchesSearch;
   });
 
-  const visibleConversations = filteredConversations.slice(0, visibleCount);
+  const selectedProject = projectFolders.find(
+    (project) => project.id === selectedProjectId
+  );
 
-  const hasMoreConversations = filteredConversations.length > visibleCount;
+  const selectedProjectConversations = projectConversations.filter(
+    (conversation) => getConversationProjectId(conversation) === selectedProjectId
+  );
+
+  const filteredProjectConversations = selectedProjectConversations.filter(
+    (conversation) => {
+      const query = search.toLowerCase();
+
+      const matchesSearch =
+        conversation.title.toLowerCase().includes(query) ||
+        (conversation.last_message ?? "").toLowerCase().includes(query);
+
+      return matchesSearch;
+    }
+  );
+
+  const filteredProjects = projectFolders.filter((project) => {
+    const query = search.toLowerCase();
+
+    const conversationsInsideProject = projectConversations.filter(
+      (conversation) => getConversationProjectId(conversation) === project.id
+    );
+
+    const matchesProject =
+      project.name.toLowerCase().includes(query) ||
+      project.description.toLowerCase().includes(query);
+
+    const matchesConversation = conversationsInsideProject.some(
+      (conversation) =>
+        conversation.title.toLowerCase().includes(query) ||
+        (conversation.last_message ?? "").toLowerCase().includes(query)
+    );
+
+    return matchesProject || matchesConversation;
+  });
+
+  const activeConversationList =
+    view === "projects" && selectedProjectId
+      ? filteredProjectConversations
+      : filteredConversations;
+
+  const visibleConversations = activeConversationList.slice(0, visibleCount);
+
+  const hasMoreConversations = activeConversationList.length > visibleCount;
 
   useEffect(() => {
     setVisibleCount(8);
-  }, [search, view]);
+  }, [search, view, selectedProjectId]);
+
+  useEffect(() => {
+    if (view === "all") {
+      setSelectedProjectId(null);
+    }
+  }, [view]);
 
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
@@ -142,7 +223,9 @@ export default function Chat() {
             >
               <Bell className="h-5 w-5" />
 
-              <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
+              {unreadCount > 0 && (
+                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
+              )}
             </button>
 
             <button
@@ -204,14 +287,14 @@ export default function Chat() {
               </button>
 
               <button
-                onClick={() => setView("archived")}
+                onClick={() => setView("projects")}
                 className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                  view === "archived"
+                  view === "projects"
                     ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
                     : "text-white/42"
                 }`}
               >
-                Arquivadas
+                Projetos
               </button>
             </div>
           </div>
@@ -219,24 +302,105 @@ export default function Chat() {
           <section className="space-y-3 pb-4">
             {loadingConversations ? (
               <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
-                <p className="text-sm text-white/35">
-                  Carregando conversas...
-                </p>
+                <p className="text-sm text-white/35">Carregando conversas...</p>
               </div>
-            ) : filteredConversations.length === 0 ? (
+            ) : view === "projects" ? (
+              selectedProjectId ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => setSelectedProjectId(null)}
+                    className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-sm font-semibold text-white/55 active:scale-[0.98]"
+                  >
+                    Voltar para projetos
+                  </button>
+
+                  <div className="rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-5 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
+                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-purple-100/60">
+                      Projeto
+                    </p>
+
+                    <h2 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-white">
+                      {selectedProject?.name}
+                    </h2>
+
+                    <p className="mt-2 text-sm leading-6 text-white/45">
+                      {selectedProject?.description}
+                    </p>
+                  </div>
+
+                  {activeConversationList.length === 0 ? (
+                    <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
+                      <MessageCircle className="mx-auto mb-3 h-6 w-6 text-purple-200" />
+
+                      <p className="text-sm font-semibold text-white">
+                        Nenhuma conversa neste projeto
+                      </p>
+
+                      <p className="mt-2 text-xs leading-5 text-white/42">
+                        Quando conversas forem adicionadas a este projeto, elas aparecerão aqui.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {visibleConversations.map((conversation) => (
+                        <ConversationCard
+                          key={conversation.id}
+                          conversation={conversation}
+                          onClick={() => navigate(`/chat/${conversation.id}`)}
+                        />
+                      ))}
+
+                      {hasMoreConversations && (
+                        <button
+                          type="button"
+                          onClick={() => setVisibleCount((current) => current + 8)}
+                          className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
+                        >
+                          Ver mais conversas
+                        </button>
+                      )}
+                    </>
+                  )}
+                </>
+              ) : filteredProjects.length === 0 ? (
+                <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
+                  <Briefcase className="mx-auto mb-3 h-6 w-6 text-purple-200" />
+
+                  <p className="text-sm font-semibold text-white">
+                    Nenhum projeto encontrado
+                  </p>
+
+                  <p className="mt-2 text-xs leading-5 text-white/42">
+                    Crie projetos para reunir conversas relacionadas em um mesmo contexto.
+                  </p>
+                </div>
+              ) : (
+                filteredProjects.map((project) => {
+                  const count = projectConversations.filter(
+                    (conversation) => getConversationProjectId(conversation) === project.id
+                  ).length;
+
+                  return (
+                    <ProjectFolderCard
+                      key={project.id}
+                      project={project}
+                      count={count}
+                      onClick={() => setSelectedProjectId(project.id)}
+                    />
+                  );
+                })
+              )
+            ) : activeConversationList.length === 0 ? (
               <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
                 <MessageCircle className="mx-auto mb-3 h-6 w-6 text-purple-200" />
 
                 <p className="text-sm font-semibold text-white">
-                  {view === "archived"
-                    ? "Nenhuma conversa arquivada"
-                    : "Nenhuma conversa encontrada"}
+                  Nenhuma conversa solta encontrada
                 </p>
 
                 <p className="mt-2 text-xs leading-5 text-white/42">
-                  {view === "archived"
-                    ? "Quando você arquivar uma conversa, ela aparecerá aqui."
-                    : "Tente buscar por outro termo ou crie uma nova conversa."}
+                  Conversas que pertencem a projetos aparecem apenas na aba Projetos.
                 </p>
               </div>
             ) : (
@@ -283,6 +447,7 @@ export default function Chat() {
       <NotificationsSheet
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
+        onRead={() => setUnreadCount(0)}
       />
     </main>
   );
@@ -569,6 +734,52 @@ function ConversationTypeButton({
   );
 }
 
+function ProjectFolderCard({
+  project,
+  count,
+  onClick,
+}: {
+  project: ProjectFolder;
+  count: number;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group w-full rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-left shadow-xl shadow-black/20 backdrop-blur-2xl transition active:scale-[0.98]"
+    >
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/12 text-purple-200">
+            <Briefcase className="h-5 w-5" />
+          </div>
+
+          <div className="min-w-0">
+            <p className="truncate text-base font-semibold text-white">
+              {project.name}
+            </p>
+
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/42">
+              {project.description}
+            </p>
+
+            <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-[0.68rem] font-semibold text-white/42">
+              {count} {count === 1 ? "conversa" : "conversas"}
+            </div>
+          </div>
+        </div>
+
+        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-white/25 transition group-active:translate-x-0.5" />
+      </div>
+    </button>
+  );
+}
+
+function getConversationProjectId(conversation: ConversationData) {
+  return (conversation as ProjectConversation).project_id ?? null;
+}
+
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -583,64 +794,166 @@ function Background() {
   );
 }
 
+function formatNotificationTime(createdAt: string) {
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMin = Math.floor((now.getTime() - date.getTime()) / 60000);
+  if (diffMin < 1) return "Agora";
+  if (diffMin < 60) return `Há ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `Há ${diffH}h`;
+  const diffDays = Math.floor(diffH / 24);
+  if (diffDays === 1) return "Ontem";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+function NotificationItem({
+  notification,
+  onAccept,
+  onReject,
+}: {
+  notification: api.NotificationData;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+}) {
+  const isUnread = notification.status === "unread";
+  const canAct =
+    notification.type === "improvement" &&
+    (notification.status === "unread" || notification.status === "read");
+
+  return (
+    <div
+      className={`rounded-[1.45rem] border p-4 transition ${
+        isUnread
+          ? "border-purple-300/20 bg-purple-500/10"
+          : "border-white/10 bg-white/[0.035] opacity-55"
+      }`}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div
+            className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+              isUnread
+                ? "bg-purple-300 shadow-[0_0_14px_rgba(216,180,254,0.9)]"
+                : "bg-white/18"
+            }`}
+          />
+
+          <div className="min-w-0">
+            <p className="text-sm font-semibold leading-5 text-white">
+              {notification.title}
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-white/42">
+              {notification.body}
+            </p>
+
+            {canAct && (
+              <div className="mt-3 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => onAccept(notification.id)}
+                  className="inline-flex min-h-8 items-center justify-center rounded-xl bg-purple-500/80 px-3 text-[0.68rem] font-semibold text-white active:scale-[0.98]"
+                >
+                  Aceitar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onReject(notification.id)}
+                  className="inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.055] px-3 text-[0.68rem] font-semibold text-white/60 active:scale-[0.98]"
+                >
+                  Recusar
+                </button>
+              </div>
+            )}
+
+            {notification.status === "accepted" && (
+              <p className="mt-2 text-[0.68rem] font-semibold text-purple-200/70">
+                Aceita
+              </p>
+            )}
+
+            {notification.status === "rejected" && (
+              <p className="mt-2 text-[0.68rem] font-semibold text-white/30">
+                Recusada
+              </p>
+            )}
+          </div>
+        </div>
+
+        <span className="shrink-0 text-[0.65rem] font-medium text-white/30">
+          {formatNotificationTime(notification.created_at)}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function NotificationsSheet({
   isOpen,
   onClose,
+  onRead,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onRead?: () => void;
 }) {
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Seu planejamento de hoje está pronto",
-      description:
-        "O Axon organizou uma sugestão inicial com base no seu ritmo e prioridades.",
-      time: "Agora",
-      unread: true,
-    },
-    {
-      id: 2,
-      title: "Bom momento para foco profundo",
-      description:
-        "Sua janela de energia indica um bom momento para executar uma tarefa importante.",
-      time: "Há 12 min",
-      unread: true,
-    },
-    {
-      id: 3,
-      title: "Novo insight disponível",
-      description:
-        "Identificamos um padrão inicial entre seus horários de energia e suas tarefas.",
-      time: "Hoje",
-      unread: false,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<api.NotificationData[]>([]);
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    setLoading(true);
+    api
+      .getNotifications(10, 0)
+      .then((data) => {
+        setNotifications(data);
+        setHasMore(data.length === 10);
+        const unreadIds = data
+          .filter((n) => n.status === "unread")
+          .map((n) => n.id);
+        if (unreadIds.length > 0) {
+          onRead?.();
+          setNotifications((prev) =>
+            prev.map((n) =>
+              n.status === "unread" ? { ...n, status: "read" as const } : n
+            )
+          );
+          unreadIds.forEach((id) =>
+            api.markNotificationRead(id).catch(() => null)
+          );
+        }
+      })
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  async function loadMore() {
+    try {
+      const more = await api.getNotifications(10, notifications.length);
+      setNotifications((prev) => [...prev, ...more]);
+      setHasMore(more.length === 10);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleAccept(id: string) {
+    await api.acceptNotification(id).catch(() => null);
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, status: "accepted" as const } : n))
+    );
+  }
+
+  async function handleReject(id: string) {
+    await api.rejectNotification(id).catch(() => null);
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === id ? { ...n, status: "rejected" as const } : n))
+    );
+  }
 
   if (!isOpen) return null;
-
-  function markAsRead(notificationId: number) {
-    setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === notificationId
-          ? { ...notification, unread: false }
-          : notification
-      )
-    );
-  }
-
-  function markAllAsRead() {
-    setNotifications((current) =>
-      current.map((notification) => ({
-        ...notification,
-        unread: false,
-      }))
-    );
-  }
-
-  const hasUnreadNotifications = notifications.some(
-    (notification) => notification.unread
-  );
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
@@ -673,69 +986,45 @@ function NotificationsSheet({
               <X className="h-5 w-5" />
             </button>
           </div>
-
-          {hasUnreadNotifications && (
-            <button
-              type="button"
-              onClick={markAllAsRead}
-              className="inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
-            >
-              Marcar todas como lidas
-            </button>
-          )}
         </div>
 
         <div className="relative flex-1 overflow-y-auto px-5 py-4">
-          <div className="space-y-3">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`rounded-[1.45rem] border p-4 transition ${
-                  notification.unread
-                    ? "border-purple-300/20 bg-purple-500/10"
-                    : "border-white/10 bg-white/[0.035] opacity-45"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <div
-                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
-                        notification.unread
-                          ? "bg-purple-300 shadow-[0_0_14px_rgba(216,180,254,0.9)]"
-                          : "bg-white/18"
-                      }`}
-                    />
+          {loading ? (
+            <div className="py-8 text-center text-sm text-white/35">
+              Carregando...
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="py-8 text-center">
+              <Bell className="mx-auto mb-3 h-6 w-6 text-purple-200/40" />
+              <p className="text-sm font-semibold text-white/55">
+                Nenhuma notificação
+              </p>
+              <p className="mt-1 text-xs text-white/30">
+                O Axon vai te avisar quando houver algo importante.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {notifications.map((notification) => (
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                />
+              ))}
 
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold leading-5 text-white">
-                          {notification.title}
-                        </p>
-                      </div>
-
-                      <p className="mt-1 text-xs leading-5 text-white/42">
-                        {notification.description}
-                      </p>
-
-                      {notification.unread && (
-                        <button
-                          type="button"
-                          onClick={() => markAsRead(notification.id)}
-                          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.055] px-3 text-[0.68rem] font-semibold text-purple-100 active:scale-[0.98]"
-                        >
-                          Marcar como lida
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <span className="shrink-0 text-[0.65rem] font-medium text-white/30">
-                    {notification.time}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+              {hasMore && (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  className="mt-1 inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
+                >
+                  Ver mais
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">

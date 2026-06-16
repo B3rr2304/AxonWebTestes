@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ElementType } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
@@ -21,7 +22,7 @@ import * as api from "../lib/api";
 import type { DashboardData, FocusBlock } from "../lib/api";
 
 type MetricCardProps = {
-  icon: React.ElementType;
+  icon: ElementType;
   label: string;
   value: string;
   helper: string;
@@ -50,12 +51,14 @@ export default function Dashboard() {
     };
 
     load();
+    api.analyzeNotifications().catch(() => null);
 
     const interval = window.setInterval(load, 30 * 60 * 1000);
 
     const handleVisibility = () => {
       if (!document.hidden) {
         load();
+        api.analyzeNotifications().catch(() => null);
       }
     };
 
@@ -134,9 +137,9 @@ export default function Dashboard() {
         </header>
 
         <section className="mb-4">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
+          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.055),transparent_42%)]" />
 
             <div className="relative">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
@@ -144,7 +147,7 @@ export default function Dashboard() {
                 Ajustado ao seu ritmo
               </div>
 
-              <h1 className="text-[2.05rem] font-semibold leading-[1.02] tracking-[-0.06em] text-white">
+              <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.06em] text-white">
                 {greeting}. Vamos focar no que move seu dia.
               </h1>
 
@@ -152,25 +155,28 @@ export default function Dashboard() {
                 {mainAction}
               </p>
 
-              <div className="mt-5 rounded-[1.6rem] border border-purple-300/20 bg-purple-500/10 p-4">
-                <div className="mb-4 flex items-center justify-between gap-3">
-                  <div>
-                    <div className="mb-1 flex items-center gap-2">
-                      <Focus className="h-4 w-4 text-purple-200" />
-
-                      <p className="text-sm font-semibold text-purple-100">
-                        Agora
-                      </p>
+              <div className="mt-5 rounded-[1.55rem] border border-purple-300/15 bg-black/18 p-3.5 shadow-inner shadow-black/20">
+                <div className="mb-3 flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/12 text-purple-200">
+                      <Focus className="h-4 w-4" />
                     </div>
 
-                    <p className="text-xs text-white/42">
-                      Seu bloco atual de energia
-                    </p>
+                    <div>
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-purple-100/70">
+                        Agora
+                      </p>
+                      <p className="mt-0.5 text-xs text-white/38">
+                        Ritmo atual do seu dia
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="rounded-2xl border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
-                    {currentBlock ? "ativo" : nextFocus?.status === "active" ? "ativo" : "próximo"}
-                  </div>
+                  {currentBlock && (
+                    <p className="shrink-0 text-xs font-medium text-white/38">
+                      {currentBlock.start} – {currentBlock.end}
+                    </p>
+                  )}
                 </div>
 
                 <CurrentFocusBlockCard
@@ -180,14 +186,12 @@ export default function Dashboard() {
                   fallbackStart={nextFocus?.start}
                   fallbackProgress={energyPercent}
                   showNextBlock={showNextBlock}
-                  onToggleNext={() =>
-                    setShowNextBlock((current) => !current)
-                  }
+                  onToggleNext={() => setShowNextBlock((current) => !current)}
                 />
 
                 <button
                   onClick={() => navigate("/chat")}
-                  className="mt-3 inline-flex items-center gap-2 text-xs font-semibold text-purple-200 active:scale-[0.98]"
+                  className="mt-3 inline-flex items-center gap-2 rounded-full px-1 text-xs font-semibold text-purple-200/80 active:scale-[0.98]"
                 >
                   Ajustar com o Axon
                   <MessageCircle className="h-3.5 w-3.5" />
@@ -227,7 +231,7 @@ export default function Dashboard() {
           />
         </section>
 
-        <section className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+        <section className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/75 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
           <div className="mb-4 flex items-center justify-between">
             <div>
               <p className="text-sm font-semibold text-white">Hoje</p>
@@ -319,7 +323,7 @@ export default function Dashboard() {
 
 function MetricCard({ icon: Icon, label, value, helper }: MetricCardProps) {
   return (
-    <div className="rounded-[1.55rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+    <div className="rounded-[1.55rem] border border-white/10 bg-[#1b1b27]/75 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
       <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
         <Icon className="h-4 w-4" />
       </div>
@@ -353,31 +357,42 @@ function CurrentFocusBlockCard({
   onToggleNext: () => void;
 }) {
   if (!currentBlock) {
-    return (
-      <div className="rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <Target className="h-4 w-4 text-purple-200" />
+    const fallbackProgressSafe = clampPercent(fallbackProgress);
 
-            <p className="text-sm font-semibold text-white">
+    return (
+      <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-3.5">
+        <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <Target className="h-4 w-4 shrink-0 text-purple-200" />
+
+            <p className="truncate text-sm font-semibold text-white">
               Bloco de foco
             </p>
           </div>
 
-          <p className="text-xs text-white/42">{fallbackStart ?? "10:40"}</p>
+          <p className="shrink-0 text-xs text-white/40">
+            {fallbackStart ?? "10:40"}
+          </p>
         </div>
 
-        <p className="text-sm leading-6 text-white/58">
+        <p className="text-sm leading-5 text-white/55">
           {fallbackLabel ?? "Comece pela tarefa que mais impacta seu dia."}
         </p>
 
-        <div className="mt-4 h-2 overflow-hidden rounded-full bg-white/10">
-          <div
-            className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_18px_rgba(192,132,252,0.55)]"
-            style={{
-              width: `${Math.min(Math.max(fallbackProgress, 10), 100)}%`,
-            }}
-          />
+        <div className="mt-3">
+          <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/32">
+            <span>Progresso</span>
+            <span>{fallbackProgressSafe}%</span>
+          </div>
+
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_16px_rgba(192,132,252,0.45)]"
+              style={{
+                width: `${fallbackProgressSafe}%`,
+              }}
+            />
+          </div>
         </div>
       </div>
     );
@@ -386,34 +401,24 @@ function CurrentFocusBlockCard({
   const progress = getCurrentBlockProgress(currentBlock);
 
   return (
-    <div className="overflow-hidden rounded-[1.35rem] border border-white/10 bg-black/20 p-4">
+    <div className="overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <div className="mb-3 flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-purple-300/25 bg-purple-500/15 px-3 py-1 text-xs font-semibold text-purple-100">
-              {currentBlock.level_label}
-            </span>
-
-            
-          </div>
-
-          <h3 className="text-lg font-semibold tracking-[-0.035em] text-white">
-            {currentBlock.start} – {currentBlock.end}
-          </h3>
+          <p className="truncate text-sm font-semibold text-purple-100">
+            {currentBlock.level_label}
+          </p>
         </div>
 
-        <div className="shrink-0 rounded-2xl border border-white/10 bg-white/[0.045] px-3 py-2 text-right">
-          <p className="text-xs font-semibold text-white/48">
-            Bloco {currentBlock.index}
-          </p>
+        <div className="shrink-0 rounded-full border border-purple-300/15 bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-100/80">
+          {progress}%
         </div>
       </div>
 
-      <p className="mt-4 text-sm leading-6 text-white/54">
+      <p className="mt-3 text-sm leading-5 text-white/54">
         {currentBlock.description}
       </p>
 
-      <div className="mt-5">
+      <div className="mt-3">
         <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/32">
           <span>Progresso</span>
           <span>{progress}%</span>
@@ -421,53 +426,47 @@ function CurrentFocusBlockCard({
 
         <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
           <div
-            className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300"
+            className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_16px_rgba(192,132,252,0.42)]"
             style={{ width: `${progress}%` }}
           />
         </div>
       </div>
 
       {nextBlock && (
-        <div className="mt-4">
+        <div className="mt-3">
           <button
             type="button"
             onClick={onToggleNext}
-            className="flex min-h-11 w-full items-center rounded-2xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-white/55 active:scale-[0.98]"
+            className="flex min-h-10 w-full items-center rounded-2xl border border-white/10 bg-black/14 px-3.5 text-xs font-semibold text-white/48 active:scale-[0.98]"
           >
-            <span>{showNextBlock ? "Ocultar próximo" : "Próximo bloco"}</span>
+            <span>
+              {showNextBlock ? "Ocultar próximo" : "Próximo bloco"}
+            </span>
 
-            {nextBlock && !showNextBlock && (
-              <span className="ml-auto mr-3 text-xs font-medium text-white/32">
-                {nextBlock.start} – {nextBlock.end}
-              </span>
-            )}
+            <span className="ml-auto mr-2 text-[0.68rem] font-medium text-white/28">
+              {nextBlock.start} – {nextBlock.end}
+            </span>
 
             {showNextBlock ? (
-              <ChevronUp className="h-4 w-4" />
+              <ChevronUp className="h-4 w-4 shrink-0" />
             ) : (
-              <ChevronDown className="h-4 w-4" />
+              <ChevronDown className="h-4 w-4 shrink-0" />
             )}
           </button>
 
           {showNextBlock && (
-            <div className="mt-3 rounded-[1.25rem] border border-white/10 bg-white/[0.028] p-3.5">
-              <div className="mb-3 flex items-start justify-between gap-3">
-                <div>
-                  <span className="rounded-full border border-white/10 bg-white/[0.055] px-3 py-1 text-xs font-semibold text-white/45">
-                    {nextBlock.level_label}
-                  </span>
+            <div className="mt-2.5 rounded-[1.15rem] border border-white/10 bg-black/16 p-3">
+              <div className="mb-2 flex items-center justify-between gap-3">
+                <p className="truncate text-xs font-semibold text-white/60">
+                  {nextBlock.level_label}
+                </p>
 
-                  <p className="mt-2 text-sm font-semibold tracking-[-0.02em] text-white/78">
-                    {nextBlock.start} – {nextBlock.end}
-                  </p>
-                </div>
-
-                <p className="shrink-0 text-xs font-semibold text-white/28">
-                  Bloco {nextBlock.index}
+                <p className="shrink-0 text-[0.68rem] font-medium text-white/30">
+                  {nextBlock.start} – {nextBlock.end}
                 </p>
               </div>
 
-              <p className="text-sm leading-6 text-white/42">
+              <p className="text-xs leading-5 text-white/42">
                 {nextBlock.description}
               </p>
             </div>
@@ -490,6 +489,9 @@ function getCurrentBlockProgress(block: FocusBlock) {
   const end = new Date(now);
   end.setHours(endHour, endMinute, 0, 0);
 
+  // Exemplo: 23:30 – 00:00
+  // Mesmo não atravessando a madrugada com atividade,
+  // o horário final 00:00 pertence ao próximo dia.
   if (end <= start) {
     end.setDate(end.getDate() + 1);
   }
@@ -500,7 +502,11 @@ function getCurrentBlockProgress(block: FocusBlock) {
   if (elapsed <= 0) return 0;
   if (elapsed >= total) return 100;
 
-  return Math.round((elapsed / total) * 100);
+  return clampPercent(Math.round((elapsed / total) * 100));
+}
+
+function clampPercent(value: number) {
+  return Math.min(Math.max(value, 0), 100);
 }
 
 function Background() {

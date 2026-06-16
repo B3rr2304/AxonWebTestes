@@ -384,6 +384,62 @@ export interface ToolEvent {
   summary?: string;
 }
 
+// --- Notifications ---
+
+export interface NotificationAction {
+  task_id: string;
+  new_date?: string | null;
+  new_start_time?: string | null;
+  new_end_time?: string | null;
+  reason?: string | null;
+}
+
+export interface NotificationData {
+  id: string;
+  type: "simple" | "improvement" | "change";
+  title: string;
+  body: string;
+  status: "unread" | "read" | "accepted" | "rejected";
+  action?: NotificationAction | null;
+  created_at: string;
+}
+
+export function getNotifications(limit = 10, offset = 0) {
+  return request<NotificationData[]>(
+    `/notifications?limit=${limit}&offset=${offset}`
+  );
+}
+
+export function getUnreadCount() {
+  return request<{ unread: number }>("/notifications/unread-count");
+}
+
+export function analyzeNotifications() {
+  return request<{ analyzed: boolean; notification?: NotificationData }>(
+    "/notifications/analyze",
+    { method: "POST" }
+  );
+}
+
+export function markNotificationRead(id: string) {
+  return request<NotificationData>(`/notifications/${id}/read`, {
+    method: "PATCH",
+  });
+}
+
+export function acceptNotification(id: string) {
+  return request<{ analyzed: boolean; notification?: NotificationData }>(
+    `/notifications/${id}/accept`,
+    { method: "POST" }
+  );
+}
+
+export function rejectNotification(id: string) {
+  return request<NotificationData>(`/notifications/${id}/reject`, {
+    method: "POST",
+  });
+}
+
 export function streamChat(
   message: string,
   history: ChatMessage[],
