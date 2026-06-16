@@ -145,3 +145,32 @@ class ChatRequest(BaseModel):
 
 class ChatResponse(BaseModel):
     response: str
+
+
+# --- Notifications ---
+
+class NotificationAction(BaseModel):
+    task_id: str
+    new_date: Optional[str] = None
+    new_start_time: Optional[str] = None
+    new_end_time: Optional[str] = None
+    reason: Optional[str] = None
+
+
+class NotificationResponse(BaseModel):
+    id: str
+    type: str       # 'simple' | 'improvement' | 'change'
+    title: str
+    body: str
+    status: str     # 'unread' | 'read' | 'accepted' | 'rejected'
+    action: Optional[dict] = None
+    created_at: str
+
+
+class NotificationCountResponse(BaseModel):
+    unread: int
+
+
+class NotificationAnalyzeResponse(BaseModel):
+    analyzed: bool
+    notification: Optional[NotificationResponse] = None

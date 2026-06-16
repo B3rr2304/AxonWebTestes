@@ -204,7 +204,7 @@ CHRONOTYPE_BLOCKS: dict[str, list[tuple[str, str]]] = {
         ("foco_moderado", "Ótimo para reuniões, leitura e organização e uma pausa para o almoço. Seu ponto forte é exatamente essa consistência que outros cronotipos não têm nesse horário."),             # 12:00
         ("foco_leve",     "Sentir um aleve queda de energia é natural nesse momento. Use para tarefas operacionais, e-mails e planejamento e até mesmo um breve descanço"),                    # 13:30
         ("foco_profundo", "Aproveite esse momento para dar continuidade as tarefas mais impontes e complexas do sua dia, evite ao máximo distrações nesse período"),             # 15:00
-        ("pico",          "Segundo melhor momento do dia. Retome projetos importantes ou finalize o que ficou pendente pela manhã, evite ao máximo distrações nesse período ),       # 16:30
+        ("pico",          "Segundo melhor momento do dia. Retome projetos importantes ou finalize o que ficou pendente pela manhã, evite ao máximo distrações nesse período"),       # 16:30
         ("foco_profundo", "Use esse momento para revisar o dia, planejar amanhã, resolver pendências que exigem atenção ou para estudos. Momento ideal para atividades físicas."),        # 18:00
         ("foco_leve",     "Use esse momento para tarefas leves, passar um tempo com sua família, estudos leves ou praticar seus hobbies, tentar forçar produtividade nesse momento pode acabar com o seu dia de amanhã."),      # 19:30
         ("foco_leve",     "Se desconecte. Atividades relaxantes, tempo com pessoas que você gosta ou algo que te renova comece a preparar o terreno para uma boa noite de sono."),           # 21:00

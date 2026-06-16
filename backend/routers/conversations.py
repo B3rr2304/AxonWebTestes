@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from models.schemas import ConversationCreate, ConversationUpdate, ConversationResponse
 from auth_helper import get_current_user
 from database import supabase
@@ -7,7 +7,11 @@ router = APIRouter(prefix="/chat/conversations", tags=["conversations"])
 
 
 @router.get("", response_model=list[ConversationResponse])
-def list_conversations(current_user: dict = Depends(get_current_user)):
+def list_conversations(
+    limit: int = Query(8, ge=1, le=50),
+    offset: int = Query(0, ge=0),
+    current_user: dict = Depends(get_current_user),
+):
     user_id = current_user["id"]
 
     res = (
@@ -15,6 +19,8 @@ def list_conversations(current_user: dict = Depends(get_current_user)):
         .select("*")
         .eq("user_id", user_id)
         .order("updated_at", desc=True)
+        .limit(limit)
+        .offset(offset)
         .execute()
     )
 
