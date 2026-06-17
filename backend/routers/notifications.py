@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from models.schemas import (
     NotificationResponse,
     NotificationCountResponse,
@@ -25,16 +25,29 @@ def unread_count(current_user: dict = Depends(get_current_user)):
     return NotificationCountResponse(unread=count)
 
 
+def _run_analysis_safe(user_id: str) -> None:
+    """Executa a análise em background, nunca propaga exceção."""
+    try:
+        notification_analyzer.analyze_and_notify(user_id)
+    except Exception:
+        pass
+
+
 @router.post("/analyze", response_model=NotificationAnalyzeResponse)
-def trigger_analysis(current_user: dict = Depends(get_current_user)):
+def trigger_analysis(
+    background_tasks: BackgroundTasks,
+    current_user: dict = Depends(get_current_user),
+):
     """
     Disparado pelo frontend ao abrir o app ou voltar à tela.
-    Respeita o cooldown de 6h — retorna analyzed=False se ainda não passou o tempo.
+
+    A análise chama o Claude (~9s), então roda em BACKGROUND para o endpoint
+    responder imediatamente — evita timeout do proxy/navegador (ERR_FAILED).
+    A notificação, se criada, aparece no banco; o frontend a pega no próximo
+    fetch de unread-count / lista.
     """
-    notif = notification_analyzer.analyze_and_notify(current_user["id"])
-    if notif is None:
-        return NotificationAnalyzeResponse(analyzed=False)
-    return NotificationAnalyzeResponse(analyzed=True, notification=notif)
+    background_tasks.add_task(_run_analysis_safe, current_user["id"])
+    return NotificationAnalyzeResponse(analyzed=True)
 
 
 @router.patch("/{notification_id}/read", response_model=NotificationResponse)
