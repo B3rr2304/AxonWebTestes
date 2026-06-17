@@ -21,6 +21,18 @@ from services import chronotype as chronotype_service
 
 _MODEL = "claude-sonnet-4-6"
 
+
+def _parse_json(raw: str) -> dict:
+    """
+    Extrai JSON da resposta do Claude, tolerando markdown fences (```json ... ```)
+    e qualquer texto antes/depois. Pega do primeiro { ao último }.
+    """
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start == -1 or end == -1 or end < start:
+        raise ValueError("Nenhum JSON encontrado na resposta")
+    return json.loads(raw[start : end + 1])
+
 _CURVE_KEY = {
     "Matutino": "morning", "Vespertino": "evening", "Noturno": "night",
     "Misto": "intermediate", "Bimodal": "bimodal",
@@ -123,9 +135,6 @@ def _apply_rule_filter(ctx: dict) -> dict:
         ctx["tasks_today"] + ctx["tasks_tomorrow"], blocks
     )
 
-    simple_today = notification_service.count_today(None, "simple")  # verificado no caller
-    consecutive_rejections = notification_service.count_consecutive_rejections(None)
-
     return {
         "has_tasks_today": len(tasks_today) > 0,
         "all_done": len(tasks_today) > 0 and len(todo) == 0,
@@ -133,7 +142,8 @@ def _apply_rule_filter(ctx: dict) -> dict:
         "no_tasks_today": len(tasks_today) == 0,
         "bad_block_tasks": bad_block_tasks,
         "has_improvement_candidate": len(bad_block_tasks) > 0,
-        "consecutive_rejections": consecutive_rejections,
+        # consecutive_rejections é preenchido no caller (analyze_and_notify)
+        "consecutive_rejections": 0,
     }
 
 
@@ -165,10 +175,10 @@ HORA ATUAL: {datetime.now(timezone.utc).strftime('%H:%M')} UTC
 DATA: {ctx['today']}
 
 TAREFAS DE HOJE ({len(ctx['tasks_today'])} total):
-{json.dumps([{'title': t['title'], 'status': t['status'], 'start_time': t.get('start_time'), 'task_type': t['task_type']} for t in ctx['tasks_today']], ensure_ascii=False, indent=2)}
+{json.dumps([{'id': t['id'], 'title': t['title'], 'status': t['status'], 'start_time': t.get('start_time'), 'task_type': t['task_type']} for t in ctx['tasks_today']], ensure_ascii=False, indent=2)}
 
 TAREFAS DE AMANHÃ ({len(ctx['tasks_tomorrow'])} total):
-{json.dumps([{'title': t['title'], 'start_time': t.get('start_time'), 'task_type': t['task_type']} for t in ctx['tasks_tomorrow']], ensure_ascii=False, indent=2)}
+{json.dumps([{'id': t['id'], 'title': t['title'], 'start_time': t.get('start_time'), 'task_type': t['task_type']} for t in ctx['tasks_tomorrow']], ensure_ascii=False, indent=2)}
 
 BLOCOS DE FOCO DO DIA (cronotipo {ctx['chronotype']}):
 {chr(10).join(blocks_summary)}
@@ -219,31 +229,35 @@ Se should_notify=false, os outros campos podem ser strings vazias."""
 def analyze_and_notify(user_id: str) -> dict | None:
     """
     Analisa a rotina do usuário e cria uma notificação se necessário.
+
+    Dois caminhos com gatilhos independentes:
+    - improvement: REAGE a tarefas em blocos ruins mesmo dentro do cooldown de 6h,
+      mas só se não houver outra melhoria ainda não resolvida (evita spam).
+    - simple: respeita o cooldown de 6h (análise periódica de incentivo/celebração).
+
     Retorna a notificação criada ou None.
     """
-    if not notification_service.should_analyze(user_id):
-        return None
-
     ctx = _load_user_context(user_id)
-
-    # Substitui None por user_id nas funções de contagem
-    simple_today = notification_service.count_today(user_id, "simple")
-    consecutive_rejections = notification_service.count_consecutive_rejections(user_id)
-
     flags = _apply_rule_filter(ctx)
-    flags["consecutive_rejections"] = consecutive_rejections
+    flags["consecutive_rejections"] = notification_service.count_consecutive_rejections(user_id)
 
-    # Se não há nada candidato e já passou do máximo de simples → skip
-    no_simple_candidate = (
-        not flags["all_done"]
-        and not flags["none_started"]
-        and not flags["no_tasks_today"]
+    cooldown_elapsed = notification_service.should_analyze(user_id)
+    simple_today = notification_service.count_today(user_id, "simple")
+
+    # Já existe uma melhoria pendente (não resolvida)? Não cria outra.
+    has_pending_improvement = any(
+        n["type"] == "improvement" and n["status"] in ("unread", "read")
+        for n in ctx["recent_notifications"]
     )
-    simple_limit_reached = simple_today >= _MAX_SIMPLE_PER_DAY
-    no_improvement_candidate = not flags["has_improvement_candidate"]
 
-    if (no_simple_candidate or simple_limit_reached) and no_improvement_candidate:
-        notification_service.update_analyzed_at(user_id)
+    improvement_eligible = flags["has_improvement_candidate"] and not has_pending_improvement
+    simple_candidate = flags["all_done"] or flags["none_started"] or flags["no_tasks_today"]
+    simple_eligible = cooldown_elapsed and simple_candidate and simple_today < _MAX_SIMPLE_PER_DAY
+
+    # Nada elegível → registra o cooldown apenas se era uma checagem periódica
+    if not improvement_eligible and not simple_eligible:
+        if cooldown_elapsed:
+            notification_service.update_analyzed_at(user_id)
         return None
 
     # Chama Claude para análise
@@ -256,28 +270,37 @@ def analyze_and_notify(user_id: str) -> dict | None:
             max_tokens=512,
             messages=[{"role": "user", "content": prompt}],
         )
-        raw = response.content[0].text.strip()
-        result = json.loads(raw)
-    except Exception as e:
-        notification_service.update_analyzed_at(user_id)
+        result = _parse_json(response.content[0].text)
+    except Exception:
+        if cooldown_elapsed:
+            notification_service.update_analyzed_at(user_id)
         return None
 
-    notification_service.update_analyzed_at(user_id)
+    # Registra o cooldown sempre que fizemos uma análise periódica
+    if cooldown_elapsed:
+        notification_service.update_analyzed_at(user_id)
 
     if not result.get("should_notify"):
         return None
 
-    # Valida cooldown de simple antes de criar
-    if result.get("type") == "simple" and simple_today >= _MAX_SIMPLE_PER_DAY:
+    notif_type = result.get("type")
+
+    # Respeita as restrições por tipo
+    if notif_type == "simple" and not simple_eligible:
+        return None
+    if notif_type == "improvement" and not improvement_eligible:
         return None
 
-    action = result.get("action") if result.get("type") == "improvement" else None
+    action = result.get("action") if notif_type == "improvement" else None
     if action and not action.get("task_id"):
         action = None
+    # Melhoria sem ação executável não faz sentido (não dá para aceitar)
+    if notif_type == "improvement" and not action:
+        return None
 
     notif = notification_service.create_notification(
         user_id=user_id,
-        notif_type=result["type"],
+        notif_type=notif_type,
         title=result.get("title", "Axon"),
         body=result.get("body", ""),
         action=action,
@@ -314,7 +337,7 @@ Retorne APENAS JSON válido:
             max_tokens=200,
             messages=[{"role": "user", "content": prompt}],
         )
-        data = json.loads(response.content[0].text.strip())
+        data = _parse_json(response.content[0].text)
         title = data.get("title", "Axon atualizou sua agenda")
         body = data.get("body", f"O horário de '{task_title}' foi ajustado.")
     except Exception:

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Request, status
 from models.schemas import RegisterRequest, LoginRequest, AuthResponse
-from database import supabase
+from database import supabase, supabase_auth
 from limiter import limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -10,7 +10,7 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @limiter.limit("5/minute")
 def register(request: Request, body: RegisterRequest):
     try:
-        res = supabase.auth.sign_up({"email": body.email, "password": body.password})
+        res = supabase_auth.auth.sign_up({"email": body.email, "password": body.password})
     except Exception:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Não foi possível criar a conta")
 
@@ -39,7 +39,7 @@ def register(request: Request, body: RegisterRequest):
 @limiter.limit("10/minute")
 def login(request: Request, body: LoginRequest):
     try:
-        res = supabase.auth.sign_in_with_password({"email": body.email, "password": body.password})
+        res = supabase_auth.auth.sign_in_with_password({"email": body.email, "password": body.password})
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="E-mail ou senha incorretos")
 

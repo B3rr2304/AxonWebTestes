@@ -8,7 +8,40 @@ usuário logado.
 Datas devem ser passadas pelo modelo no formato YYYY-MM-DD e horários como HH:MM.
 """
 
-from services import tasks_service, memory_service
+from services import tasks_service, memory_service, notification_service
+
+# Rótulos e formas para as notificações de alteração geradas por templates.
+_TYPE_LABEL = {"task": "Tarefa", "event": "Evento", "routine": "Rotina"}
+_TYPE_ADJ = {  # (criada, atualizada, removida) — concordância de gênero
+    "task": ("criada", "atualizada", "removida"),
+    "event": ("criado", "atualizado", "removido"),
+    "routine": ("criada", "atualizada", "removida"),
+}
+_VERB = ("criou", "atualizou", "removeu")  # invariável
+
+
+def _notify_task_change(user_id: str, idx: int, task: dict) -> None:
+    """
+    Cria uma notificação de alteração (template) após o agente mexer numa tarefa.
+    idx: 0=criar, 1=atualizar, 2=deletar. Nunca quebra a operação principal.
+    """
+    try:
+        ttype = task.get("task_type", "task")
+        label = _TYPE_LABEL.get(ttype, "Tarefa")
+        adj = _TYPE_ADJ.get(ttype, _TYPE_ADJ["task"])[idx]
+        title = f"{label} {adj}"
+
+        body = f'O Axon {_VERB[idx]} "{task.get("title", "")}"'
+        if idx != 2:  # criar/atualizar incluem quando
+            if task.get("scheduled_date"):
+                body += f" para {task['scheduled_date']}"
+            if task.get("start_time"):
+                body += f" às {task['start_time'][:5]}"
+        body += "."
+
+        notification_service.create_notification(user_id, "change", title, body)
+    except Exception:
+        pass  # notificação é secundária — nunca falha a ação do agente
 
 # Nomes das tools que ALTERAM o estado das tarefas (usado pelo chat para sinalizar
 # ao frontend que o Planejamento precisa ser recarregado).
@@ -177,6 +210,7 @@ def execute_tool(name: str, tool_input: dict, user_id: str) -> dict:
             task = tasks_service.create_task(
                 user_id, {**tool_input, "created_by": "agent"}
             )
+            _notify_task_change(user_id, 0, task)
             return {"ok": True, "task": task}
 
         if name == "listar_tarefas":
@@ -191,10 +225,16 @@ def execute_tool(name: str, tool_input: dict, user_id: str) -> dict:
         if name == "atualizar_tarefa":
             data = {k: v for k, v in tool_input.items() if k != "task_id"}
             task = tasks_service.update_task(user_id, tool_input["task_id"], data)
+            _notify_task_change(user_id, 1, task)
             return {"ok": True, "task": task}
 
         if name == "deletar_tarefa":
+            # Busca o título antes de remover, para a notificação de alteração
+            tasks = tasks_service.list_tasks(user_id)
+            task = next((t for t in tasks if t["id"] == tool_input["task_id"]), None)
             tasks_service.delete_task(user_id, tool_input["task_id"])
+            if task:
+                _notify_task_change(user_id, 2, task)
             return {"ok": True, "deleted": tool_input["task_id"]}
 
         if name == "listar_memorias":

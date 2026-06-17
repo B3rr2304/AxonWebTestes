@@ -3,7 +3,7 @@ import os
 from fastapi import APIRouter, HTTPException
 from fastapi.responses import RedirectResponse
 
-from database import supabase
+from database import supabase, supabase_auth
 from services import google_service
 
 router = APIRouter(prefix="/auth/google", tags=["google-auth"])
@@ -35,7 +35,7 @@ def google_callback(code: str = None, error: str = None, state: str = None):
         email = user_info["email"]
         name = user_info.get("name", "")
 
-        supabase_session = supabase.auth.sign_in_with_id_token({
+        supabase_session = supabase_auth.auth.sign_in_with_id_token({
             "provider": "google",
             "token": id_token,
         })

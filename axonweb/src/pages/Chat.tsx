@@ -81,9 +81,35 @@ export default function Chat() {
   }, []);
 
   useEffect(() => {
-    api.getUnreadCount()
-      .then((res) => setUnreadCount(res.unread))
+    const refreshUnread = () => {
+      api.getUnreadCount()
+        .then((res) => setUnreadCount(res.unread))
+        .catch(() => null);
+    };
+
+    // Busca a contagem imediatamente
+    refreshUnread();
+
+    // Dispara a análise do Axon e rebusca a contagem ~10s depois — a análise
+    // roda em background no servidor (chama o Claude), então a notificação só
+    // existe alguns segundos após a resposta do /analyze.
+    let delayed: number | undefined;
+    api.analyzeNotifications()
+      .then(() => {
+        delayed = window.setTimeout(refreshUnread, 10000);
+      })
       .catch(() => null);
+
+    // Atualiza ao voltar para a aba/app
+    const handleVisibility = () => {
+      if (!document.hidden) refreshUnread();
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      if (delayed) window.clearTimeout(delayed);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
   }, []);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
