@@ -31,18 +31,18 @@ def _handle_connect_callback(code: str, state: str, frontend_url: str) -> Redire
     """Fluxo 'conectar agenda' (usuário já logado). Reusa o redirect_uri do login."""
     user_id = google_service.consume_connect_state(state)
     if user_id is None:
-        return RedirectResponse(f"{frontend_url}/settings?google=error")
+        return RedirectResponse(f"{frontend_url}/planning?google=error")
     try:
         tokens = google_service.exchange_code(code)
         refresh_token = tokens.get("refresh_token")
         if not refresh_token:
-            return RedirectResponse(f"{frontend_url}/settings?google=error")
+            return RedirectResponse(f"{frontend_url}/planning?google=error")
         supabase.table("profiles").update(
             {"google_refresh_token": refresh_token}
         ).eq("id", user_id).execute()
-        return RedirectResponse(f"{frontend_url}/settings?google=connected")
+        return RedirectResponse(f"{frontend_url}/planning?google=connected")
     except Exception:
-        return RedirectResponse(f"{frontend_url}/settings?google=error")
+        return RedirectResponse(f"{frontend_url}/planning?google=error")
 
 
 @router.get("/callback")
