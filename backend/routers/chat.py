@@ -24,12 +24,12 @@ _MAX_HISTORY = 50
 _RELEVANT_ANSWERS = ["P10", "P11", "P13", "P14", "P17", "P18"]
 
 
-def _stream_and_save(user_id: str, conversation_id: str, user_message: str, history: list, system_prompt: str):
+def _stream_and_save(user_id: str, conversation_id: str, user_message: str, history: list, system_prompt: str, tz_name: str | None = None):
     """Faz o streaming da resposta da Claude e salva as mensagens no banco."""
     import json as json_module
     response_text = ""
     try:
-        for chunk in claude_service.stream_chat_with_tools(history, system_prompt, user_id):
+        for chunk in claude_service.stream_chat_with_tools(history, system_prompt, user_id, tz_name):
             # chunk é no formato: "data: {\"text\": \"...\"}\n\n" ou "data: [DONE]\n\n"
             yield chunk
 
@@ -146,7 +146,7 @@ def chat_message(
     history.append({"role": "user", "content": body.message})
 
     return StreamingResponse(
-        _stream_and_save(user_id, body.conversation_id, body.message, history, system_prompt),
+        _stream_and_save(user_id, body.conversation_id, body.message, history, system_prompt, perfil.get("timezone")),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

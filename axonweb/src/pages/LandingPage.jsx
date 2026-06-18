@@ -1,6 +1,8 @@
+import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import AuthLogo from "../components/auth/AuthLogo";
+import { refreshSession, saveSession } from "../lib/api";
 import {
   ArrowRight,
   BarChart3,
@@ -342,7 +344,38 @@ function ProductOrbit() {
   );
 }
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
 export default function LandingPage() {
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    const refreshToken = localStorage.getItem("axon_refresh_token");
+    const lastActive = Number(localStorage.getItem("axon_last_active") ?? "0");
+
+    if (!refreshToken) return;
+
+    if (Date.now() - lastActive > SEVEN_DAYS_MS) {
+      localStorage.removeItem("axon_token");
+      localStorage.removeItem("axon_refresh_token");
+      localStorage.removeItem("axon_user");
+      localStorage.removeItem("axon_last_active");
+      return;
+    }
+
+    refreshSession(refreshToken)
+      .then((res) => {
+        saveSession(res);
+        navigate("/dashboard", { replace: true });
+      })
+      .catch(() => {
+        localStorage.removeItem("axon_token");
+        localStorage.removeItem("axon_refresh_token");
+        localStorage.removeItem("axon_user");
+        localStorage.removeItem("axon_last_active");
+      });
+  }, []);
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05050b] pb-28 text-white sm:pb-0">
       <Background />

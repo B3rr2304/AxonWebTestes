@@ -48,11 +48,16 @@ async function request<T>(
       localStorage.removeItem("axon_token");
       localStorage.removeItem("axon_refresh_token");
       localStorage.removeItem("axon_user");
+      localStorage.removeItem("axon_last_active");
       window.location.href = "/login";
       throw new Error("Sessão expirada");
     }
     const error = await res.json().catch(() => ({ detail: "Erro desconhecido" }));
     throw new Error(error.detail ?? "Erro na requisição");
+  }
+
+  if (localStorage.getItem("axon_token")) {
+    localStorage.setItem("axon_last_active", String(Date.now()));
   }
 
   if (res.status === 204) return undefined as T;
@@ -115,16 +120,25 @@ export function logout() {
   localStorage.removeItem("axon_token");
   localStorage.removeItem("axon_refresh_token");
   localStorage.removeItem("axon_user");
+  localStorage.removeItem("axon_last_active");
 }
 
 export function saveSession(res: AuthResponse) {
   localStorage.setItem("axon_token", res.access_token);
   localStorage.setItem("axon_refresh_token", res.refresh_token);
   localStorage.setItem("axon_user", JSON.stringify({ id: res.user_id, email: res.email, name: res.name }));
+  localStorage.setItem("axon_last_active", String(Date.now()));
 }
 
 export function isLoggedIn(): boolean {
   return !!getToken();
+}
+
+export function refreshSession(refreshToken: string) {
+  return request<AuthResponse>("/auth/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
 }
 
 // --- Profile ---

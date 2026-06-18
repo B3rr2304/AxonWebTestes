@@ -242,11 +242,19 @@ def analyze_and_notify(user_id: str, tz_header: str | None = None) -> dict | Non
     Retorna a notificação criada ou None.
     """
     tz_name = user_tz.resolve(user_id, tz_header)
+
+    cooldown_elapsed = notification_service.should_analyze(user_id)
+
+    # Reivindica o slot de cooldown IMEDIATAMENTE para evitar race condition:
+    # sem isso, duas tasks de background concorrentes passam ambas pelo check
+    # antes que qualquer uma atualize o timestamp, gerando notificações duplicadas.
+    if cooldown_elapsed:
+        notification_service.update_analyzed_at(user_id)
+
     ctx = _load_user_context(user_id, tz_name)
     flags = _apply_rule_filter(ctx)
     flags["consecutive_rejections"] = notification_service.count_consecutive_rejections(user_id)
 
-    cooldown_elapsed = notification_service.should_analyze(user_id)
     simple_today = notification_service.count_today(user_id, "simple")
 
     # Já existe uma melhoria pendente (não resolvida)? Não cria outra.
@@ -259,10 +267,8 @@ def analyze_and_notify(user_id: str, tz_header: str | None = None) -> dict | Non
     simple_candidate = flags["all_done"] or flags["none_started"] or flags["no_tasks_today"]
     simple_eligible = cooldown_elapsed and simple_candidate and simple_today < _MAX_SIMPLE_PER_DAY
 
-    # Nada elegível → registra o cooldown apenas se era uma checagem periódica
+    # Nada elegível → cooldown já foi registrado acima se necessário
     if not improvement_eligible and not simple_eligible:
-        if cooldown_elapsed:
-            notification_service.update_analyzed_at(user_id)
         return None
 
     # Chama Claude para análise
@@ -277,13 +283,7 @@ def analyze_and_notify(user_id: str, tz_header: str | None = None) -> dict | Non
         )
         result = _parse_json(response.content[0].text)
     except Exception:
-        if cooldown_elapsed:
-            notification_service.update_analyzed_at(user_id)
         return None
-
-    # Registra o cooldown sempre que fizemos uma análise periódica
-    if cooldown_elapsed:
-        notification_service.update_analyzed_at(user_id)
 
     if not result.get("should_notify"):
         return None
