@@ -6,23 +6,46 @@ from database import supabase
 router = APIRouter(prefix="/chat/conversations", tags=["conversations"])
 
 
+def _assert_project_owned(user_id: str, project_id: str) -> None:
+    """Garante que o projeto existe e pertence ao usuário (evita vazamento entre contas)."""
+    res = (
+        supabase.table("chat_projects")
+        .select("id")
+        .eq("id", project_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not res.data:
+        raise HTTPException(status_code=404, detail="Projeto não encontrado")
+
+
 @router.get("", response_model=list[ConversationResponse])
 def list_conversations(
     limit: int = Query(8, ge=1, le=50),
     offset: int = Query(0, ge=0),
+    project_id: str | None = Query(None),
     current_user: dict = Depends(get_current_user),
 ):
     user_id = current_user["id"]
 
-    res = (
+    query = (
         supabase.table("conversations")
         .select("*")
         .eq("user_id", user_id)
         .order("updated_at", desc=True)
         .limit(limit)
         .offset(offset)
-        .execute()
     )
+
+    if project_id == "null":
+        # Conversas sem projeto (aba "Todas")
+        query = query.is_("project_id", "null")
+    elif project_id is not None:
+        # Conversas de um projeto específico
+        query = query.eq("project_id", project_id)
+    # Sem filtro: retorna todas (comportamento anterior)
+
+    res = query.execute()
 
     conversations = res.data or []
     result = []
@@ -52,6 +75,7 @@ def list_conversations(
                 title=conv["title"],
                 type=conv["type"],
                 archived=conv["archived"],
+                project_id=conv.get("project_id"),
                 created_at=conv["created_at"],
                 last_message=last_message,
                 message_count=count_res.count or 0,
@@ -68,9 +92,17 @@ def create_conversation(
 ):
     user_id = current_user["id"]
 
+    if body.project_id is not None:
+        _assert_project_owned(user_id, body.project_id)
+
     res = (
         supabase.table("conversations")
-        .insert({"user_id": user_id, "title": body.title, "type": body.type})
+        .insert({
+            "user_id": user_id,
+            "title": body.title,
+            "type": body.type,
+            "project_id": body.project_id,
+        })
         .execute()
     )
 
@@ -80,6 +112,7 @@ def create_conversation(
         title=conv["title"],
         type=conv["type"],
         archived=conv["archived"],
+        project_id=conv.get("project_id"),
         created_at=conv["created_at"],
     )
 
@@ -102,9 +135,15 @@ def update_conversation(
     if not existing.data:
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
 
-    updates = {k: v for k, v in body.model_dump().items() if v is not None}
+    # exclude_unset: distingue "campo não enviado" de "enviado como null". Isso
+    # permite project_id=null (remover do projeto) sem apagar os outros campos.
+    updates = body.model_dump(exclude_unset=True)
     if not updates:
         raise HTTPException(status_code=400, detail="Nenhum campo para atualizar")
+
+    # Mover para um projeto exige que o projeto seja do próprio usuário.
+    if updates.get("project_id") is not None:
+        _assert_project_owned(user_id, updates["project_id"])
 
     res = (
         supabase.table("conversations")
@@ -120,6 +159,7 @@ def update_conversation(
         title=conv["title"],
         type=conv["type"],
         archived=conv["archived"],
+        project_id=conv.get("project_id"),
         created_at=conv["created_at"],
     )
 

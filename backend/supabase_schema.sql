@@ -114,3 +114,47 @@ create policy "Usuários editam apenas seu próprio perfil"
 create policy "Usuários inserem apenas seu próprio perfil"
   on public.profiles for insert
   with check (auth.uid() = id);
+
+-- =============================================
+-- TABELA: chat_projects (pastas de conversas)
+-- =============================================
+create table if not exists public.chat_projects (
+  id          uuid default gen_random_uuid() primary key,
+  user_id     uuid references auth.users(id) on delete cascade not null,
+  name        text not null,
+  description text,
+  created_at  timestamp with time zone default now(),
+  updated_at  timestamp with time zone default now()
+);
+
+create index if not exists chat_projects_user_id_idx on public.chat_projects(user_id);
+
+drop trigger if exists chat_projects_updated_at on public.chat_projects;
+create trigger chat_projects_updated_at
+  before update on public.chat_projects
+  for each row execute procedure public.handle_updated_at();
+
+alter table public.chat_projects enable row level security;
+
+create policy "Usuários veem apenas seus próprios projetos"
+  on public.chat_projects for select
+  using (auth.uid() = user_id);
+
+create policy "Usuários inserem apenas seus próprios projetos"
+  on public.chat_projects for insert
+  with check (auth.uid() = user_id);
+
+create policy "Usuários editam apenas seus próprios projetos"
+  on public.chat_projects for update
+  using (auth.uid() = user_id);
+
+create policy "Usuários excluem apenas seus próprios projetos"
+  on public.chat_projects for delete
+  using (auth.uid() = user_id);
+
+-- Vínculo opcional de conversa -> projeto (null = aba "Todas")
+alter table public.conversations
+  add column if not exists project_id uuid
+  references public.chat_projects(id) on delete set null;
+
+create index if not exists conversations_project_id_idx on public.conversations(project_id);
