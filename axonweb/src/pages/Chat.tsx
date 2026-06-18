@@ -447,7 +447,7 @@ export default function Chat() {
       <NotificationsSheet
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
-        onRead={() => setUnreadCount(0)}
+        onUnreadCountChange={setUnreadCount}
       />
     </main>
   );
@@ -892,68 +892,85 @@ function NotificationItem({
 function NotificationsSheet({
   isOpen,
   onClose,
-  onRead,
+  onUnreadCountChange,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onRead?: () => void;
+  onUnreadCountChange: (count: number) => void;
 }) {
-  const [notifications, setNotifications] = useState<api.NotificationData[]>([]);
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      title: "Seu planejamento de hoje está pronto",
+      description:
+        "O Axon organizou uma sugestão inicial com base no seu ritmo e prioridades.",
+      time: "Agora",
+      unread: true,
+    },
+    {
+      id: 2,
+      title: "Bom momento para foco profundo",
+      description:
+        "Sua janela de energia indica um bom momento para executar uma tarefa importante.",
+      time: "Há 12 min",
+      unread: true,
+    },
+    {
+      id: 3,
+      title: "Novo insight disponível",
+      description:
+        "Identificamos um padrão inicial entre seus horários de energia e suas tarefas.",
+      time: "Hoje",
+      unread: false,
+    },
+  ]);
+
+  const [notificationView, setNotificationView] = useState<"unread" | "read">(
+    "unread"
+  );
+
+  const unreadNotifications = notifications.filter(
+    (notification) => notification.unread
+  );
+
+  const readNotifications = notifications.filter(
+    (notification) => !notification.unread
+  );
+
+  const unreadCount = unreadNotifications.length;
+  const readCount = readNotifications.length;
+
+  const filteredNotifications =
+    notificationView === "unread" ? unreadNotifications : readNotifications;
+
+  const hasUnreadNotifications = unreadCount > 0;
 
   useEffect(() => {
-    if (!isOpen) return;
-    setLoading(true);
-    api
-      .getNotifications(10, 0)
-      .then((data) => {
-        setNotifications(data);
-        setHasMore(data.length === 10);
-        const unreadIds = data
-          .filter((n) => n.status === "unread")
-          .map((n) => n.id);
-        if (unreadIds.length > 0) {
-          onRead?.();
-          setNotifications((prev) =>
-            prev.map((n) =>
-              n.status === "unread" ? { ...n, status: "read" as const } : n
-            )
-          );
-          unreadIds.forEach((id) =>
-            api.markNotificationRead(id).catch(() => null)
-          );
-        }
-      })
-      .catch(() => null)
-      .finally(() => setLoading(false));
-  }, [isOpen]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  async function loadMore() {
-    try {
-      const more = await api.getNotifications(10, notifications.length);
-      setNotifications((prev) => [...prev, ...more]);
-      setHasMore(more.length === 10);
-    } catch {
-      // ignore
-    }
-  }
-
-  async function handleAccept(id: string) {
-    await api.acceptNotification(id).catch(() => null);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, status: "accepted" as const } : n))
-    );
-  }
-
-  async function handleReject(id: string) {
-    await api.rejectNotification(id).catch(() => null);
-    setNotifications((prev) =>
-      prev.map((n) => (n.id === id ? { ...n, status: "rejected" as const } : n))
-    );
-  }
+    onUnreadCountChange(unreadCount);
+  }, [unreadCount, onUnreadCountChange]);
 
   if (!isOpen) return null;
+
+  function markAsRead(notificationId: number) {
+    setNotifications((current) =>
+      current.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, unread: false }
+          : notification
+      )
+    );
+  }
+
+  function markAllAsRead() {
+    setNotifications((current) =>
+      current.map((notification) => ({
+        ...notification,
+        unread: false,
+      }))
+    );
+
+    setNotificationView("read");
+  }
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
@@ -986,45 +1003,123 @@ function NotificationsSheet({
               <X className="h-5 w-5" />
             </button>
           </div>
+
+          <div className="space-y-3">
+            <div className="flex rounded-2xl border border-white/10 bg-white/[0.045] p-1">
+              <button
+                type="button"
+                onClick={() => setNotificationView("unread")}
+                className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                  notificationView === "unread"
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                    : "text-white/42"
+                }`}
+              >
+                Não lidas
+                {unreadCount > 0 && (
+                  <span className="ml-1 text-[0.65rem] opacity-75">
+                    {unreadCount}
+                  </span>
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setNotificationView("read")}
+                className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                  notificationView === "read"
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                    : "text-white/42"
+                }`}
+              >
+                Lidas
+                {readCount > 0 && (
+                  <span className="ml-1 text-[0.65rem] opacity-75">
+                    {readCount}
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {hasUnreadNotifications && notificationView === "unread" && (
+              <button
+                type="button"
+                onClick={markAllAsRead}
+                className="inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.035] px-4 text-xs font-semibold text-white/45 active:scale-[0.98]"
+              >
+                Marcar todas como lidas
+              </button>
+            )}
+          </div>
         </div>
 
         <div className="relative flex-1 overflow-y-auto px-5 py-4">
-          {loading ? (
-            <div className="py-8 text-center text-sm text-white/35">
-              Carregando...
-            </div>
-          ) : notifications.length === 0 ? (
-            <div className="py-8 text-center">
-              <Bell className="mx-auto mb-3 h-6 w-6 text-purple-200/40" />
-              <p className="text-sm font-semibold text-white/55">
-                Nenhuma notificação
-              </p>
-              <p className="mt-1 text-xs text-white/30">
-                O Axon vai te avisar quando houver algo importante.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {notifications.map((notification) => (
-                <NotificationItem
-                  key={notification.id}
-                  notification={notification}
-                  onAccept={handleAccept}
-                  onReject={handleReject}
-                />
-              ))}
+          <div className="space-y-3">
+            {filteredNotifications.length === 0 ? (
+              <div className="rounded-[1.45rem] border border-white/10 bg-white/[0.035] p-5 text-center">
+                <Bell className="mx-auto mb-3 h-5 w-5 text-white/28" />
 
-              {hasMore && (
-                <button
-                  type="button"
-                  onClick={loadMore}
-                  className="mt-1 inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
+                <p className="text-sm font-semibold text-white/70">
+                  {notificationView === "unread"
+                    ? "Nenhuma notificação não lida"
+                    : "Nenhuma notificação lida"}
+                </p>
+
+                <p className="mt-2 text-xs leading-5 text-white/38">
+                  {notificationView === "unread"
+                    ? "Quando houver novos avisos do Axon, eles aparecerão aqui."
+                    : "As notificações marcadas como lidas aparecerão nesta aba."}
+                </p>
+              </div>
+            ) : (
+              filteredNotifications.map((notification) => (
+                <div
+                  key={notification.id}
+                  className={`rounded-[1.45rem] border p-4 transition ${
+                    notification.unread
+                      ? "border-purple-300/20 bg-purple-500/10"
+                      : "border-white/10 bg-white/[0.035] opacity-45"
+                  }`}
                 >
-                  Ver mais
-                </button>
-              )}
-            </div>
-          )}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex min-w-0 items-start gap-3">
+                      <div
+                        className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                          notification.unread
+                            ? "bg-purple-300"
+                            : "bg-white/18"
+                        }`}
+                      />
+
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold leading-5 text-white">
+                          {notification.title}
+                        </p>
+
+                        <p className="mt-1 text-xs leading-5 text-white/42">
+                          {notification.description}
+                        </p>
+
+                        {notification.unread && (
+                          <button
+                            type="button"
+                            onClick={() => markAsRead(notification.id)}
+                            className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.055] px-3 text-[0.68rem] font-semibold text-purple-100 active:scale-[0.98]"
+                          >
+                            Marcar como lida
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    <span className="shrink-0 text-[0.65rem] font-medium text-white/30">
+                      {notification.time}
+                    </span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         </div>
 
         <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
