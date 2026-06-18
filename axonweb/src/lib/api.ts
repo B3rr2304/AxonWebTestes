@@ -127,10 +127,6 @@ export function logout() {
   localStorage.removeItem("axon_last_active");
 }
 
-export function connectGoogleCalendar() {
-  return request<{ auth_url: string }>("/auth/google/connect");
-}
-
 export function saveSession(res: AuthResponse) {
   localStorage.setItem("axon_token", res.access_token);
   localStorage.setItem("axon_refresh_token", res.refresh_token);
