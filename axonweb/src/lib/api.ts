@@ -61,6 +61,29 @@ async function request<T>(
 
 // --- Auth ---
 
+export interface ChatProjectData {
+  id: string;
+  name: string;
+  description?: string | null;
+  conversation_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export async function getChatProjects() {
+  return request<ChatProjectData[]>("/chat/projects");
+}
+
+export async function createChatProject(payload: {
+  name: string;
+  description?: string;
+}) {
+  return request<ChatProjectData>("/chat/projects", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export interface AuthResponse {
   access_token: string;
   refresh_token: string;
@@ -502,4 +525,7 @@ export function streamChat(
       pump();
     })
     .catch(onError);
+    
 }
+
+

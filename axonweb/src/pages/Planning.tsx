@@ -958,6 +958,8 @@ const isDisplayScheduled = displayStatus === "scheduled";
       ? `${task.scheduled_date} até ${taskEndDate}`
       : isEvent
       ? `${start ?? "—"}${end ? ` - ${end}` : ""}`
+      : start && end
+      ? `${start} - ${end}`
       : start ?? "Sem horário";
 
   return (
@@ -1212,6 +1214,7 @@ function CreatePlanningItemModal({
   const [recurrence, setRecurrence] = useState<"daily" | "weekly" | "monthly">(
     "daily"
   );
+
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
@@ -1257,6 +1260,12 @@ function CreatePlanningItemModal({
       setFormError("A data final do evento não pode ser anterior à data inicial.");
       return;
     }
+
+    if (startTime && endTime && endTime <= startTime) {
+      setFormError("O horário de término precisa ser depois do horário de início.");
+      return;
+    }
+
     setSubmitting(true);
     setFormError(null);
     try {
@@ -1270,7 +1279,7 @@ function CreatePlanningItemModal({
         end_date: selectedType === "event" ? endDate || date : undefined,
 
         start_time: startTime || undefined,
-        end_time: selectedType !== "task" ? endTime || undefined : undefined,
+        end_time: endTime || undefined,
         priority: selectedType === "task" ? priority : undefined,
         location: selectedType === "event" ? location || undefined : undefined,
         recurrence: selectedType === "routine" ? recurrence : undefined,
@@ -1407,14 +1416,10 @@ function CreatePlanningItemModal({
               </label>
             )}
 
-            <div
-              className={
-                selectedType === "task" ? "grid grid-cols-1" : "grid grid-cols-2 gap-3"
-              }
-            >
+            <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="mb-2 block text-xs font-medium text-white/42">
-                  {selectedType === "task" ? "Horário" : "Início"}
+                  Início
                 </span>
 
                 <input
@@ -1425,20 +1430,18 @@ function CreatePlanningItemModal({
                 />
               </label>
 
-              {selectedType !== "task" && (
-                <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-white/42">
-                    Fim
-                  </span>
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  Fim
+                </span>
 
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
-                  />
-                </label>
-              )}
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                />
+              </label>
             </div>
 
             {selectedType === "task" && (
@@ -1719,6 +1722,11 @@ function EditPlanningItemModal({
       return;
     }
 
+    if (startTime && endTime && endTime <= startTime) {
+      setFormError("O horário de término precisa ser depois do horário de início.");
+      return;
+    }
+
     if (!task) return;
 
     setSubmitting(true);
@@ -1736,7 +1744,7 @@ function EditPlanningItemModal({
           end_date: isEvent ? endDate || date : undefined,
 
           start_time: startTime || undefined,
-          end_time: !isTask ? endTime || undefined : undefined,
+          end_time: endTime || undefined,
           priority: isTask ? priority : undefined,
           location: isEvent ? location || undefined : undefined,
           recurrence: isRoutine ? recurrence : undefined,
@@ -1867,10 +1875,10 @@ function EditPlanningItemModal({
               </label>
             )}
 
-            <div className={isTask ? "grid grid-cols-1" : "grid grid-cols-2 gap-3"}>
+            <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="mb-2 block text-xs font-medium text-white/42">
-                  {isTask ? "Horário" : "Início"}
+                  Início
                 </span>
 
                 <input
@@ -1881,20 +1889,18 @@ function EditPlanningItemModal({
                 />
               </label>
 
-              {!isTask && (
-                <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-white/42">
-                    Fim
-                  </span>
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  Fim
+                </span>
 
-                  <input
-                    type="time"
-                    value={endTime}
-                    onChange={(e) => setEndTime(e.target.value)}
-                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
-                  />
-                </label>
-              )}
+                <input
+                  type="time"
+                  value={endTime}
+                  onChange={(e) => setEndTime(e.target.value)}
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                />
+              </label>
             </div>
 
             {isTask && (
