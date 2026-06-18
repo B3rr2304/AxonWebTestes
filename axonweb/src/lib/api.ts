@@ -116,6 +116,10 @@ export function exchangeGoogleSession(code: string) {
   return request<AuthResponse>(`/auth/google/session?code=${encodeURIComponent(code)}`);
 }
 
+export function connectGoogleCalendar() {
+  return request<{ auth_url: string }>("/auth/google/connect");
+}
+
 export function logout() {
   localStorage.removeItem("axon_token");
   localStorage.removeItem("axon_refresh_token");
