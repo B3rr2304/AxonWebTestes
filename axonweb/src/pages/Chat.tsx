@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
-  Archive,
   Bell,
   Briefcase,
   CalendarDays,
@@ -21,12 +20,8 @@ import * as api from "../lib/api";
 import type { ConversationData } from "../lib/api";
 
 type ConversationType = "general" | "planning" | "focus" | "project";
-
 type ProjectFolder = api.ChatProjectData;
-
-type ProjectConversation = ConversationData & {
-  project_id?: string | null;
-};
+type ProjectConversation = ConversationData & { project_id?: string | null };
 
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
@@ -45,12 +40,14 @@ export default function Chat() {
   const [view, setView] = useState<"all" | "projects">("all");
   const [visibleCount, setVisibleCount] = useState(8);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
   const [conversations, setConversations] = useState<ConversationData[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
-  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+
   const [projects, setProjects] = useState<ProjectFolder[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [createConversationProjectId, setCreateConversationProjectId] =
+    useState<string | null>(null);
 
   useEffect(() => {
     api
@@ -72,38 +69,6 @@ export default function Chat() {
       .finally(() => setLoadingProjects(false));
   }, [view]);
 
-  useEffect(() => {
-    const refreshUnread = () => {
-      api.getUnreadCount()
-        .then((res) => setUnreadCount(res.unread))
-        .catch(() => null);
-    };
-
-    // Busca a contagem imediatamente
-    refreshUnread();
-
-    // Dispara a análise do Axon e rebusca a contagem ~10s depois — a análise
-    // roda em background no servidor (chama o Claude), então a notificação só
-    // existe alguns segundos após a resposta do /analyze.
-    let delayed: number | undefined;
-    api.analyzeNotifications()
-      .then(() => {
-        delayed = window.setTimeout(refreshUnread, 10000);
-      })
-      .catch(() => null);
-
-    // Atualiza ao voltar para a aba/app
-    const handleVisibility = () => {
-      if (!document.hidden) refreshUnread();
-    };
-    document.addEventListener("visibilitychange", handleVisibility);
-
-    return () => {
-      if (delayed) window.clearTimeout(delayed);
-      document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, []);
-
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
 
@@ -119,7 +84,6 @@ export default function Chat() {
   const looseConversations = useMemo(() => {
     return conversations.filter((conversation) => {
       const projectId = getConversationProjectId(conversation);
-
       return !conversation.archived && !projectId;
     });
   }, [conversations]);
@@ -127,60 +91,63 @@ export default function Chat() {
   const projectConversations = useMemo(() => {
     return conversations.filter((conversation) => {
       const projectId = getConversationProjectId(conversation);
-
       return !conversation.archived && Boolean(projectId);
     });
   }, [conversations]);
 
-  const filteredConversations = looseConversations.filter((conversation) => {
+  const filteredConversations = useMemo(() => {
     const query = search.toLowerCase();
 
-    const matchesSearch =
-      conversation.title.toLowerCase().includes(query) ||
-      (conversation.last_message ?? "").toLowerCase().includes(query);
-
-    return matchesSearch;
-  });
-
-  const selectedProject = projects.find(
-    (project) => project.id === selectedProjectId
-  );
-
-  const selectedProjectConversations = projectConversations.filter(
-    (conversation) => getConversationProjectId(conversation) === selectedProjectId
-  );
-
-  const filteredProjectConversations = selectedProjectConversations.filter(
-    (conversation) => {
-      const query = search.toLowerCase();
-
+    return looseConversations.filter((conversation) => {
       const matchesSearch =
         conversation.title.toLowerCase().includes(query) ||
         (conversation.last_message ?? "").toLowerCase().includes(query);
 
       return matchesSearch;
-    }
+    });
+  }, [looseConversations, search]);
+
+  const selectedProject = useMemo(
+    () => projects.find((project) => project.id === selectedProjectId),
+    [projects, selectedProjectId]
   );
 
-    const filteredProjects = projects.filter((project) => {
+  const filteredProjectConversations = useMemo(() => {
     const query = search.toLowerCase();
 
-    const conversationsInsideProject = projectConversations.filter(
-      (conversation) => getConversationProjectId(conversation) === project.id
-    );
+    return projectConversations.filter((conversation) => {
+      const belongsToSelectedProject =
+        getConversationProjectId(conversation) === selectedProjectId;
 
-    const matchesProject =
-      project.name.toLowerCase().includes(query) ||
-      (project.description ?? "").toLowerCase().includes(query);
-
-    const matchesConversation = conversationsInsideProject.some(
-      (conversation) =>
+      const matchesSearch =
         conversation.title.toLowerCase().includes(query) ||
-        (conversation.last_message ?? "").toLowerCase().includes(query)
-    );
+        (conversation.last_message ?? "").toLowerCase().includes(query);
 
-    return matchesProject || matchesConversation;
-  });
+      return belongsToSelectedProject && matchesSearch;
+    });
+  }, [projectConversations, search, selectedProjectId]);
+
+  const filteredProjects = useMemo(() => {
+    const query = search.toLowerCase();
+
+    return projects.filter((project) => {
+      const conversationsInsideProject = projectConversations.filter(
+        (conversation) => getConversationProjectId(conversation) === project.id
+      );
+
+      const matchesProject =
+        project.name.toLowerCase().includes(query) ||
+        (project.description ?? "").toLowerCase().includes(query);
+
+      const matchesConversation = conversationsInsideProject.some(
+        (conversation) =>
+          conversation.title.toLowerCase().includes(query) ||
+          (conversation.last_message ?? "").toLowerCase().includes(query)
+      );
+
+      return matchesProject || matchesConversation;
+    });
+  }, [projects, projectConversations, search]);
 
   const activeConversationList =
     view === "projects" && selectedProjectId
@@ -188,7 +155,6 @@ export default function Chat() {
       : filteredConversations;
 
   const visibleConversations = activeConversationList.slice(0, visibleCount);
-
   const hasMoreConversations = activeConversationList.length > visibleCount;
 
   useEffect(() => {
@@ -200,6 +166,11 @@ export default function Chat() {
       setSelectedProjectId(null);
     }
   }, [view]);
+
+  function openCreateConversationModal(projectId?: string | null) {
+    setCreateConversationProjectId(projectId ?? null);
+    setIsCreateModalOpen(true);
+  }
 
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
@@ -227,9 +198,13 @@ export default function Chat() {
 
           <div className="flex items-center gap-2">
             <button
-              onClick={() => setIsCreateModalOpen(true)}
+              onClick={() =>
+                openCreateConversationModal(
+                  view === "projects" ? selectedProjectId : null
+                )
+              }
               className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/35 active:scale-[0.96]"
-              aria-label="Nova conversa"
+              aria-label="Nova conversa ou projeto"
             >
               <Plus className="h-5 w-5" />
             </button>
@@ -241,9 +216,7 @@ export default function Chat() {
             >
               <Bell className="h-5 w-5" />
 
-              {unreadCount > 0 && (
-                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
-              )}
+              <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
             </button>
 
             <button
@@ -318,12 +291,16 @@ export default function Chat() {
           </div>
 
           <section className="space-y-3 pb-4">
-            {loadingConversations ? (
+            {loadingConversations || (view === "projects" && loadingProjects) ? (
               <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
-                <p className="text-sm text-white/35">Carregando conversas...</p>
+                <p className="text-sm text-white/35">
+                  {view === "projects"
+                    ? "Carregando projetos..."
+                    : "Carregando conversas..."}
+                </p>
               </div>
             ) : view === "projects" ? (
-              selectedProjectId ? (
+              selectedProjectId && selectedProject ? (
                 <>
                   <button
                     type="button"
@@ -339,11 +316,11 @@ export default function Chat() {
                     </p>
 
                     <h2 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-white">
-                      {selectedProject?.name}
+                      {selectedProject.name}
                     </h2>
 
                     <p className="mt-2 text-sm leading-6 text-white/45">
-                      {selectedProject?.description}
+                      {selectedProject.description || "Sem descrição"}
                     </p>
                   </div>
 
@@ -358,6 +335,15 @@ export default function Chat() {
                       <p className="mt-2 text-xs leading-5 text-white/42">
                         Quando conversas forem adicionadas a este projeto, elas aparecerão aqui.
                       </p>
+
+                      <button
+                        type="button"
+                        onClick={() => openCreateConversationModal(selectedProject.id)}
+                        className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
+                      >
+                        <Plus className="mr-2 h-4 w-4" />
+                        Criar conversa
+                      </button>
                     </div>
                   ) : (
                     <>
@@ -392,6 +378,15 @@ export default function Chat() {
                   <p className="mt-2 text-xs leading-5 text-white/42">
                     Crie projetos para reunir conversas relacionadas em um mesmo contexto.
                   </p>
+
+                  <button
+                    type="button"
+                    onClick={() => openCreateConversationModal(null)}
+                    className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Criar projeto
+                  </button>
                 </div>
               ) : (
                 filteredProjects.map((project) => {
@@ -422,6 +417,15 @@ export default function Chat() {
                 <p className="mt-2 text-xs leading-5 text-white/42">
                   Conversas que pertencem a projetos aparecem apenas na aba Projetos.
                 </p>
+
+                <button
+                  type="button"
+                  onClick={() => openCreateConversationModal(null)}
+                  className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Criar conversa
+                </button>
               </div>
             ) : (
               <>
@@ -457,10 +461,20 @@ export default function Chat() {
 
       <CreateConversationModal
         isOpen={isCreateModalOpen}
-        onClose={() => setIsCreateModalOpen(false)}
-        onCreated={(conv) => {
-          setConversations((prev) => [conv, ...prev]);
+        defaultProjectId={createConversationProjectId}
+        onClose={() => {
           setIsCreateModalOpen(false);
+          setCreateConversationProjectId(null);
+        }}
+        onCreated={(conv) => {
+          const conversationWithProject = {
+            ...conv,
+            project_id: conv.project_id ?? createConversationProjectId,
+          } as ConversationData;
+
+          setConversations((prev) => [conversationWithProject, ...prev]);
+          setIsCreateModalOpen(false);
+          setCreateConversationProjectId(null);
           navigate(`/chat/${conv.id}`);
         }}
         onProjectCreated={(project) => {
@@ -468,13 +482,13 @@ export default function Chat() {
           setView("projects");
           setSelectedProjectId(project.id);
           setIsCreateModalOpen(false);
+          setCreateConversationProjectId(null);
         }}
       />
 
       <NotificationsSheet
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
-        onUnreadCountChange={setUnreadCount}
       />
     </main>
   );
@@ -585,11 +599,13 @@ function getConversationIcon(type: ConversationType) {
 
 function CreateConversationModal({
   isOpen,
+  defaultProjectId,
   onClose,
   onCreated,
   onProjectCreated,
 }: {
   isOpen: boolean;
+  defaultProjectId?: string | null;
   onClose: () => void;
   onCreated: (conv: ConversationData) => void;
   onProjectCreated: (project: api.ChatProjectData) => void;
@@ -597,35 +613,34 @@ function CreateConversationModal({
   const [createMode, setCreateMode] = useState<"conversation" | "project">(
     "conversation"
   );
-
   const [selectedType, setSelectedType] =
     useState<ConversationType>("general");
-
   const [title, setTitle] = useState("");
   const [projectName, setProjectName] = useState("");
   const [projectDescription, setProjectDescription] = useState("");
-
   const [isLoading, setIsLoading] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  const isInsideProject = Boolean(defaultProjectId);
 
   useEffect(() => {
     if (!isOpen) return;
 
     setCreateMode("conversation");
-    setSelectedType("general");
+    setSelectedType(defaultProjectId ? "project" : "general");
     setTitle("");
     setProjectName("");
     setProjectDescription("");
     setFormError(null);
     setIsLoading(false);
-  }, [isOpen]);
+  }, [isOpen, defaultProjectId]);
 
   if (!isOpen) return null;
 
   async function handleCreate() {
     setFormError(null);
 
-    if (createMode === "project") {
+    if (createMode === "project" && !isInsideProject) {
       if (!projectName.trim()) {
         setFormError("Dê um nome para o projeto.");
         return;
@@ -650,11 +665,17 @@ function CreateConversationModal({
     }
 
     const finalTitle = title.trim() || "Nova conversa";
+    const finalType = defaultProjectId ? "project" : selectedType;
 
     setIsLoading(true);
 
     try {
-      const conv = await api.createConversation(finalTitle, selectedType);
+      const conv = await api.createConversation(
+        finalTitle,
+        finalType,
+        defaultProjectId ?? undefined
+      );
+
       onCreated(conv);
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Erro ao criar conversa");
@@ -675,17 +696,21 @@ function CreateConversationModal({
             <div>
               <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
                 <Plus className="h-3.5 w-3.5" />
-                Novo espaço
+                {isInsideProject ? "Nova conversa" : "Novo espaço"}
               </div>
 
               <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
-                {createMode === "project"
+                {isInsideProject
+                  ? "Criar conversa no projeto"
+                  : createMode === "project"
                   ? "Criar projeto"
                   : "Criar conversa"}
               </h2>
 
               <p className="mt-2 text-xs leading-5 text-white/45">
-                {createMode === "project"
+                {isInsideProject
+                  ? "Esta conversa será vinculada ao projeto selecionado."
+                  : createMode === "project"
                   ? "Reúna conversas relacionadas em um mesmo contexto."
                   : "Separe assuntos para o Axon acompanhar cada contexto com mais clareza."}
               </p>
@@ -702,64 +727,68 @@ function CreateConversationModal({
           </div>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto px-5 py-4 pb-5">
-          <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.045] p-1">
-            <button
-              type="button"
-              onClick={() => setCreateMode("conversation")}
-              className={`min-h-11 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                createMode === "conversation"
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
-              }`}
-            >
-              Conversa
-            </button>
+        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+          {!isInsideProject && (
+            <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.045] p-1">
+              <button
+                type="button"
+                onClick={() => setCreateMode("conversation")}
+                className={`min-h-11 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                  createMode === "conversation"
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                    : "text-white/42"
+                }`}
+              >
+                Conversa
+              </button>
 
-            <button
-              type="button"
-              onClick={() => setCreateMode("project")}
-              className={`min-h-11 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                createMode === "project"
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
-              }`}
-            >
-              Projeto
-            </button>
-          </div>
+              <button
+                type="button"
+                onClick={() => setCreateMode("project")}
+                className={`min-h-11 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                  createMode === "project"
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                    : "text-white/42"
+                }`}
+              >
+                Projeto
+              </button>
+            </div>
+          )}
 
-          {createMode === "conversation" ? (
+          {createMode === "conversation" || isInsideProject ? (
             <>
-              <div className="mb-4 grid grid-cols-2 gap-2">
-                <ConversationTypeButton
-                  active={selectedType === "general"}
-                  icon={MessageCircle}
-                  label="Geral"
-                  onClick={() => setSelectedType("general")}
-                />
+              {!isInsideProject && (
+                <div className="mb-4 grid grid-cols-2 gap-2">
+                  <ConversationTypeButton
+                    active={selectedType === "general"}
+                    icon={MessageCircle}
+                    label="Geral"
+                    onClick={() => setSelectedType("general")}
+                  />
 
-                <ConversationTypeButton
-                  active={selectedType === "planning"}
-                  icon={CalendarDays}
-                  label="Planejamento"
-                  onClick={() => setSelectedType("planning")}
-                />
+                  <ConversationTypeButton
+                    active={selectedType === "planning"}
+                    icon={CalendarDays}
+                    label="Planejamento"
+                    onClick={() => setSelectedType("planning")}
+                  />
 
-                <ConversationTypeButton
-                  active={selectedType === "focus"}
-                  icon={Focus}
-                  label="Foco"
-                  onClick={() => setSelectedType("focus")}
-                />
+                  <ConversationTypeButton
+                    active={selectedType === "focus"}
+                    icon={Focus}
+                    label="Foco"
+                    onClick={() => setSelectedType("focus")}
+                  />
 
-                <ConversationTypeButton
-                  active={selectedType === "project"}
-                  icon={Briefcase}
-                  label="Projeto"
-                  onClick={() => setSelectedType("project")}
-                />
-              </div>
+                  <ConversationTypeButton
+                    active={selectedType === "project"}
+                    icon={Briefcase}
+                    label="Projeto"
+                    onClick={() => setSelectedType("project")}
+                  />
+                </div>
+              )}
 
               <label className="block">
                 <span className="mb-2 block text-xs font-medium text-white/42">
@@ -774,6 +803,21 @@ function CreateConversationModal({
                   className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
                 />
               </label>
+
+              {isInsideProject && (
+                <div className="mt-4 rounded-2xl border border-purple-300/15 bg-purple-500/10 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Briefcase className="h-4 w-4 text-purple-200" />
+                    <p className="text-sm font-semibold text-purple-100">
+                      Conversa de projeto
+                    </p>
+                  </div>
+
+                  <p className="text-xs leading-5 text-white/50">
+                    Esta conversa será criada diretamente dentro do projeto atual.
+                  </p>
+                </div>
+              )}
             </>
           ) : (
             <div className="space-y-3">
@@ -798,9 +842,7 @@ function CreateConversationModal({
 
                 <textarea
                   value={projectDescription}
-                  onChange={(event) =>
-                    setProjectDescription(event.target.value)
-                  }
+                  onChange={(event) => setProjectDescription(event.target.value)}
                   placeholder="Ex: Conversas sobre telas, fluxo, backend e decisões do produto."
                   rows={3}
                   className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
@@ -816,9 +858,7 @@ function CreateConversationModal({
                 </div>
 
                 <p className="text-xs leading-5 text-white/50">
-                  Projetos servem para reunir conversas relacionadas em um mesmo
-                  contexto. Depois, o backend poderá vincular chats, memórias e
-                  ações a cada projeto.
+                  Projetos servem para reunir conversas relacionadas em um mesmo contexto.
                 </p>
               </div>
             </div>
@@ -840,10 +880,9 @@ function CreateConversationModal({
           >
             {isLoading
               ? "Criando..."
-              : createMode === "project"
+              : createMode === "project" && !isInsideProject
               ? "Criar projeto"
               : "Criar conversa"}
-
             {!isLoading && <Plus className="ml-2 h-4 w-4" />}
           </button>
 
@@ -888,6 +927,7 @@ function ConversationTypeButton({
   );
 }
 
+
 function ProjectFolderCard({
   project,
   count,
@@ -915,7 +955,7 @@ function ProjectFolderCard({
             </p>
 
             <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/42">
-              {project.description}
+              {project.description || "Sem descrição"}
             </p>
 
             <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-[0.68rem] font-semibold text-white/42">
@@ -948,365 +988,64 @@ function Background() {
   );
 }
 
-function formatNotificationTime(createdAt: string) {
-  const date = new Date(createdAt);
-  const now = new Date();
-  const diffMin = Math.floor((now.getTime() - date.getTime()) / 60000);
-  if (diffMin < 1) return "Agora";
-  if (diffMin < 60) return `Há ${diffMin} min`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `Há ${diffH}h`;
-  const diffDays = Math.floor(diffH / 24);
-  if (diffDays === 1) return "Ontem";
-  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-}
-
-type NotificationAction = {
-  task_id?: string;
-  new_date?: string | null;
-  new_start_time?: string | null;
-  new_end_time?: string | null;
-  reason?: string | null;
-};
-
-type NotificationWithAction = api.NotificationData & {
-  action?: NotificationAction | null;
-};
-
-function NotificationItem({
-  notification,
-  onRead,
-  onAccept,
-  onReject,
-}: {
-  notification: api.NotificationData;
-  onRead: (id: string) => void;
-  onAccept: (id: string) => void;
-  onReject: (id: string) => void;
-}) {
-  const typedNotification = notification as NotificationWithAction;
-
-  const isUnread = notification.status === "unread";
-  const isImprovement = notification.type === "improvement";
-  const isChange = notification.type === "change";
-  const isAccepted = notification.status === "accepted";
-  const isRejected = notification.status === "rejected";
-  const isHandled = isAccepted || isRejected;
-
-  const canAct = isImprovement && !isHandled;
-  const action = typedNotification.action;
-
-  function handleCardClick() {
-    if (isUnread) {
-      onRead(notification.id);
-    }
-  }
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={handleCardClick}
-      onKeyDown={(event) => {
-        if (event.key === "Enter" || event.key === " ") {
-          handleCardClick();
-        }
-      }}
-      className={`rounded-[1.55rem] border p-4 text-left transition active:scale-[0.99] ${
-        isImprovement
-          ? isHandled
-            ? "border-white/10 bg-white/[0.035] opacity-55"
-            : "border-purple-300/24 bg-purple-500/12"
-          : isUnread
-          ? "border-purple-300/18 bg-purple-500/8"
-          : "border-white/10 bg-white/[0.035] opacity-50"
-      }`}
-    >
-      <div className="mb-3 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-start gap-3">
-          <div
-            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border ${
-              isImprovement
-                ? "border-purple-300/25 bg-purple-500/16 text-purple-100"
-                : isChange
-                ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
-                : "border-white/10 bg-white/[0.055] text-white/50"
-            }`}
-          >
-            {isImprovement ? (
-              <Sparkles className="h-4 w-4" />
-            ) : (
-              <Bell className="h-4 w-4" />
-            )}
-          </div>
-
-          <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap items-center gap-2">
-              <span
-                className={`rounded-full border px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] ${
-                  isImprovement
-                    ? "border-purple-300/20 bg-purple-500/12 text-purple-100"
-                    : isChange
-                    ? "border-emerald-300/15 bg-emerald-400/10 text-emerald-100/75"
-                    : "border-white/10 bg-white/[0.045] text-white/38"
-                }`}
-              >
-                {isImprovement
-                  ? "Sugestão"
-                  : isChange
-                  ? "Alteração"
-                  : "Aviso"}
-              </span>
-
-              {isUnread && (
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-300" />
-              )}
-            </div>
-
-            <p className="text-sm font-semibold leading-5 text-white">
-              {notification.title}
-            </p>
-
-            <p className="mt-1 text-xs leading-5 text-white/44">
-              {notification.body}
-            </p>
-          </div>
-        </div>
-
-        <span className="shrink-0 text-[0.65rem] font-medium text-white/28">
-          {formatNotificationTime(notification.created_at)}
-        </span>
-      </div>
-
-      {isImprovement && action && !isHandled && (
-        <div className="mb-3 rounded-[1.15rem] border border-white/10 bg-black/18 p-3">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/28">
-            Ajuste sugerido
-          </p>
-
-          {(action.new_date || action.new_start_time || action.new_end_time) && (
-            <p className="mt-2 text-xs font-semibold text-white/70">
-              {action.new_date && <>Data: {action.new_date}</>}
-              {action.new_start_time && (
-                <>
-                  {action.new_date ? " · " : ""}
-                  {action.new_start_time}
-                  {action.new_end_time ? ` – ${action.new_end_time}` : ""}
-                </>
-              )}
-            </p>
-          )}
-
-          {action.reason && (
-            <p className="mt-1 text-xs leading-5 text-white/38">
-              {action.reason}
-            </p>
-          )}
-        </div>
-      )}
-
-      {canAct && (
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onAccept(notification.id);
-            }}
-            className="inline-flex min-h-10 items-center justify-center rounded-2xl bg-purple-500 px-4 text-xs font-semibold text-white shadow-lg shadow-purple-950/25 active:scale-[0.98]"
-          >
-            Aceitar
-          </button>
-
-          <button
-            type="button"
-            onClick={(event) => {
-              event.stopPropagation();
-              onReject(notification.id);
-            }}
-            className="inline-flex min-h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-xs font-semibold text-white/55 active:scale-[0.98]"
-          >
-            Recusar
-          </button>
-        </div>
-      )}
-
-      {!isImprovement && isUnread && (
-        <button
-          type="button"
-          onClick={(event) => {
-            event.stopPropagation();
-            onRead(notification.id);
-          }}
-          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.045] px-3 text-[0.68rem] font-semibold text-white/45 active:scale-[0.98]"
-        >
-          Marcar como lida
-        </button>
-      )}
-
-      {isAccepted && (
-        <p className="mt-3 text-[0.68rem] font-semibold text-purple-200/70">
-          Sugestão aceita
-        </p>
-      )}
-
-      {isRejected && (
-        <p className="mt-3 text-[0.68rem] font-semibold text-white/30">
-          Sugestão recusada
-        </p>
-      )}
-    </div>
-  );
-}
-
 function NotificationsSheet({
   isOpen,
   onClose,
-  onUnreadCountChange,
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onUnreadCountChange: (count: number) => void;
 }) {
-  const [notifications, setNotifications] = useState<api.NotificationData[]>([]);
-  const [notificationView, setNotificationView] = useState<"unread" | "read">(
-    "unread"
-  );
-  const [hasMore, setHasMore] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const NOTIFICATIONS_PAGE_SIZE = 10;
-
-  const unreadNotifications = notifications.filter(
-    (notification) => notification.status === "unread"
-  );
-
-  const readNotifications = notifications.filter(
-    (notification) => notification.status !== "unread"
-  );
-
-  const filteredNotifications =
-    notificationView === "unread" ? unreadNotifications : readNotifications;
-  const shouldShowLoadMore =
-    hasMore && filteredNotifications.length >= NOTIFICATIONS_PAGE_SIZE;
-
-  const unreadCount = unreadNotifications.length;
-  const readCount = readNotifications.length;
-
-  useEffect(() => {
-    if (!isOpen) return;
-
-    setLoading(true);
-
-    api
-      .getNotifications(NOTIFICATIONS_PAGE_SIZE + 1, 0)
-      .then((data) => {
-        const visibleNotifications = data.slice(0, NOTIFICATIONS_PAGE_SIZE);
-
-        setNotifications(visibleNotifications);
-        setHasMore(data.length > NOTIFICATIONS_PAGE_SIZE);
-
-        onUnreadCountChange(
-          visibleNotifications.filter(
-            (notification) => notification.status === "unread"
-          ).length
-        );
-      })
-      .catch(() => null)
-      .finally(() => setLoading(false));
-  }, [isOpen, onUnreadCountChange]);
-
-  async function loadMore() {
-    try {
-      const more = await api.getNotifications(
-        NOTIFICATIONS_PAGE_SIZE + 1,
-        notifications.length
-      );
-
-      const visibleMore = more.slice(0, NOTIFICATIONS_PAGE_SIZE);
-
-      setNotifications((prev) => {
-        const next = [...prev, ...visibleMore];
-
-        onUnreadCountChange(
-          next.filter((notification) => notification.status === "unread").length
-        );
-
-        return next;
-      });
-
-      setHasMore(more.length > NOTIFICATIONS_PAGE_SIZE);
-    } catch {
-      // ignore
-    }
-  }
-
-  async function handleRead(id: string) {
-    const currentNotification = notifications.find(
-      (notification) => notification.id === id
-    );
-
-    if (!currentNotification || currentNotification.status !== "unread") {
-      return;
-    }
-
-    await api.markNotificationRead(id).catch(() => null);
-
-    setNotifications((prev) => {
-      const next = prev.map((notification) =>
-        notification.id === id
-          ? { ...notification, status: "read" as const }
-          : notification
-      );
-
-      onUnreadCountChange(
-        next.filter((notification) => notification.status === "unread").length
-      );
-
-      return next;
-    });
-  }
-
-  async function handleAccept(id: string) {
-    await api.acceptNotification(id).catch(() => null);
-
-    setNotifications((prev) => {
-      const next = prev.map((notification) =>
-        notification.id === id
-          ? { ...notification, status: "accepted" as const }
-          : notification
-      );
-
-      onUnreadCountChange(
-        next.filter((notification) => notification.status === "unread").length
-      );
-
-      return next;
-    });
-
-    setNotificationView("read");
-  }
-
-  async function handleReject(id: string) {
-    await api.rejectNotification(id).catch(() => null);
-
-    setNotifications((prev) => {
-      const next = prev.map((notification) =>
-        notification.id === id
-          ? { ...notification, status: "rejected" as const }
-          : notification
-      );
-
-      onUnreadCountChange(
-        next.filter((notification) => notification.status === "unread").length
-      );
-
-      return next;
-    });
-
-    setNotificationView("read");
-  }
+  const [notifications, setNotifications] = useState([
+    {
+      id: 1,
+      title: "Seu planejamento de hoje está pronto",
+      description:
+        "O Axon organizou uma sugestão inicial com base no seu ritmo e prioridades.",
+      time: "Agora",
+      unread: true,
+    },
+    {
+      id: 2,
+      title: "Bom momento para foco profundo",
+      description:
+        "Sua janela de energia indica um bom momento para executar uma tarefa importante.",
+      time: "Há 12 min",
+      unread: true,
+    },
+    {
+      id: 3,
+      title: "Novo insight disponível",
+      description:
+        "Identificamos um padrão inicial entre seus horários de energia e suas tarefas.",
+      time: "Hoje",
+      unread: false,
+    },
+  ]);
 
   if (!isOpen) return null;
+
+  function markAsRead(notificationId: number) {
+    setNotifications((current) =>
+      current.map((notification) =>
+        notification.id === notificationId
+          ? { ...notification, unread: false }
+          : notification
+      )
+    );
+  }
+
+  function markAllAsRead() {
+    setNotifications((current) =>
+      current.map((notification) => ({
+        ...notification,
+        unread: false,
+      }))
+    );
+  }
+
+  const hasUnreadNotifications = notifications.some(
+    (notification) => notification.unread
+  );
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
@@ -1326,8 +1065,8 @@ function NotificationsSheet({
               </h2>
 
               <p className="mt-2 text-xs leading-5 text-white/45">
-                Avisos importantes, lembretes inteligentes e sugestões para
-                melhorar seu planejamento.
+                Avisos importantes, lembretes inteligentes e atualizações do seu
+                ambiente.
               </p>
             </div>
 
@@ -1340,87 +1079,78 @@ function NotificationsSheet({
             </button>
           </div>
 
-          <div className="flex rounded-2xl border border-white/10 bg-white/[0.045] p-1">
+          {hasUnreadNotifications && (
             <button
               type="button"
-              onClick={() => setNotificationView("unread")}
-              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                notificationView === "unread"
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
-              }`}
+              onClick={markAllAsRead}
+              className="inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
             >
-              Não lidas
-              {unreadCount > 0 && (
-                <span className="ml-1 text-[0.65rem] opacity-75">
-                  {unreadCount}
-                </span>
-              )}
+              Marcar todas como lidas
             </button>
-
-            <button
-              type="button"
-              onClick={() => setNotificationView("read")}
-              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                notificationView === "read"
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
-              }`}
-            >
-              Lidas
-              {readCount > 0 && (
-                <span className="ml-1 text-[0.65rem] opacity-75">
-                  {readCount}
-                </span>
-              )}
-            </button>
-          </div>
+          )}
         </div>
 
         <div className="relative flex-1 overflow-y-auto px-5 py-4">
-          {loading ? (
-            <div className="py-8 text-center text-sm text-white/35">
-              Carregando...
-            </div>
-          ) : filteredNotifications.length === 0 ? (
-            <div className="py-8 text-center">
-              <Bell className="mx-auto mb-3 h-6 w-6 text-purple-200/40" />
+          <div className="space-y-3">
+            {notifications.map((notification) => (
+              <div
+                key={notification.id}
+                className={`rounded-[1.45rem] border p-4 transition ${
+                  notification.unread
+                    ? "border-purple-300/20 bg-purple-500/10"
+                    : "border-white/10 bg-white/[0.035] opacity-45"
+                }`}
+              >
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex min-w-0 items-start gap-3">
+                    <div
+                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
+                        notification.unread
+                          ? "bg-purple-300 shadow-[0_0_14px_rgba(216,180,254,0.9)]"
+                          : "bg-white/18"
+                      }`}
+                    />
 
-              <p className="text-sm font-semibold text-white/55">
-                {notificationView === "unread"
-                  ? "Nenhuma notificação não lida"
-                  : "Nenhuma notificação lida"}
-              </p>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-semibold leading-5 text-white">
+                          {notification.title}
+                        </p>
+                      </div>
 
-              <p className="mt-1 text-xs leading-5 text-white/30">
-                {notificationView === "unread"
-                  ? "Quando houver novos avisos ou sugestões, eles aparecerão aqui."
-                  : "Notificações já lidas, aceitas ou recusadas aparecerão nesta aba."}
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {filteredNotifications.map((notification) => (
-                <NotificationItem
-                  key={notification.id}
-                  notification={notification}
-                  onRead={handleRead}
-                  onAccept={handleAccept}
-                  onReject={handleReject}
-                />
-              ))}
+                      <p className="mt-1 text-xs leading-5 text-white/42">
+                        {notification.description}
+                      </p>
 
-              {shouldShowLoadMore && (
-                <button
-                  type="button"
-                  onClick={loadMore}
-                  className="mt-1 inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
-                >
-                  Ver mais
-                </button>
-              )}
-            </div>
-          )}
+                      {notification.unread && (
+                        <button
+                          type="button"
+                          onClick={() => markAsRead(notification.id)}
+                          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.055] px-3 text-[0.68rem] font-semibold text-purple-100 active:scale-[0.98]"
+                        >
+                          Marcar como lida
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <span className="shrink-0 text-[0.65rem] font-medium text-white/30">
+                    {notification.time}
+                  </span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 active:scale-[0.98]"
+          >
+            Fechar
+          </button>
         </div>
       </div>
     </div>

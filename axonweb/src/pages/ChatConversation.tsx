@@ -7,6 +7,7 @@ import {
   Check,
   Edit3,
   Info,
+  Briefcase,
   Loader2,
   Menu,
   MoreVertical,
@@ -116,12 +117,37 @@ export default function ChatConversation() {
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [isProjectSheetOpen, setIsProjectSheetOpen] = useState(false);
 
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const historyRef = useRef<api.ChatMessage[]>([]);
+
+  const [conversation, setConversation] = useState<api.ConversationData | null>(
+    null
+  );
+
+  // Carrega os dados da conversa atual para título e projeto
+  useEffect(() => {
+    if (!conversationId || conversationId === "axon-notifications") return;
+
+    api
+      .getConversations()
+      .then((items) => {
+        const currentConversation = items.find(
+          (item) => item.id === conversationId
+        );
+
+        if (!currentConversation) return;
+
+        setConversation(currentConversation);
+        setChatTitle(currentConversation.title);
+        setDraftTitle(currentConversation.title);
+      })
+      .catch(() => null);
+  }, [conversationId]);
 
   // Carrega o histórico real da conversa ao abrir
   useEffect(() => {
@@ -302,6 +328,24 @@ export default function ChatConversation() {
     }
   }
 
+  async function handleMoveConversationToProject(projectId: string | null) {
+    if (!conversation) return;
+
+    const updatedConversation = await api.updateConversationProject(
+      conversation.id,
+      projectId
+    );
+
+    setConversation((prev) =>
+      prev
+        ? {
+            ...prev,
+            project_id: updatedConversation.project_id ?? projectId,
+          }
+        : prev
+    );
+  }
+
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
       <Background />
@@ -418,6 +462,10 @@ export default function ChatConversation() {
           setIsOptionsOpen(false);
           setIsContextOpen(true);
         }}
+        onMoveProject={() => {
+          setIsOptionsOpen(false);
+          setIsProjectSheetOpen(true);
+        }}
         onClear={() => {
           setIsOptionsOpen(false);
           setConfirmAction("clear");
@@ -454,6 +502,13 @@ export default function ChatConversation() {
         onClose={() => setConfirmAction(null)}
         onConfirm={handleConfirmAction}
       />
+
+      <MoveConversationProjectSheet
+        isOpen={isProjectSheetOpen}
+        currentProjectId={conversation?.project_id ?? null}
+        onClose={() => setIsProjectSheetOpen(false)}
+        onMove={handleMoveConversationToProject}
+      />
     </main>
   );
 }
@@ -463,6 +518,7 @@ function ChatOptionsSheet({
   onClose,
   onRename,
   onContext,
+  onMoveProject,
   onClear,
   onArchive,
   onDelete,
@@ -471,6 +527,7 @@ function ChatOptionsSheet({
   onClose: () => void;
   onRename: () => void;
   onContext: () => void;
+  onMoveProject: () => void;
   onClear: () => void;
   onArchive: () => void;
   onDelete: () => void;
@@ -517,6 +574,13 @@ function ChatOptionsSheet({
               title="Ver contexto"
               description="Veja o foco e os dados dessa conversa."
               onClick={onContext}
+            />
+
+            <OptionButton
+              icon={Briefcase}
+              title="Mover para projeto"
+              description="Coloque esta conversa dentro de um projeto."
+              onClick={onMoveProject}
             />
 
             <OptionButton
@@ -857,6 +921,187 @@ function MessageBubble({ message }: { message: Message }) {
         )}
 
         {message.text}
+      </div>
+    </div>
+  );
+}
+
+
+function MoveConversationProjectSheet({
+  isOpen,
+  currentProjectId,
+  onClose,
+  onMove,
+}: {
+  isOpen: boolean;
+  currentProjectId: string | null;
+  onClose: () => void;
+  onMove: (projectId: string | null) => Promise<void>;
+}) {
+  const [projects, setProjects] = useState<api.ChatProjectData[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [submittingProjectId, setSubmittingProjectId] = useState<string | null>(
+    null
+  );
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setLoading(true);
+    setError(null);
+
+    api
+      .getChatProjects()
+      .then(setProjects)
+      .catch((e) =>
+        setError(e instanceof Error ? e.message : "Erro ao carregar projetos")
+      )
+      .finally(() => setLoading(false));
+  }, [isOpen]);
+
+  if (!isOpen) return null;
+
+  async function handleSelect(projectId: string | null) {
+    if (projectId === currentProjectId) {
+      onClose();
+      return;
+    }
+
+    setSubmittingProjectId(projectId ?? "none");
+    setError(null);
+
+    try {
+      await onMove(projectId);
+      onClose();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Erro ao mover conversa");
+    } finally {
+      setSubmittingProjectId(null);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
+      <div className="relative flex max-h-[82vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+
+        <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
+          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <Briefcase className="h-3.5 w-3.5" />
+                Projeto
+              </div>
+
+              <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+                Mover conversa
+              </h2>
+
+              <p className="mt-2 text-xs leading-5 text-white/45">
+                Escolha em qual projeto esta conversa deve ficar.
+              </p>
+            </div>
+
+            <button
+              onClick={onClose}
+              disabled={submittingProjectId !== null}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96] disabled:opacity-50"
+              aria-label="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+          {loading ? (
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/45">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Carregando projetos…
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <button
+                type="button"
+                onClick={() => handleSelect(null)}
+                disabled={submittingProjectId !== null}
+                className={`flex min-h-14 w-full items-center justify-between rounded-2xl border px-4 text-left active:scale-[0.98] disabled:opacity-60 ${
+                  currentProjectId === null
+                    ? "border-purple-300/25 bg-purple-500/12"
+                    : "border-white/10 bg-white/[0.045]"
+                }`}
+              >
+                <div>
+                  <p className="text-sm font-semibold text-white">
+                    Fora de projetos
+                  </p>
+                  <p className="mt-1 text-xs text-white/38">
+                    A conversa aparece na aba Todas.
+                  </p>
+                </div>
+
+                {submittingProjectId === "none" ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-white/45" />
+                ) : currentProjectId === null ? (
+                  <Check className="h-4 w-4 text-purple-200" />
+                ) : null}
+              </button>
+
+              {projects.map((project) => {
+                const isCurrent = currentProjectId === project.id;
+                const isSubmitting = submittingProjectId === project.id;
+
+                return (
+                  <button
+                    key={project.id}
+                    type="button"
+                    onClick={() => handleSelect(project.id)}
+                    disabled={submittingProjectId !== null}
+                    className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl border px-4 text-left active:scale-[0.98] disabled:opacity-60 ${
+                      isCurrent
+                        ? "border-purple-300/25 bg-purple-500/12"
+                        : "border-white/10 bg-white/[0.045]"
+                    }`}
+                  >
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-semibold text-white">
+                        {project.name}
+                      </p>
+
+                      <p className="mt-1 line-clamp-1 text-xs text-white/38">
+                        {project.description || "Sem descrição"}
+                      </p>
+                    </div>
+
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-white/45" />
+                    ) : isCurrent ? (
+                      <Check className="h-4 w-4 shrink-0 text-purple-200" />
+                    ) : null}
+                  </button>
+                );
+              })}
+
+              {projects.length === 0 && (
+                <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-5 text-center">
+                  <p className="text-sm font-semibold text-white">
+                    Nenhum projeto criado
+                  </p>
+                  <p className="mt-2 text-xs leading-5 text-white/40">
+                    Crie um projeto na tela de Chat para mover esta conversa.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {error && (
+            <p className="mt-3 text-xs font-medium text-rose-300">{error}</p>
+          )}
+        </div>
       </div>
     </div>
   );

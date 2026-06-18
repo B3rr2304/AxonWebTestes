@@ -59,6 +59,9 @@ const monthNames = [
 
 const weekdayShort = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
+const CALENDAR_SETUP_STORAGE_KEY = "axon_calendar_setup_choice";
+type CalendarSetupChoice = "google" | "independent";
+
 function toISODate(d: Date): string {
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
@@ -191,6 +194,18 @@ export default function Planning() {
   const [error, setError] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [carriedCount, setCarriedCount] = useState(0);
+  const [calendarSetupChoice, setCalendarSetupChoice] =
+    useState<CalendarSetupChoice | null>(() => {
+      const stored = localStorage.getItem(CALENDAR_SETUP_STORAGE_KEY);
+
+      if (stored === "google" || stored === "independent") {
+        return stored;
+      }
+
+      return null;
+    });
+  const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
+  const [calendarConnectError, setCalendarConnectError] = useState<string | null>(null);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -314,6 +329,34 @@ export default function Planning() {
     setTaskToDelete(null);
   }
 
+  async function handleConnectGoogleCalendar() {
+    if (isConnectingCalendar) return;
+
+    setIsConnectingCalendar(true);
+    setCalendarConnectError(null);
+
+    try {
+      const { auth_url } = await api.connectGoogleCalendar();
+
+      localStorage.setItem(CALENDAR_SETUP_STORAGE_KEY, "google");
+      setCalendarSetupChoice("google");
+      window.location.href = auth_url;
+    } catch (e) {
+      setCalendarConnectError(
+        e instanceof Error
+          ? e.message
+          : "Não foi possível iniciar a conexão com o Google Calendar."
+      );
+      setIsConnectingCalendar(false);
+    }
+  }
+
+  function handleUseIndependentCalendar() {
+    localStorage.setItem(CALENDAR_SETUP_STORAGE_KEY, "independent");
+    setCalendarSetupChoice("independent");
+    setCalendarConnectError(null);
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
       <Background />
@@ -399,106 +442,141 @@ export default function Planning() {
         <section className="mb-4 rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">Calendário</p>
+              <p className="text-sm font-semibold text-white">
+                {calendarSetupChoice ? "Calendário" : "Configurar calendário"}
+              </p>
               <p className="mt-1 text-xs text-white/38">
-                Mês, semana e blocos do dia
+                {calendarSetupChoice
+                  ? "Mês, semana e blocos do dia"
+                  : "Escolha como deseja usar sua agenda no Axon"}
               </p>
             </div>
 
-            <button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/35 active:scale-[0.96]"
-              aria-label="Criar novo item"
-            >
-              <Plus className="h-5 w-5" />
-            </button>
+            {calendarSetupChoice && (
+              <button
+                onClick={() => setIsCreateModalOpen(true)}
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/35 active:scale-[0.96]"
+                aria-label="Criar novo item"
+              >
+                <Plus className="h-5 w-5" />
+              </button>
+            )}
           </div>
 
-          <div className="mb-4 flex rounded-2xl border border-white/10 bg-black/20 p-1">
-            <button
-              onClick={() => setViewMode("month")}
-              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                viewMode === "month"
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
-              }`}
-            >
-              Mês
-            </button>
-
-            <button
-              onClick={() => setViewMode("week")}
-              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                viewMode === "week"
-                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
-              }`}
-            >
-              Dia/Semana
-            </button>
-          </div>
-
-          {viewMode === "month" ? (
-            <MonthCalendar
-              selectedDate={selectedDate}
-              onSelect={setSelectedDate}
-              tasks={tasks}
+          {!calendarSetupChoice ? (
+            <CalendarSetupCard
+              isConnecting={isConnectingCalendar}
+              error={calendarConnectError}
+              onConnect={handleConnectGoogleCalendar}
+              onUseIndependent={handleUseIndependentCalendar}
             />
           ) : (
             <>
-              <WeekCalendar
-                selectedDate={selectedDate}
-                onSelect={setSelectedDate}
-                taskDates={taskDates}
-              />
+              {calendarSetupChoice === "independent" && (
+                <div className="mb-4 rounded-[1.4rem] border border-white/10 bg-white/[0.035] p-3">
+                  <p className="text-xs leading-5 text-white/42">
+                    Você está usando o calendário independente do Axon. Depois será
+                    possível conectar o Google Calendar pelas configurações.
+                  </p>
+                </div>
+              )}
 
-              <div className="mt-5">
-                {loading ? (
-                  <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/45">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Carregando tarefas…
-                  </div>
-                ) : error ? (
-                  <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-4 text-sm text-rose-100">
-                    {error}
-                  </div>
-                ) : dayTasks.length === 0 && undatedTasks.length === 0 ? (
-                  <EmptyState onCreate={() => setIsCreateModalOpen(true)} />
-                ) : (
-                  <div className="space-y-5">
-                    {dayTasks.map((task) => (
-                      <TimelineItem
-                        key={task.id}
-                        task={task}
-                        selectedIso={selectedIso}
-                        onToggle={handleToggleDone}
-                        onEdit={handleEdit}
-                        onDelete={handleDelete}
-                      />
-                    ))}
+              {calendarSetupChoice === "google" && (
+                <div className="mb-4 rounded-[1.4rem] border border-purple-300/15 bg-purple-500/10 p-3">
+                  <p className="text-xs leading-5 text-purple-100/65">
+                    Google Calendar selecionado. Se a autorização ainda não foi
+                    concluída, o Axon terminará a conexão após o retorno do Google.
+                  </p>
+                </div>
+              )}
 
-                    {undatedTasks.length > 0 && (
-                      <div className="pt-2">
-                        <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/35">
-                          Sem data definida
-                        </p>
-                        <div className="space-y-5">
-                          {undatedTasks.map((task) => (
-                            <TimelineItem
-                              key={task.id}
-                              task={task}
-                              selectedIso={selectedIso}
-                              onEdit={handleEdit}
-                              onToggle={handleToggleDone}
-                              onDelete={handleDelete}
-                            />
-                          ))}
-                        </div>
+              <div className="mb-4 flex rounded-2xl border border-white/10 bg-black/20 p-1">
+                <button
+                  onClick={() => setViewMode("month")}
+                  className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                    viewMode === "month"
+                      ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                      : "text-white/42"
+                  }`}
+                >
+                  Mês
+                </button>
+
+                <button
+                  onClick={() => setViewMode("week")}
+                  className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                    viewMode === "week"
+                      ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                      : "text-white/42"
+                  }`}
+                >
+                  Dia/Semana
+                </button>
+              </div>
+
+              {viewMode === "month" ? (
+                <MonthCalendar
+                  selectedDate={selectedDate}
+                  onSelect={setSelectedDate}
+                  tasks={tasks}
+                />
+              ) : (
+                <>
+                  <WeekCalendar
+                    selectedDate={selectedDate}
+                    onSelect={setSelectedDate}
+                    taskDates={taskDates}
+                  />
+
+                  <div className="mt-5">
+                    {loading ? (
+                      <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/45">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Carregando tarefas…
+                      </div>
+                    ) : error ? (
+                      <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-4 text-sm text-rose-100">
+                        {error}
+                      </div>
+                    ) : dayTasks.length === 0 && undatedTasks.length === 0 ? (
+                      <EmptyState onCreate={() => setIsCreateModalOpen(true)} />
+                    ) : (
+                      <div className="space-y-5">
+                        {dayTasks.map((task) => (
+                          <TimelineItem
+                            key={task.id}
+                            task={task}
+                            selectedIso={selectedIso}
+                            onToggle={handleToggleDone}
+                            onEdit={handleEdit}
+                            onDelete={handleDelete}
+                          />
+                        ))}
+
+                        {undatedTasks.length > 0 && (
+                          <div className="pt-2">
+                            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/35">
+                              Sem data definida
+                            </p>
+                            <div className="space-y-5">
+                              {undatedTasks.map((task) => (
+                                <TimelineItem
+                                  key={task.id}
+                                  task={task}
+                                  selectedIso={selectedIso}
+                                  onEdit={handleEdit}
+                                  onToggle={handleToggleDone}
+                                  onDelete={handleDelete}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
-                )}
-              </div>
+                </>
+              )}
             </>
           )}
         </section>
@@ -553,6 +631,78 @@ export default function Planning() {
         onConfirm={confirmDeleteTask}
       />
     </main>
+  );
+}
+
+function CalendarSetupCard({
+  isConnecting,
+  error,
+  onConnect,
+  onUseIndependent,
+}: {
+  isConnecting: boolean;
+  error: string | null;
+  onConnect: () => void;
+  onUseIndependent: () => void;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-[1.7rem] border border-purple-300/20 bg-purple-500/10 p-5">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(216,180,254,0.22),transparent_48%)]" />
+      <div className="relative">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-100">
+          <CalendarDays className="h-5 w-5" />
+        </div>
+
+        <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+          Como você quer usar sua agenda?
+        </h2>
+
+        <p className="mt-3 text-sm leading-6 text-white/50">
+          Conecte o Google Calendar para sincronizar seus compromissos ou use o
+          calendário independente do Axon por enquanto.
+        </p>
+
+        <div className="mt-5 space-y-3">
+          <button
+            type="button"
+            onClick={onConnect}
+            disabled={isConnecting}
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {isConnecting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Conectando…
+              </>
+            ) : (
+              <>
+                <CalendarDays className="mr-2 h-4 w-4" />
+                Vincular Google Calendar
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onUseIndependent}
+            disabled={isConnecting}
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/58 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Continuar sem vincular
+          </button>
+        </div>
+
+        {error && (
+          <p className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-500/10 p-3 text-xs leading-5 text-rose-100">
+            {error}
+          </p>
+        )}
+
+        <p className="mt-4 text-xs leading-5 text-white/34">
+          Você poderá conectar o Google Calendar depois em Configurações.
+        </p>
+      </div>
+    </div>
   );
 }
 
