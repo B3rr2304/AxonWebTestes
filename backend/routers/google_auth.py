@@ -1,9 +1,11 @@
 import os
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import RedirectResponse
 
 from database import supabase, supabase_auth
+from auth_helper import get_current_user
+from models.schemas import GoogleConnectResponse
 from services import google_service
 
 router = APIRouter(prefix="/auth/google", tags=["google-auth"])
@@ -15,12 +17,44 @@ def google_login():
     return RedirectResponse(google_service.build_auth_url(state))
 
 
+@router.get("/connect", response_model=GoogleConnectResponse)
+def google_connect(current_user: dict = Depends(get_current_user)):
+    """
+    Inicia o fluxo de conexão do Google Agenda para um usuário JÁ logado
+    (ex.: quem entrou com email/senha). Amarra o state ao user_id.
+    """
+    state = google_service.store_connect_state(current_user["id"])
+    return GoogleConnectResponse(auth_url=google_service.build_auth_url(state))
+
+
+def _handle_connect_callback(code: str, state: str, frontend_url: str) -> RedirectResponse:
+    """Fluxo 'conectar agenda' (usuário já logado). Reusa o redirect_uri do login."""
+    user_id = google_service.consume_connect_state(state)
+    if user_id is None:
+        return RedirectResponse(f"{frontend_url}/settings?google=error")
+    try:
+        tokens = google_service.exchange_code(code)
+        refresh_token = tokens.get("refresh_token")
+        if not refresh_token:
+            return RedirectResponse(f"{frontend_url}/settings?google=error")
+        supabase.table("profiles").update(
+            {"google_refresh_token": refresh_token}
+        ).eq("id", user_id).execute()
+        return RedirectResponse(f"{frontend_url}/settings?google=connected")
+    except Exception:
+        return RedirectResponse(f"{frontend_url}/settings?google=error")
+
+
 @router.get("/callback")
 def google_callback(code: str = None, error: str = None, state: str = None):
     frontend_url = os.getenv("FRONTEND_URL", "http://localhost:5173")
 
     if error or not code:
         return RedirectResponse(f"{frontend_url}/login?error=google_denied")
+
+    # Fluxo "conectar agenda" (usuário já logado) — state com prefixo connect_
+    if state and state.startswith("connect_"):
+        return _handle_connect_callback(code, state, frontend_url)
 
     if not state or not google_service.verify_and_consume_state(state):
         return RedirectResponse(f"{frontend_url}/login?error=invalid_state")

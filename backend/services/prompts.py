@@ -13,9 +13,10 @@ Montamos 1 prompt na hora, encaixando peças:
 Assim, mexer numa regra geral = editar 1 lugar só.
 """
 
-from datetime import date
+from datetime import datetime, timedelta
 
 from services import chronotype as chronotype_service
+from services import user_tz
 
 _WEEKDAYS_PT = [
     "segunda-feira", "terça-feira", "quarta-feira", "quinta-feira",
@@ -45,6 +46,12 @@ BASE_IDENTITY = (
     "- Você consegue criar, listar, atualizar e deletar tarefas/eventos/rotinas do "
     "usuário de verdade, usando as ferramentas disponíveis. Não diga apenas 'anote' "
     "ou 'adicione na sua lista' — execute a ação você mesmo.\n"
+    "- REGRA ABSOLUTA: NUNCA diga que criou, alterou ou deletou algo sem ter chamado "
+    "a ferramenta correspondente NA MESMA RESPOSTA. Confirmar uma ação que você não "
+    "executou é um erro grave. Se decidiu criar uma tarefa, CHAME `criar_tarefa` "
+    "agora — só depois de a ferramenta retornar sucesso é que você pode dizer 'criado'.\n"
+    "- A ordem correta é sempre: (1) chamar a ferramenta, (2) ver o resultado, "
+    "(3) confirmar ao usuário. Nunca inverta essa ordem nem pule o passo 1.\n"
     "- Só execute depois de ter o necessário (pelo menos um título claro). Se faltar "
     "informação essencial (como a data/horário), pergunte antes em vez de inventar.\n"
     "- Antes de atualizar ou deletar uma tarefa específica, use a ferramenta de "
@@ -197,11 +204,37 @@ def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> str:
     cronotipo = perfil.get("cronotipo") or "intermediate"
     schedule_type = perfil.get("schedule_type")
 
-    hoje = date.today()
+    tz = user_tz.zone(perfil.get("timezone"))
+    agora = datetime.now(tz)
+    hoje = agora.date()
+
+    # Calendário de referência: o modelo é ruim em CALCULAR datas (erra "amanhã"
+    # por um dia), mas ótimo em COPIAR de uma tabela. Listamos os próximos 14 dias
+    # já resolvidos para ele nunca precisar fazer aritmética de data de cabeça.
+    linhas_cal = []
+    for i in range(15):
+        d = hoje + timedelta(days=i)
+        rotulo = d.isoformat() + f" ({_WEEKDAYS_PT[d.weekday()]})"
+        if i == 0:
+            rotulo += "  ← HOJE"
+        elif i == 1:
+            rotulo += "  ← AMANHÃ"
+        linhas_cal.append("  " + rotulo)
+    calendario = "\n".join(linhas_cal)
+
     data_atual = (
-        f"DATA DE HOJE: {hoje.isoformat()} ({_WEEKDAYS_PT[hoje.weekday()]}).\n"
-        "Use esta data como referência para resolver expressões como 'hoje', "
-        "'amanhã' ou 'na sexta' ao agendar tarefas."
+        f"DATA E HORA AGORA: {hoje.isoformat()} ({_WEEKDAYS_PT[hoje.weekday()]}), "
+        f"{agora.strftime('%H:%M')} no fuso do usuário ({tz.key}).\n\n"
+        "CALENDÁRIO DE REFERÊNCIA (use EXATAMENTE estas datas — NUNCA calcule de cabeça):\n"
+        f"{calendario}\n"
+        "REGRAS DE DATA (críticas, erros aqui são graves):\n"
+        "- Para 'hoje', 'amanhã', 'depois de amanhã' ou um dia da semana (ex.: 'sexta'), "
+        "copie a data AAAA-MM-DD correspondente DESTA tabela. Não some nem subtraia dias mentalmente.\n"
+        "- Quando o usuário disser um dia da semana, use a PRÓXIMA ocorrência dele na tabela acima.\n"
+        "- A data que você passa para a ferramenta e a data que você confirma ao usuário "
+        "têm que ser EXATAMENTE a mesma. Antes de confirmar, releia o resultado da ferramenta "
+        "e repita a data que realmente foi gravada — nunca um rótulo diferente.\n"
+        "- Se houver qualquer dúvida sobre qual data o usuário quis, pergunte antes de agendar."
     )
 
     partes = [

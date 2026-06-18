@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
 from models.schemas import (
     NotificationResponse,
     NotificationCountResponse,
@@ -25,16 +25,17 @@ def unread_count(current_user: dict = Depends(get_current_user)):
     return NotificationCountResponse(unread=count)
 
 
-def _run_analysis_safe(user_id: str) -> None:
+def _run_analysis_safe(user_id: str, tz_header: str | None) -> None:
     """Executa a análise em background, nunca propaga exceção."""
     try:
-        notification_analyzer.analyze_and_notify(user_id)
+        notification_analyzer.analyze_and_notify(user_id, tz_header)
     except Exception:
         pass
 
 
 @router.post("/analyze", response_model=NotificationAnalyzeResponse)
 def trigger_analysis(
+    request: Request,
     background_tasks: BackgroundTasks,
     current_user: dict = Depends(get_current_user),
 ):
@@ -46,7 +47,9 @@ def trigger_analysis(
     A notificação, se criada, aparece no banco; o frontend a pega no próximo
     fetch de unread-count / lista.
     """
-    background_tasks.add_task(_run_analysis_safe, current_user["id"])
+    background_tasks.add_task(
+        _run_analysis_safe, current_user["id"], request.headers.get("X-Timezone")
+    )
     return NotificationAnalyzeResponse(analyzed=True)
 
 

@@ -1,15 +1,12 @@
 from datetime import datetime
-from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, Request
 from fastapi.responses import StreamingResponse
 from models.schemas import ChatRequest, ChatResponse
 from auth_helper import get_current_user
 from database import supabase
-from services import claude_service, chronotype as chronotype_service
+from services import claude_service, chronotype as chronotype_service, user_tz
 from limiter import chat_limiter
-
-_TZ = ZoneInfo("America/Sao_Paulo")
 
 _CURVE_KEY = {
     "Matutino": "morning", "Vespertino": "evening", "Noturno": "night",
@@ -59,16 +56,19 @@ def _stream_and_save(user_id: str, conversation_id: str, user_message: str, hist
         yield "data: [DONE]\n\n"
 
 
-def _load_perfil(user_id: str) -> dict:
+def _load_perfil(user_id: str, tz_header: str | None = None) -> dict:
     """Carrega o perfil completo do usuário para montar o prompt do agente."""
     profile_res = (
         supabase.table("profiles")
-        .select("name, chronotype, qualidade_sono, schedule_type")
+        .select("name, chronotype, qualidade_sono, schedule_type, timezone")
         .eq("id", user_id)
         .single()
         .execute()
     )
     profile_data = profile_res.data or {}
+
+    # Fuso efetivo: header do navegador (se válido) tem prioridade; persiste se mudou.
+    tz_name = user_tz.resolve(user_id, tz_header, stored=profile_data.get("timezone"))
 
     answers_res = (
         supabase.table("respostas")
@@ -91,7 +91,7 @@ def _load_perfil(user_id: str) -> dict:
 
     chronotype = profile_data.get("chronotype", "intermediate")
     curve_key = _CURVE_KEY.get(chronotype, "intermediate")
-    hour = datetime.now(_TZ).hour
+    hour = datetime.now(user_tz.zone(tz_name)).hour
     block_idx = (hour * 60) // 90
     blocks = chronotype_service.CHRONOTYPE_BLOCKS.get(
         curve_key, chronotype_service.CHRONOTYPE_BLOCKS["intermediate"]
@@ -118,6 +118,7 @@ def _load_perfil(user_id: str) -> dict:
         "respostas": respostas,
         "memories": memories,
         "current_block": current_block,
+        "timezone": tz_name,
     }
 
 
@@ -138,7 +139,7 @@ def chat_message(
 
     user_id = current_user["id"]
 
-    perfil = _load_perfil(user_id)
+    perfil = _load_perfil(user_id, request.headers.get("X-Timezone"))
     system_prompt = claude_service.build_agent_prompt(perfil, perfil.get("memories", []))
 
     history = [{"role": m.role, "content": m.content} for m in body.history[-_MAX_HISTORY:]]
@@ -204,7 +205,7 @@ def chat(
 
     user_id = current_user["id"]
 
-    perfil = _load_perfil(user_id)
+    perfil = _load_perfil(user_id, request.headers.get("X-Timezone"))
     system_prompt = claude_service.build_agent_prompt(perfil, perfil.get("memories", []))
 
     history = [{"role": m.role, "content": m.content} for m in body.history[-_MAX_HISTORY:]]
