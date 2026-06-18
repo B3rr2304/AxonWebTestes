@@ -117,6 +117,10 @@ export function logout() {
   localStorage.removeItem("axon_user");
 }
 
+export function connectGoogleCalendar() {
+  return request<{ auth_url: string }>("/auth/google/connect");
+}
+
 export function saveSession(res: AuthResponse) {
   localStorage.setItem("axon_token", res.access_token);
   localStorage.setItem("axon_refresh_token", res.refresh_token);
@@ -340,20 +344,46 @@ export interface ConversationData {
   created_at: string;
   last_message?: string;
   message_count: number;
+  project_id?: string | null;
 }
 
 export function getConversations() {
   return request<ConversationData[]>("/chat/conversations");
 }
 
-export function createConversation(title: string, type: ConversationData["type"]) {
+export async function createConversation(
+  title: string,
+  type: string,
+  projectId?: string | null
+) {
+  const payload = {
+    title,
+    type,
+    ...(projectId !== undefined ? { project_id: projectId } : {}),
+  };
+
   return request<ConversationData>("/chat/conversations", {
     method: "POST",
-    body: JSON.stringify({ title, type }),
+    body: JSON.stringify(payload),
   });
 }
 
-export function updateConversation(id: string, updates: { title?: string; archived?: boolean }) {
+export async function updateConversationProject(
+  conversationId: string,
+  projectId: string | null
+) {
+  return request<ConversationData>(`/chat/conversations/${conversationId}`, {
+    method: "PATCH",
+    body: JSON.stringify({
+      project_id: projectId,
+    }),
+  });
+}
+
+export function updateConversation(
+  id: string,
+  updates: { title?: string; archived?: boolean; project_id?: string | null }
+) {
   return request<ConversationData>(`/chat/conversations/${id}`, {
     method: "PATCH",
     body: JSON.stringify(updates),
