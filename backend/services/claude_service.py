@@ -39,7 +39,7 @@ def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: str):
+def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: str, tz_name: str | None = None):
     """
     Streaming SSE com o loop de tool use do Anthropic.
 
@@ -60,7 +60,7 @@ def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: st
     for _ in range(_MAX_TOOL_ROUNDS):
         with client.messages.stream(
             model=_MODEL,
-            max_tokens=1024,
+            max_tokens=4096,
             system=system_prompt,
             tools=agent_tools.TOOLS,
             messages=convo,
@@ -68,6 +68,14 @@ def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: st
             for text in stream.text_stream:
                 yield _sse({"text": text})
             final = stream.get_final_message()
+
+        # Se max_tokens foi atingido, a geração foi cortada. Pode ter acontecido
+        # no meio de um bloco tool_use (a ferramenta nunca seria chamada) ou no
+        # meio do texto de resposta. Avisa o usuário explicitamente em vez de
+        # fingir que tudo correu bem.
+        if final.stop_reason == "max_tokens":
+            yield _sse({"text": "\n\n⚠️ Resposta interrompida (limite de tokens atingido). Por favor, repita seu pedido."})
+            break
 
         if final.stop_reason != "tool_use":
             break
@@ -100,7 +108,7 @@ def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: st
                 "input": block.input,
             })
 
-            out = agent_tools.execute_tool(block.name, block.input, user_id)
+            out = agent_tools.execute_tool(block.name, block.input, user_id, tz_name)
 
             tool_results.append({
                 "type": "tool_result",

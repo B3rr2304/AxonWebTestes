@@ -8,7 +8,60 @@ usuário logado.
 Datas devem ser passadas pelo modelo no formato YYYY-MM-DD e horários como HH:MM.
 """
 
-from services import tasks_service, memory_service, notification_service
+from datetime import datetime, timedelta
+
+from services import tasks_service, memory_service, notification_service, user_tz
+
+# --- Resolução determinística de datas relativas ---------------------------
+# O modelo erra ao TRANSCREVER datas absolutas (ex.: escreve 2026-06-17 quando
+# hoje é 2026-06-18), mas acerta o SENTIDO relativo ("hoje", "amanhã", "sexta").
+# Por isso aceitamos a palavra-chave e calculamos a data exata aqui, no fuso do
+# usuário — eliminando a aritmética de data do modelo de vez.
+_REL_DATES = {
+    "hoje": 0,
+    "amanhã": 1, "amanha": 1,
+    "depois de amanhã": 2, "depois de amanha": 2,
+    "ontem": -1,
+}
+_WEEKDAYS = {
+    "segunda": 0, "segunda-feira": 0,
+    "terça": 1, "terca": 1, "terça-feira": 1, "terca-feira": 1,
+    "quarta": 2, "quarta-feira": 2,
+    "quinta": 3, "quinta-feira": 3,
+    "sexta": 4, "sexta-feira": 4,
+    "sábado": 5, "sabado": 5,
+    "domingo": 6,
+}
+
+# Campos cujo valor pode chegar como palavra-chave relativa e precisa virar data.
+_RESOLVABLE_DATE_FIELDS = ("scheduled_date", "end_date", "deadline")
+
+
+def _resolve_date(value, today):
+    """
+    Converte 'hoje'/'amanhã'/'sexta'/... para AAAA-MM-DD usando `today` (já no
+    fuso do usuário). Se já vier uma data AAAA-MM-DD (ou qualquer outra coisa),
+    devolve sem alterar — o banco valida o formato final.
+    """
+    if not isinstance(value, str):
+        return value
+    key = value.strip().lower()
+    if key in _REL_DATES:
+        return (today + timedelta(days=_REL_DATES[key])).isoformat()
+    if key in _WEEKDAYS:
+        delta = (_WEEKDAYS[key] - today.weekday()) % 7  # próxima ocorrência (0 = hoje)
+        return (today + timedelta(days=delta)).isoformat()
+    return value
+
+
+def _resolve_date_fields(tool_input: dict, tz_name: str | None) -> dict:
+    """Devolve uma cópia de tool_input com os campos de data resolvidos."""
+    today = datetime.now(user_tz.zone(tz_name)).date()
+    resolved = dict(tool_input)
+    for field in _RESOLVABLE_DATE_FIELDS:
+        if field in resolved:
+            resolved[field] = _resolve_date(resolved[field], today)
+    return resolved
 
 # Rótulos e formas para as notificações de alteração geradas por templates.
 _TYPE_LABEL = {"task": "Tarefa", "event": "Evento", "routine": "Rotina"}
@@ -203,9 +256,14 @@ TOOLS = [
 ]
 
 
-def execute_tool(name: str, tool_input: dict, user_id: str) -> dict:
+def execute_tool(name: str, tool_input: dict, user_id: str, tz_name: str | None = None) -> dict:
     """Executa a tool e devolve um dict serializável para o tool_result."""
     try:
+        # Resolve palavras-chave de data ('hoje', 'amanhã', dia da semana) para
+        # AAAA-MM-DD no fuso do usuário antes de qualquer escrita.
+        if name in ("criar_tarefa", "atualizar_tarefa"):
+            tool_input = _resolve_date_fields(tool_input, tz_name)
+
         if name == "criar_tarefa":
             task = tasks_service.create_task(
                 user_id, {**tool_input, "created_by": "agent"}

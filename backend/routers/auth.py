@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException, Request, status
-from models.schemas import RegisterRequest, LoginRequest, AuthResponse
+from models.schemas import RegisterRequest, LoginRequest, RefreshRequest, AuthResponse
 from database import supabase, supabase_auth
 from limiter import limiter
 
@@ -56,6 +56,31 @@ def login(request: Request, body: LoginRequest):
         refresh_token=res.session.refresh_token,
         user_id=user_id,
         email=body.email,
+        name=profile_data.get("name"),
+        has_chronotype=bool(profile_data.get("chronotype")),
+    )
+
+
+@router.post("/refresh", response_model=AuthResponse)
+@limiter.limit("20/minute")
+def refresh_session(request: Request, body: RefreshRequest):
+    try:
+        res = supabase_auth.auth.refresh_session(body.refresh_token)
+    except Exception:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada")
+
+    if res.user is None or res.session is None:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Sessão expirada")
+
+    user_id = res.user.id
+    profile = supabase.table("profiles").select("name, chronotype, email").eq("id", user_id).single().execute()
+    profile_data = profile.data or {}
+
+    return AuthResponse(
+        access_token=res.session.access_token,
+        refresh_token=res.session.refresh_token,
+        user_id=user_id,
+        email=profile_data.get("email") or res.user.email or "",
         name=profile_data.get("name"),
         has_chronotype=bool(profile_data.get("chronotype")),
     )
