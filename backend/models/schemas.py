@@ -174,3 +174,9 @@ class NotificationCountResponse(BaseModel):
 class NotificationAnalyzeResponse(BaseModel):
     analyzed: bool
     notification: Optional[NotificationResponse] = None
+
+
+# --- Google Calendar ---
+
+class GoogleConnectResponse(BaseModel):
+    auth_url: str

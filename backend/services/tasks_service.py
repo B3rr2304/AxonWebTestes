@@ -11,6 +11,7 @@ Erros de validação/posse levantam ValueError com mensagem amigável:
 """
 
 from database import supabase
+from services import calendar_sync
 
 # Campos de data que o Supabase devolve como date/datetime e precisam virar str.
 _DATE_FIELDS = ("scheduled_date", "end_date", "deadline", "start_time", "end_time", "created_at")
@@ -66,7 +67,9 @@ def create_task(user_id: str, data: dict) -> dict:
     if not result.data:
         raise ValueError("Erro ao criar tarefa")
 
-    return serialize(result.data[0])
+    task = serialize(result.data[0])
+    calendar_sync.sync_task_async(user_id, task, "create")
+    return task
 
 
 def _ensure_owned(user_id: str, task_id: str) -> None:
@@ -98,12 +101,26 @@ def update_task(user_id: str, task_id: str, data: dict) -> dict:
     if not result.data:
         raise ValueError("Erro ao atualizar tarefa")
 
-    return serialize(result.data[0])
+    task = serialize(result.data[0])
+    calendar_sync.sync_task_async(user_id, task, "update")
+    return task
 
 
 def delete_task(user_id: str, task_id: str) -> None:
-    _ensure_owned(user_id, task_id)
+    # Busca a tarefa (com google_event_id) antes de deletar, para remover do Google
+    existing = (
+        supabase.table("tasks")
+        .select("*")
+        .eq("id", task_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not existing.data:
+        raise ValueError("Tarefa não encontrada")
+
+    task = existing.data[0]
     supabase.table("tasks").delete().eq("id", task_id).eq("user_id", user_id).execute()
+    calendar_sync.sync_task_async(user_id, task, "delete")
 
 
 def carry_forward_tasks(user_id: str) -> list[dict]:

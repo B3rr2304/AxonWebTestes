@@ -11,13 +11,13 @@ Fluxo:
 
 import os
 import json
-from datetime import date, datetime, timezone
+from datetime import datetime
 
 import anthropic
 
 from database import supabase
 from services import notification_service, tasks_service, memory_service
-from services import chronotype as chronotype_service
+from services import chronotype as chronotype_service, user_tz
 
 _MODEL = "claude-sonnet-4-6"
 
@@ -49,8 +49,8 @@ _GOOD_BLOCKS = {"foco_moderado", "foco_profundo", "pico"}
 _MAX_SIMPLE_PER_DAY = 3
 
 
-def _load_user_context(user_id: str) -> dict:
-    """Carrega dados necessários para a análise."""
+def _load_user_context(user_id: str, tz_name: str) -> dict:
+    """Carrega dados necessários para a análise (no fuso do usuário)."""
     profile_res = (
         supabase.table("profiles")
         .select("name, chronotype")
@@ -62,16 +62,18 @@ def _load_user_context(user_id: str) -> dict:
     chronotype = profile.get("chronotype", "intermediate")
     curve_key = _CURVE_KEY.get(chronotype, "intermediate")
 
-    hour = datetime.now(timezone.utc).hour
+    now = datetime.now(user_tz.zone(tz_name))
+    hour = now.hour
     block_idx = (hour * 60) // 90
     blocks = chronotype_service.CHRONOTYPE_BLOCKS.get(
         curve_key, chronotype_service.CHRONOTYPE_BLOCKS["intermediate"]
     )
 
-    today = str(date.today())
+    today_date = now.date()
+    today = str(today_date)
     tasks = tasks_service.list_tasks(user_id, scheduled_date=today)
     tomorrow_tasks = tasks_service.list_tasks(
-        user_id, scheduled_date=str(date.fromordinal(date.today().toordinal() + 1))
+        user_id, scheduled_date=str(today_date.fromordinal(today_date.toordinal() + 1))
     )
     memories = memory_service.load_memories(user_id)
     recent_notifs = notification_service.get_recent_notifications(user_id, hours=72)
@@ -87,6 +89,8 @@ def _load_user_context(user_id: str) -> dict:
         "memories": memories,
         "recent_notifications": recent_notifs,
         "today": today,
+        "now_hhmm": now.strftime("%H:%M"),
+        "timezone": tz_name,
     }
 
 
@@ -171,7 +175,7 @@ def _build_analysis_prompt(ctx: dict, flags: dict) -> str:
 
 USUÁRIO: {ctx['user_name']}
 CRONOTIPO: {ctx['chronotype']}
-HORA ATUAL: {datetime.now(timezone.utc).strftime('%H:%M')} UTC
+HORA ATUAL: {ctx['now_hhmm']} (fuso do usuário: {ctx['timezone']})
 DATA: {ctx['today']}
 
 TAREFAS DE HOJE ({len(ctx['tasks_today'])} total):
@@ -226,7 +230,7 @@ O campo "action" só é necessário para type="improvement". Para type="simple",
 Se should_notify=false, os outros campos podem ser strings vazias."""
 
 
-def analyze_and_notify(user_id: str) -> dict | None:
+def analyze_and_notify(user_id: str, tz_header: str | None = None) -> dict | None:
     """
     Analisa a rotina do usuário e cria uma notificação se necessário.
 
@@ -237,7 +241,8 @@ def analyze_and_notify(user_id: str) -> dict | None:
 
     Retorna a notificação criada ou None.
     """
-    ctx = _load_user_context(user_id)
+    tz_name = user_tz.resolve(user_id, tz_header)
+    ctx = _load_user_context(user_id, tz_name)
     flags = _apply_rule_filter(ctx)
     flags["consecutive_rejections"] = notification_service.count_consecutive_rejections(user_id)
 
