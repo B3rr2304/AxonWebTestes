@@ -113,11 +113,14 @@ class TaskResponse(BaseModel):
 class ConversationCreate(BaseModel):
     title: str
     type: str = "general"  # general | planning | focus | project
+    project_id: Optional[str] = None
 
 
 class ConversationUpdate(BaseModel):
     title: Optional[str] = None
     archived: Optional[bool] = None
+    type: Optional[str] = None
+    project_id: Optional[str] = None
 
 
 class ConversationResponse(BaseModel):
@@ -125,9 +128,31 @@ class ConversationResponse(BaseModel):
     title: str
     type: str
     archived: bool
+    project_id: Optional[str] = None
     created_at: str
     last_message: Optional[str] = None
     message_count: int = 0
+
+
+# --- Chat Projects ---
+
+class ProjectCreate(BaseModel):
+    name: str
+    description: Optional[str] = None
+
+
+class ProjectUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+
+
+class ProjectResponse(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = None
+    conversation_count: int = 0
+    created_at: str
+    updated_at: str
 
 
 # --- Chat ---
