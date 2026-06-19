@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, field_validator
 from typing import Optional
 from datetime import date, time
 
@@ -209,3 +209,50 @@ class NotificationAnalyzeResponse(BaseModel):
 
 class GoogleConnectResponse(BaseModel):
     auth_url: str
+
+
+# --- Daily Log ---
+
+class DailyLogCreate(BaseModel):
+    sleep_time:          Optional[str] = None   # "23:30"
+    wake_time:           Optional[str] = None   # "07:00"
+    sleep_rating:        Optional[int] = None   # 1–5
+    sleep_tags:          list[str]     = []     # ["agitado", "interrompido"]
+    mood_rating:         Optional[int] = None   # 1–5
+    mood_tags:           list[str]     = []     # ["ansioso", "tranquilo"]
+    productivity_rating: Optional[int] = None   # 1–5
+    productivity_tags:   list[str]     = []     # ["em_flow"]
+    exercised:           Optional[bool] = None
+    notes:               Optional[str]  = None
+
+    @field_validator("sleep_rating", "mood_rating", "productivity_rating")
+    @classmethod
+    def _rating_entre_1_e_5(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and not (1 <= v <= 5):
+            raise ValueError("rating deve estar entre 1 e 5")
+        return v
+
+    @field_validator("sleep_tags", "mood_tags", "productivity_tags")
+    @classmethod
+    def _no_maximo_3_tags(cls, v: list[str]) -> list[str]:
+        if len(v) > 3:
+            raise ValueError("máximo de 3 tags por campo")
+        return v
+
+
+class DailyLogResponse(BaseModel):
+    id:                  str
+    date:                str
+    sleep_time:          Optional[str]  = None
+    wake_time:           Optional[str]  = None
+    hours_slept:         Optional[float] = None
+    sleep_rating:        Optional[int]  = None
+    sleep_tags:          list[str]      = []
+    mood_rating:         Optional[int]  = None
+    mood_tags:           list[str]      = []
+    productivity_rating: Optional[int]  = None
+    productivity_tags:   list[str]      = []
+    exercised:           Optional[bool] = None
+    notes:               Optional[str]  = None
+    created_at:          str
+    updated_at:          str

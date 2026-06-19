@@ -7,7 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from routers import classify, chat, conversations, projects, auth, profile, google_auth, tasks, dashboard, notifications
+from routers import classify, chat, conversations, projects, auth, profile, google_auth, tasks, dashboard, notifications, daily_log, insights
 from limiter import limiter
 
 _env = os.getenv("ENV", "production")
@@ -45,6 +45,8 @@ app.include_router(google_auth.router)
 app.include_router(tasks.router)
 app.include_router(dashboard.router)
 app.include_router(notifications.router)
+app.include_router(daily_log.router)
+app.include_router(insights.router)
 
 
 @app.get("/")
