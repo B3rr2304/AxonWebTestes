@@ -2,15 +2,17 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
 async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
   const token = localStorage.getItem("axon_token");
+
   return fetch(`${BASE_URL}${path}`, {
     ...options,
     headers: {
       "Content-Type": "application/json",
+      "X-Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...options?.headers,
     },
   });
-}
+} 
 
 export default apiFetch;
 
@@ -30,13 +32,14 @@ async function request<T>(
   let res: Response;
   try {
     res = await fetch(`${BASE_URL}${path}`, {
-      headers: {
-        "Content-Type": "application/json",
-        ...authHeaders(),
-        ...(options.headers as Record<string, string> | undefined),
-      },
-      ...options,
-    });
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+      ...authHeaders(),
+      ...(options.headers as Record<string, string> | undefined),
+    },
+  });
   } catch {
     throw new Error(
       "⚠️ DEV: Backend inacessível. Abra a porta 8000 como Pública no painel de Portas do VS Code e certifique-se de que o servidor está rodando (uvicorn main:app --reload)."
@@ -73,6 +76,25 @@ export interface ChatProjectData {
   conversation_count?: number;
   created_at?: string;
   updated_at?: string;
+}
+
+export async function updateChatProject(
+  projectId: string,
+  payload: {
+    name: string;
+    description?: string;
+  }
+) {
+  return request<ChatProjectData>(`/chat/projects/${projectId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteChatProject(projectId: string) {
+  return request<void>(`/chat/projects/${projectId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function getChatProjects() {
