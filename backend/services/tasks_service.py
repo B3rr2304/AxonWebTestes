@@ -10,11 +10,13 @@ Erros de validação/posse levantam ValueError com mensagem amigável:
 - o agente converte para um tool_result de erro.
 """
 
+from datetime import datetime, timezone
+
 from database import supabase
 from services import calendar_sync
 
 # Campos de data que o Supabase devolve como date/datetime e precisam virar str.
-_DATE_FIELDS = ("scheduled_date", "end_date", "deadline", "start_time", "end_time", "created_at")
+_DATE_FIELDS = ("scheduled_date", "end_date", "deadline", "start_time", "end_time", "created_at", "completed_at")
 # Campos de data que enviamos ao Supabase e precisam ser serializados antes.
 _WRITE_DATE_FIELDS = ("scheduled_date", "end_date", "deadline")
 
@@ -89,7 +91,24 @@ def update_task(user_id: str, task_id: str, data: dict) -> dict:
     if not payload:
         raise ValueError("Nenhum campo para atualizar")
 
-    _ensure_owned(user_id, task_id)
+    # Confirma posse e lê o status atual (para sincronizar completed_at sem
+    # sobrescrever o horário de conclusão se a tarefa já estava 'done').
+    existing = (
+        supabase.table("tasks")
+        .select("status")
+        .eq("id", task_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not existing.data:
+        raise ValueError("Tarefa não encontrada")
+    current_status = existing.data[0].get("status")
+
+    if "status" in payload:
+        if payload["status"] == "done" and current_status != "done":
+            payload["completed_at"] = datetime.now(timezone.utc).isoformat()
+        elif payload["status"] != "done":
+            payload["completed_at"] = None  # reabriu a tarefa
 
     result = (
         supabase.table("tasks")
@@ -138,7 +157,7 @@ def carry_forward_tasks(user_id: str) -> list[dict]:
 
     result = (
         supabase.table("tasks")
-        .select("id")
+        .select("id, carry_count")
         .eq("user_id", user_id)
         .eq("task_type", "task")
         .eq("scheduled_date", yesterday)
@@ -146,18 +165,29 @@ def carry_forward_tasks(user_id: str) -> list[dict]:
         .execute()
     )
 
-    ids = [row["id"] for row in (result.data or [])]
-    if not ids:
+    rows = result.data or []
+    if not rows:
         return []
 
-    updated = (
-        supabase.table("tasks")
-        .update({"scheduled_date": today})
-        .eq("user_id", user_id)
-        .in_("id", ids)
-        .execute()
-    )
-    return [serialize(row) for row in (updated.data or [])]
+    # Atualiza linha a linha para incrementar carry_count (PostgREST não
+    # permite expressões SQL como coluna = coluna + 1 em update em lote).
+    updated = []
+    for row in rows:
+        res = (
+            supabase.table("tasks")
+            .update(
+                {
+                    "scheduled_date": today,
+                    "carry_count": (row.get("carry_count") or 0) + 1,
+                }
+            )
+            .eq("user_id", user_id)
+            .eq("id", row["id"])
+            .execute()
+        )
+        if res.data:
+            updated.append(serialize(res.data[0]))
+    return updated
 
 
 def list_subtasks(user_id: str, task_id: str) -> list[dict]:

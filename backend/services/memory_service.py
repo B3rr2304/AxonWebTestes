@@ -70,6 +70,39 @@ def update_memory(user_id: str, memory_id: str, new_content: str) -> dict:
     return result.data[0] if result.data else {}
 
 
+def sync_dated_memory(user_id: str, prefix: str, content: str | None) -> None:
+    """
+    Mantém no máximo UMA memória identificada por `prefix` (ex: a nota do
+    registro diário de um dia). Usado por eventos que o usuário pode editar
+    várias vezes — garante que editar atualiza, e apagar a nota remove a
+    memória, sem nunca duplicar.
+
+    - content preenchido  -> cria a memória, ou atualiza a existente do prefixo
+    - content vazio/None  -> remove a memória existente do prefixo (se houver)
+    """
+    existing = (
+        supabase.table("user_memories")
+        .select("id")
+        .eq("user_id", user_id)
+        .ilike("content", f"{prefix}%")
+        .limit(1)
+        .execute()
+    )
+    found = existing.data[0]["id"] if existing.data else None
+
+    if content and content.strip():
+        if found:
+            supabase.table("user_memories").update(
+                {"content": content.strip(), "updated_at": "now()"}
+            ).eq("id", found).eq("user_id", user_id).execute()
+        else:
+            save_memory(user_id, content)
+    elif found:
+        supabase.table("user_memories").delete().eq("id", found).eq(
+            "user_id", user_id
+        ).execute()
+
+
 def delete_memory(user_id: str, memory_id: str) -> None:
     """Remove uma memória específica."""
     existing = (
