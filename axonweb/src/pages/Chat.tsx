@@ -12,6 +12,11 @@ import {
   Search,
   Sparkles,
   X,
+  MoreVertical,
+  Edit3,
+  Trash2,
+  Loader2,
+  ArrowLeft,
 } from "lucide-react";
 
 import { results, type ChronotypeResultKey } from "../data/results";
@@ -40,6 +45,7 @@ export default function Chat() {
   const [view, setView] = useState<"all" | "projects">("all");
   const [visibleCount, setVisibleCount] = useState(8);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [conversations, setConversations] = useState<ConversationData[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
 
@@ -48,6 +54,9 @@ export default function Chat() {
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [createConversationProjectId, setCreateConversationProjectId] =
     useState<string | null>(null);
+  const [projectToEdit, setProjectToEdit] = useState<ProjectFolder | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<ProjectFolder | null>(null);
+  const [isDeletingProject, setIsDeletingProject] = useState(false);
 
   useEffect(() => {
     api
@@ -68,6 +77,39 @@ export default function Chat() {
       .catch(() => setProjects([]))
       .finally(() => setLoadingProjects(false));
   }, [view]);
+
+  useEffect(() => {
+    const refreshUnread = () => {
+      api
+        .getUnreadCount()
+        .then((res) => setUnreadCount(res.unread))
+        .catch(() => null);
+    };
+
+    refreshUnread();
+
+    let delayed: number | undefined;
+
+    api
+      .analyzeNotifications()
+      .then(() => {
+        delayed = window.setTimeout(refreshUnread, 10000);
+      })
+      .catch(() => null);
+
+    const handleVisibility = () => {
+      if (!document.hidden) {
+        refreshUnread();
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibility);
+
+    return () => {
+      if (delayed) window.clearTimeout(delayed);
+      document.removeEventListener("visibilitychange", handleVisibility);
+    };
+  }, []);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -172,6 +214,31 @@ export default function Chat() {
     setIsCreateModalOpen(true);
   }
 
+  async function confirmDeleteProject() {
+    if (!projectToDelete) return;
+
+    setIsDeletingProject(true);
+
+    try {
+      await api.deleteChatProject(projectToDelete.id);
+
+      setProjects((prev) =>
+        prev.filter((project) => project.id !== projectToDelete.id)
+      );
+
+      if (selectedProjectId === projectToDelete.id) {
+        setSelectedProjectId(null);
+      }
+
+      setProjectToDelete(null);
+    } catch {
+      // depois podemos trocar por toast/erro visual
+    } finally {
+      setIsDeletingProject(false);
+    }
+  }
+  
+
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
       <Background />
@@ -216,7 +283,9 @@ export default function Chat() {
             >
               <Bell className="h-5 w-5" />
 
-              <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
+              {unreadCount > 0 && (
+                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
+              )}
             </button>
 
             <button
@@ -302,27 +371,13 @@ export default function Chat() {
             ) : view === "projects" ? (
               selectedProjectId && selectedProject ? (
                 <>
-                  <button
-                    type="button"
-                    onClick={() => setSelectedProjectId(null)}
-                    className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-sm font-semibold text-white/55 active:scale-[0.98]"
-                  >
-                    Voltar para projetos
-                  </button>
 
-                  <div className="rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-5 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
-                    <p className="text-xs font-semibold uppercase tracking-[0.16em] text-purple-100/60">
-                      Projeto
-                    </p>
-
-                    <h2 className="mt-2 text-xl font-semibold tracking-[-0.04em] text-white">
-                      {selectedProject.name}
-                    </h2>
-
-                    <p className="mt-2 text-sm leading-6 text-white/45">
-                      {selectedProject.description || "Sem descrição"}
-                    </p>
-                  </div>
+                  {selectedProject && (
+                    <SelectedProjectHeader
+                      project={selectedProject}
+                      onBack={() => setSelectedProjectId(null)}
+                    />
+                  )}
 
                   {activeConversationList.length === 0 ? (
                     <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
@@ -338,7 +393,11 @@ export default function Chat() {
 
                       <button
                         type="button"
-                        onClick={() => openCreateConversationModal(selectedProject.id)}
+                        onClick={() => {
+                          if (selectedProjectId) {
+                            openCreateConversationModal(selectedProjectId);
+                          }
+                        }}
                         className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
                       >
                         <Plus className="mr-2 h-4 w-4" />
@@ -402,6 +461,9 @@ export default function Chat() {
                       project={project}
                       count={count}
                       onClick={() => setSelectedProjectId(project.id)}
+                      onCreateConversation={() => openCreateConversationModal(project.id)}
+                      onEdit={() => setProjectToEdit(project)}
+                      onDelete={() => setProjectToDelete(project)}
                     />
                   );
                 })
@@ -489,8 +551,80 @@ export default function Chat() {
       <NotificationsSheet
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
+        onUnreadCountChange={setUnreadCount}
+      />
+
+      <EditProjectModal
+        project={projectToEdit}
+        onClose={() => setProjectToEdit(null)}
+        onUpdated={(updatedProject) => {
+          setProjects((prev) =>
+            prev.map((project) =>
+              project.id === updatedProject.id ? updatedProject : project
+            )
+          );
+
+          setProjectToEdit(null);
+        }}
+      />
+
+      <DeleteProjectModal
+        project={projectToDelete}
+        isDeleting={isDeletingProject}
+        onClose={() => {
+          if (!isDeletingProject) {
+            setProjectToDelete(null);
+          }
+        }}
+        onConfirm={confirmDeleteProject}
       />
     </main>
+  );
+      
+}
+
+function SelectedProjectHeader({
+  project,
+  onBack,
+}: {
+  project: ProjectFolder;
+  onBack: () => void;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-[2rem] border border-purple-300/20 bg-[#21152f]/82 p-4 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_52%)]" />
+
+      <div className="relative">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-4 inline-flex min-h-10 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-white/55 active:scale-[0.98]"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Projetos
+        </button>
+
+        <div className="flex items-start gap-3">
+          <div className="flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-purple-300/25 bg-purple-500/16 text-purple-100">
+            <Briefcase className="h-5 w-5" />
+          </div>
+
+          <div className="min-w-0 flex-1">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-purple-100/50">
+              Projeto
+            </p>
+
+            <h2 className="mt-1 truncate text-xl font-semibold tracking-[-0.04em] text-white">
+              {project.name}
+            </h2>
+
+            <p className="mt-1 line-clamp-2 text-sm leading-6 text-white/45">
+              {project.description || "Sem descrição"}
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -932,24 +1066,31 @@ function ProjectFolderCard({
   project,
   count,
   onClick,
+  onCreateConversation,
+  onEdit,
+  onDelete,
 }: {
   project: ProjectFolder;
   count: number;
   onClick: () => void;
+  onCreateConversation: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="group w-full rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-left shadow-xl shadow-black/20 backdrop-blur-2xl transition active:scale-[0.98]"
-    >
-      <div className="flex items-start justify-between gap-4">
-        <div className="flex min-w-0 items-start gap-3">
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+    return (
+    <div className="relative">
+      <button
+        type="button"
+        onClick={onClick}
+        className="group w-full rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 pr-14 text-left shadow-xl shadow-black/20 backdrop-blur-2xl transition active:scale-[0.98]"
+      >
+        <div className="flex items-start gap-3">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/12 text-purple-200">
             <Briefcase className="h-5 w-5" />
           </div>
 
-          <div className="min-w-0">
+          <div className="min-w-0 flex-1">
             <p className="truncate text-base font-semibold text-white">
               {project.name}
             </p>
@@ -962,17 +1103,300 @@ function ProjectFolderCard({
               {count} {count === 1 ? "conversa" : "conversas"}
             </div>
           </div>
+
+          <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-white/22 transition group-active:translate-x-0.5" />
+        </div>
+      </button>
+
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          setIsMenuOpen((current) => !current);
+        }}
+        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] text-white/45 active:scale-[0.96]"
+        aria-label="Ações do projeto"
+      >
+        <MoreVertical className="h-5 w-5" />
+      </button>
+
+      {isMenuOpen && (
+        <div className="absolute right-4 top-16 z-40 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1b1b27]/95 p-1 shadow-2xl shadow-black/40 backdrop-blur-2xl">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsMenuOpen(false);
+              onCreateConversation();
+            }}
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-white/58 active:scale-[0.98]"
+          >
+            <Plus className="h-4 w-4" />
+            Nova conversa
+          </button>
+
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsMenuOpen(false);
+              onEdit();
+            }}
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-white/58 active:scale-[0.98]"
+          >
+            <Edit3 className="h-4 w-4" />
+            Editar projeto
+          </button>
+
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              setIsMenuOpen(false);
+              onDelete();
+            }}
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-red-200/80 active:scale-[0.98]"
+          >
+            <Trash2 className="h-4 w-4" />
+            Excluir projeto
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function EditProjectModal({
+  project,
+  onClose,
+  onUpdated,
+}: {
+  project: ProjectFolder | null;
+  onClose: () => void;
+  onUpdated: (project: ProjectFolder) => void;
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!project) return;
+
+    setName(project.name ?? "");
+    setDescription(project.description ?? "");
+    setSubmitting(false);
+    setFormError(null);
+  }, [project]);
+
+  if (!project) return null;
+
+  async function handleSubmit() {
+    if (!project) return;
+
+    if (!name.trim()) {
+      setFormError("Dê um nome para o projeto.");
+      return;
+    }
+
+    setSubmitting(true);
+    setFormError(null);
+
+    try {
+      const updatedProject = await api.updateChatProject(project.id, {
+        name: name.trim(),
+        description: description.trim() || undefined,
+      });
+
+      onUpdated(updatedProject);
+    } catch (e) {
+      setFormError(e instanceof Error ? e.message : "Erro ao atualizar projeto");
+    } finally {
+      setSubmitting(false);
+    }
+  }
+
+  return (
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="relative flex max-h-[82vh] w-full max-w-[390px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+
+        <div className="relative border-b border-white/10 px-5 pb-4 pt-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <Edit3 className="h-3.5 w-3.5" />
+                Projeto
+              </div>
+
+              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+                Editar projeto
+              </h2>
+
+              <p className="mt-2 text-xs leading-5 text-white/45">
+                Atualize o nome e a descrição deste projeto.
+              </p>
+            </div>
+
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={submitting}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96] disabled:opacity-50"
+              aria-label="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
         </div>
 
-        <ChevronRight className="mt-1 h-5 w-5 shrink-0 text-white/25 transition group-active:translate-x-0.5" />
+        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+          <div className="space-y-3">
+            <label className="block">
+              <span className="mb-2 block text-xs font-medium text-white/42">
+                Nome
+              </span>
+
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                type="text"
+                className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+              />
+            </label>
+
+            <label className="block">
+              <span className="mb-2 block text-xs font-medium text-white/42">
+                Descrição
+              </span>
+
+              <textarea
+                value={description}
+                onChange={(event) => setDescription(event.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+              />
+            </label>
+
+            {formError && (
+              <p className="text-xs font-medium text-rose-300">{formError}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="inline-flex min-h-13 w-full items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando...
+              </>
+            ) : (
+              <>
+                Salvar alterações
+                <Edit3 className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+        </div>
       </div>
-    </button>
+    </div>
+  );
+}
+
+function DeleteProjectModal({
+  project,
+  isDeleting,
+  onClose,
+  onConfirm,
+}: {
+  project: ProjectFolder | null;
+  isDeleting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  if (!project) return null;
+
+  return (
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+          <Trash2 className="h-6 w-6" />
+        </div>
+
+        <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
+          Excluir projeto?
+        </h2>
+
+        <p className="mt-3 text-sm leading-6 text-white/45">
+          Essa ação vai excluir o projeto{" "}
+          <span className="font-semibold text-white/75">"{project.name}"</span>.
+        </p>
+
+        <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
+          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+            Atenção
+          </p>
+
+          <p className="mt-2 text-xs leading-5 text-white/42">
+            Confirme com o backend se as conversas serão mantidas fora do projeto
+            ou excluídas junto com ele.
+          </p>
+        </div>
+
+        <div className="mt-6 grid grid-cols-2 gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={isDeleting}
+            className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={isDeleting}
+            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98] disabled:opacity-60"
+          >
+            {isDeleting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Excluindo
+              </>
+            ) : (
+              <>
+                Excluir
+                <Trash2 className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
 function getConversationProjectId(conversation: ConversationData) {
   return (conversation as ProjectConversation).project_id ?? null;
 }
+
+
 
 function Background() {
   return (
@@ -988,64 +1412,365 @@ function Background() {
   );
 }
 
+function formatNotificationTime(createdAt: string) {
+  const date = new Date(createdAt);
+  const now = new Date();
+  const diffMin = Math.floor((now.getTime() - date.getTime()) / 60000);
+  if (diffMin < 1) return "Agora";
+  if (diffMin < 60) return `Há ${diffMin} min`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `Há ${diffH}h`;
+  const diffDays = Math.floor(diffH / 24);
+  if (diffDays === 1) return "Ontem";
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+type NotificationAction = {
+  task_id?: string;
+  new_date?: string | null;
+  new_start_time?: string | null;
+  new_end_time?: string | null;
+  reason?: string | null;
+};
+
+type NotificationWithAction = api.NotificationData & {
+  action?: NotificationAction | null;
+};
+
+function NotificationItem({
+  notification,
+  onRead,
+  onAccept,
+  onReject,
+}: {
+  notification: api.NotificationData;
+  onRead: (id: string) => void;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+}) {
+  const typedNotification = notification as NotificationWithAction;
+
+  const isUnread = notification.status === "unread";
+  const isImprovement = notification.type === "improvement";
+  const isChange = notification.type === "change";
+  const isAccepted = notification.status === "accepted";
+  const isRejected = notification.status === "rejected";
+  const isHandled = isAccepted || isRejected;
+
+  const canAct = isImprovement && !isHandled;
+  const action = typedNotification.action;
+
+  function handleCardClick() {
+    if (isUnread) {
+      onRead(notification.id);
+    }
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          handleCardClick();
+        }
+      }}
+      className={`rounded-[1.55rem] border p-4 text-left transition active:scale-[0.99] ${
+        isImprovement
+          ? isHandled
+            ? "border-white/10 bg-white/[0.035] opacity-55"
+            : "border-purple-300/24 bg-purple-500/12"
+          : isUnread
+          ? "border-purple-300/18 bg-purple-500/8"
+          : "border-white/10 bg-white/[0.035] opacity-50"
+      }`}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div
+            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border ${
+              isImprovement
+                ? "border-purple-300/25 bg-purple-500/16 text-purple-100"
+                : isChange
+                ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+                : "border-white/10 bg-white/[0.055] text-white/50"
+            }`}
+          >
+            {isImprovement ? (
+              <Sparkles className="h-4 w-4" />
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
+          </div>
+
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-full border px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] ${
+                  isImprovement
+                    ? "border-purple-300/20 bg-purple-500/12 text-purple-100"
+                    : isChange
+                    ? "border-emerald-300/15 bg-emerald-400/10 text-emerald-100/75"
+                    : "border-white/10 bg-white/[0.045] text-white/38"
+                }`}
+              >
+                {isImprovement
+                  ? "Sugestão"
+                  : isChange
+                  ? "Alteração"
+                  : "Aviso"}
+              </span>
+
+              {isUnread && (
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-300" />
+              )}
+            </div>
+
+            <p className="text-sm font-semibold leading-5 text-white">
+              {notification.title}
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-white/44">
+              {notification.body}
+            </p>
+          </div>
+        </div>
+
+        <span className="shrink-0 text-[0.65rem] font-medium text-white/28">
+          {formatNotificationTime(notification.created_at)}
+        </span>
+      </div>
+
+      {isImprovement && action && !isHandled && (
+        <div className="mb-3 rounded-[1.15rem] border border-white/10 bg-black/18 p-3">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+            Ajuste sugerido
+          </p>
+
+          {(action.new_date || action.new_start_time || action.new_end_time) && (
+            <p className="mt-2 text-xs font-semibold text-white/70">
+              {action.new_date && <>Data: {action.new_date}</>}
+              {action.new_start_time && (
+                <>
+                  {action.new_date ? " · " : ""}
+                  {action.new_start_time}
+                  {action.new_end_time ? ` – ${action.new_end_time}` : ""}
+                </>
+              )}
+            </p>
+          )}
+
+          {action.reason && (
+            <p className="mt-1 text-xs leading-5 text-white/38">
+              {action.reason}
+            </p>
+          )}
+        </div>
+      )}
+
+      {canAct && (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAccept(notification.id);
+            }}
+            className="inline-flex min-h-10 items-center justify-center rounded-2xl bg-purple-500 px-4 text-xs font-semibold text-white shadow-lg shadow-purple-950/25 active:scale-[0.98]"
+          >
+            Aceitar
+          </button>
+
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onReject(notification.id);
+            }}
+            className="inline-flex min-h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-xs font-semibold text-white/55 active:scale-[0.98]"
+          >
+            Recusar
+          </button>
+        </div>
+      )}
+
+      {!isImprovement && isUnread && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRead(notification.id);
+          }}
+          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.045] px-3 text-[0.68rem] font-semibold text-white/45 active:scale-[0.98]"
+        >
+          Marcar como lida
+        </button>
+      )}
+
+      {isAccepted && (
+        <p className="mt-3 text-[0.68rem] font-semibold text-purple-200/70">
+          Sugestão aceita
+        </p>
+      )}
+
+      {isRejected && (
+        <p className="mt-3 text-[0.68rem] font-semibold text-white/30">
+          Sugestão recusada
+        </p>
+      )}
+    </div>
+  );
+}
+
 function NotificationsSheet({
   isOpen,
   onClose,
+  onUnreadCountChange,
 }: {
   isOpen: boolean;
   onClose: () => void;
+  onUnreadCountChange: (count: number) => void;
 }) {
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "Seu planejamento de hoje está pronto",
-      description:
-        "O Axon organizou uma sugestão inicial com base no seu ritmo e prioridades.",
-      time: "Agora",
-      unread: true,
-    },
-    {
-      id: 2,
-      title: "Bom momento para foco profundo",
-      description:
-        "Sua janela de energia indica um bom momento para executar uma tarefa importante.",
-      time: "Há 12 min",
-      unread: true,
-    },
-    {
-      id: 3,
-      title: "Novo insight disponível",
-      description:
-        "Identificamos um padrão inicial entre seus horários de energia e suas tarefas.",
-      time: "Hoje",
-      unread: false,
-    },
-  ]);
+  const [notifications, setNotifications] = useState<api.NotificationData[]>([]);
+  const [notificationView, setNotificationView] = useState<"unread" | "read">(
+    "unread"
+  );
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const NOTIFICATIONS_PAGE_SIZE = 10;
+
+  const unreadNotifications = notifications.filter(
+    (notification) => notification.status === "unread"
+  );
+
+  const readNotifications = notifications.filter(
+    (notification) => notification.status !== "unread"
+  );
+
+  const filteredNotifications =
+    notificationView === "unread" ? unreadNotifications : readNotifications;
+  const shouldShowLoadMore =
+    hasMore && filteredNotifications.length >= NOTIFICATIONS_PAGE_SIZE;
+
+  const unreadCount = unreadNotifications.length;
+  const readCount = readNotifications.length;
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setLoading(true);
+
+    api
+      .getNotifications(NOTIFICATIONS_PAGE_SIZE + 1, 0)
+      .then((data) => {
+        const visibleNotifications = data.slice(0, NOTIFICATIONS_PAGE_SIZE);
+
+        setNotifications(visibleNotifications);
+        setHasMore(data.length > NOTIFICATIONS_PAGE_SIZE);
+
+        onUnreadCountChange(
+          visibleNotifications.filter(
+            (notification) => notification.status === "unread"
+          ).length
+        );
+      })
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, [isOpen, onUnreadCountChange]);
+
+  async function loadMore() {
+    try {
+      const more = await api.getNotifications(
+        NOTIFICATIONS_PAGE_SIZE + 1,
+        notifications.length
+      );
+
+      const visibleMore = more.slice(0, NOTIFICATIONS_PAGE_SIZE);
+
+      setNotifications((prev) => {
+        const next = [...prev, ...visibleMore];
+
+        onUnreadCountChange(
+          next.filter((notification) => notification.status === "unread").length
+        );
+
+        return next;
+      });
+
+      setHasMore(more.length > NOTIFICATIONS_PAGE_SIZE);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleRead(id: string) {
+    const currentNotification = notifications.find(
+      (notification) => notification.id === id
+    );
+
+    if (!currentNotification || currentNotification.status !== "unread") {
+      return;
+    }
+
+    await api.markNotificationRead(id).catch(() => null);
+
+    setNotifications((prev) => {
+      const next = prev.map((notification) =>
+        notification.id === id
+          ? { ...notification, status: "read" as const }
+          : notification
+      );
+
+      onUnreadCountChange(
+        next.filter((notification) => notification.status === "unread").length
+      );
+
+      return next;
+    });
+  }
+
+  async function handleAccept(id: string) {
+    await api.acceptNotification(id).catch(() => null);
+
+    setNotifications((prev) => {
+      const next = prev.map((notification) =>
+        notification.id === id
+          ? { ...notification, status: "accepted" as const }
+          : notification
+      );
+
+      onUnreadCountChange(
+        next.filter((notification) => notification.status === "unread").length
+      );
+
+      return next;
+    });
+
+    setNotificationView("read");
+  }
+
+  async function handleReject(id: string) {
+    await api.rejectNotification(id).catch(() => null);
+
+    setNotifications((prev) => {
+      const next = prev.map((notification) =>
+        notification.id === id
+          ? { ...notification, status: "rejected" as const }
+          : notification
+      );
+
+      onUnreadCountChange(
+        next.filter((notification) => notification.status === "unread").length
+      );
+
+      return next;
+    });
+
+    setNotificationView("read");
+  }
 
   if (!isOpen) return null;
-
-  function markAsRead(notificationId: number) {
-    setNotifications((current) =>
-      current.map((notification) =>
-        notification.id === notificationId
-          ? { ...notification, unread: false }
-          : notification
-      )
-    );
-  }
-
-  function markAllAsRead() {
-    setNotifications((current) =>
-      current.map((notification) => ({
-        ...notification,
-        unread: false,
-      }))
-    );
-  }
-
-  const hasUnreadNotifications = notifications.some(
-    (notification) => notification.unread
-  );
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
@@ -1065,8 +1790,8 @@ function NotificationsSheet({
               </h2>
 
               <p className="mt-2 text-xs leading-5 text-white/45">
-                Avisos importantes, lembretes inteligentes e atualizações do seu
-                ambiente.
+                Avisos importantes, lembretes inteligentes e sugestões para
+                melhorar seu planejamento.
               </p>
             </div>
 
@@ -1079,78 +1804,87 @@ function NotificationsSheet({
             </button>
           </div>
 
-          {hasUnreadNotifications && (
+          <div className="flex rounded-2xl border border-white/10 bg-white/[0.045] p-1">
             <button
               type="button"
-              onClick={markAllAsRead}
-              className="inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
+              onClick={() => setNotificationView("unread")}
+              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                notificationView === "unread"
+                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                  : "text-white/42"
+              }`}
             >
-              Marcar todas como lidas
+              Não lidas
+              {unreadCount > 0 && (
+                <span className="ml-1 text-[0.65rem] opacity-75">
+                  {unreadCount}
+                </span>
+              )}
             </button>
-          )}
-        </div>
 
-        <div className="relative flex-1 overflow-y-auto px-5 py-4">
-          <div className="space-y-3">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`rounded-[1.45rem] border p-4 transition ${
-                  notification.unread
-                    ? "border-purple-300/20 bg-purple-500/10"
-                    : "border-white/10 bg-white/[0.035] opacity-45"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex min-w-0 items-start gap-3">
-                    <div
-                      className={`mt-1 h-2.5 w-2.5 shrink-0 rounded-full ${
-                        notification.unread
-                          ? "bg-purple-300 shadow-[0_0_14px_rgba(216,180,254,0.9)]"
-                          : "bg-white/18"
-                      }`}
-                    />
-
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className="text-sm font-semibold leading-5 text-white">
-                          {notification.title}
-                        </p>
-                      </div>
-
-                      <p className="mt-1 text-xs leading-5 text-white/42">
-                        {notification.description}
-                      </p>
-
-                      {notification.unread && (
-                        <button
-                          type="button"
-                          onClick={() => markAsRead(notification.id)}
-                          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.055] px-3 text-[0.68rem] font-semibold text-purple-100 active:scale-[0.98]"
-                        >
-                          Marcar como lida
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <span className="shrink-0 text-[0.65rem] font-medium text-white/30">
-                    {notification.time}
-                  </span>
-                </div>
-              </div>
-            ))}
+            <button
+              type="button"
+              onClick={() => setNotificationView("read")}
+              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                notificationView === "read"
+                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                  : "text-white/42"
+              }`}
+            >
+              Lidas
+              {readCount > 0 && (
+                <span className="ml-1 text-[0.65rem] opacity-75">
+                  {readCount}
+                </span>
+              )}
+            </button>
           </div>
         </div>
 
-        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
-          <button
-            type="button"
-            onClick={onClose}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 active:scale-[0.98]"
-          >
-            Fechar
-          </button>
+        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+          {loading ? (
+            <div className="py-8 text-center text-sm text-white/35">
+              Carregando...
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div className="py-8 text-center">
+              <Bell className="mx-auto mb-3 h-6 w-6 text-purple-200/40" />
+
+              <p className="text-sm font-semibold text-white/55">
+                {notificationView === "unread"
+                  ? "Nenhuma notificação não lida"
+                  : "Nenhuma notificação lida"}
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-white/30">
+                {notificationView === "unread"
+                  ? "Quando houver novos avisos ou sugestões, eles aparecerão aqui."
+                  : "Notificações já lidas, aceitas ou recusadas aparecerão nesta aba."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredNotifications.map((notification) => (
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                  onRead={handleRead}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                />
+              ))}
+
+              {shouldShowLoadMore && (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  className="mt-1 inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
+                >
+                  Ver mais
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

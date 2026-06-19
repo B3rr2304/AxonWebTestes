@@ -940,11 +940,13 @@ function MoveConversationProjectSheet({
 }) {
   const [projects, setProjects] = useState<api.ChatProjectData[]>([]);
   const [loading, setLoading] = useState(false);
-  const [submittingProjectId, setSubmittingProjectId] = useState<string | null>(
-    null
+  const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
+  currentProjectId
   );
+  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Carrega a lista de projetos ao abrir o modal
   useEffect(() => {
     if (!isOpen) return;
 
@@ -962,28 +964,23 @@ function MoveConversationProjectSheet({
 
   if (!isOpen) return null;
 
-  async function handleSelect(projectId: string | null) {
-    if (projectId === currentProjectId) {
-      onClose();
-      return;
-    }
-
-    setSubmittingProjectId(projectId ?? "none");
+  async function handleMove() {
+    setSubmitting(true);
     setError(null);
 
     try {
-      await onMove(projectId);
+      await onMove(selectedProjectId);
       onClose();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao mover conversa");
     } finally {
-      setSubmittingProjectId(null);
+      setSubmitting(false);
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative flex max-h-[82vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="relative flex max-h-[82vh] w-full max-w-[390px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
 
         <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
@@ -1007,7 +1004,7 @@ function MoveConversationProjectSheet({
 
             <button
               onClick={onClose}
-              disabled={submittingProjectId !== null}
+              disabled={submitting}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96] disabled:opacity-50"
               aria-label="Fechar"
             >
@@ -1026,10 +1023,10 @@ function MoveConversationProjectSheet({
             <div className="space-y-3">
               <button
                 type="button"
-                onClick={() => handleSelect(null)}
-                disabled={submittingProjectId !== null}
+                onClick={() => setSelectedProjectId(null)}
+                disabled={submitting}
                 className={`flex min-h-14 w-full items-center justify-between rounded-2xl border px-4 text-left active:scale-[0.98] disabled:opacity-60 ${
-                  currentProjectId === null
+                  selectedProjectId === null
                     ? "border-purple-300/25 bg-purple-500/12"
                     : "border-white/10 bg-white/[0.045]"
                 }`}
@@ -1043,25 +1040,22 @@ function MoveConversationProjectSheet({
                   </p>
                 </div>
 
-                {submittingProjectId === "none" ? (
-                  <Loader2 className="h-4 w-4 animate-spin text-white/45" />
-                ) : currentProjectId === null ? (
+                {selectedProjectId === null ? (
                   <Check className="h-4 w-4 text-purple-200" />
                 ) : null}
               </button>
 
               {projects.map((project) => {
-                const isCurrent = currentProjectId === project.id;
-                const isSubmitting = submittingProjectId === project.id;
+                const isSelected = selectedProjectId === project.id;
 
                 return (
                   <button
                     key={project.id}
                     type="button"
-                    onClick={() => handleSelect(project.id)}
-                    disabled={submittingProjectId !== null}
+                    onClick={() => setSelectedProjectId(project.id)}
+                    disabled={submitting}
                     className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl border px-4 text-left active:scale-[0.98] disabled:opacity-60 ${
-                      isCurrent
+                      isSelected
                         ? "border-purple-300/25 bg-purple-500/12"
                         : "border-white/10 bg-white/[0.045]"
                     }`}
@@ -1076,10 +1070,8 @@ function MoveConversationProjectSheet({
                       </p>
                     </div>
 
-                    {isSubmitting ? (
-                      <Loader2 className="h-4 w-4 shrink-0 animate-spin text-white/45" />
-                    ) : isCurrent ? (
-                      <Check className="h-4 w-4 shrink-0 text-purple-200" />
+                    {isSelected ? (
+                      <Check className="h-4 w-4 text-purple-200" />
                     ) : null}
                   </button>
                 );
@@ -1101,6 +1093,35 @@ function MoveConversationProjectSheet({
           {error && (
             <p className="mt-3 text-xs font-medium text-rose-300">{error}</p>
           )}
+        </div>
+        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
+          <button
+            type="button"
+            onClick={handleMove}
+            disabled={submitting || selectedProjectId === currentProjectId}
+            className="inline-flex min-h-13 w-full items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Movendo...
+              </>
+            ) : (
+              <>
+                Mover
+                <Briefcase className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
+          >
+            Cancelar
+          </button>
         </div>
       </div>
     </div>
