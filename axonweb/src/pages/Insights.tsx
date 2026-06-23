@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Activity,
@@ -8,14 +8,49 @@ import {
   Focus,
   Menu,
   Moon,
+  RefreshCw,
+  Smile,
   Sparkles,
   Target,
   TrendingUp,
   Zap,
 } from "lucide-react";
 
+import {
+  CartesianGrid,
+  ComposedChart,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
+import * as api from "../lib/api";
+import type { TaskInsights } from "../lib/api";
+
+type SeriesKey = "tarefas" | "sono" | "qualidade" | "humor" | "prod";
+
+const SERIES: { key: SeriesKey; label: string; color: string }[] = [
+  { key: "tarefas", label: "Tarefas %", color: "#c084fc" },
+  { key: "sono", label: "Sono", color: "#60a5fa" },
+  { key: "qualidade", label: "Qualidade do sono", color: "#f472b6" },
+  { key: "humor", label: "Humor", color: "#34d399" },
+  { key: "prod", label: "Produtividade", color: "#fbbf24" },
+];
+
+const TYPE_STYLE: Record<
+  api.PatternInsight["type"],
+  { icon: React.ElementType; color: string }
+> = {
+  sleep: { icon: Moon, color: "#60a5fa" },
+  productivity: { icon: Target, color: "#c084fc" },
+  mood: { icon: Smile, color: "#34d399" },
+  habit: { icon: Activity, color: "#fbbf24" },
+  general: { icon: Sparkles, color: "#c084fc" },
+};
 
 type MetricCardProps = {
   icon: React.ElementType;
@@ -48,19 +83,98 @@ const energyData = [
   { label: "21h", value: 47 },
 ];
 
-const focusData = [
-  { day: "S", value: 52 },
-  { day: "T", value: 68 },
-  { day: "Q", value: 61 },
-  { day: "Q", value: 74 },
-  { day: "S", value: 66 },
-  { day: "S", value: 42 },
-  { day: "D", value: 38 },
-];
+const SLEEP_TARGET_BY_CHRONOTYPE: Record<string, number> = {
+  Matutino: 7.5,
+  Vespertino: 7.5,
+  Noturno: 7.5,
+  Misto: 7.5,
+  Bimodal: 7.5,
+};
+const DEFAULT_SLEEP_TARGET = 7.5;
+const CHART_MAX = 12; // escala do eixo (12h)
 
 export default function Insights() {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [period, setPeriod] = useState<"week" | "month">("week");
+  const [taskInsights, setTaskInsights] = useState<TaskInsights | null>(null);
+  const [loadingTasks, setLoadingTasks] = useState(true);
+  const [sleepHistory, setSleepHistory] = useState<api.DailyLog[]>([]);
+  const [loadingSleep, setLoadingSleep] = useState(true);
+  const [compareLogs, setCompareLogs] = useState<api.DailyLog[]>([]);
+  const [active, setActive] = useState<SeriesKey[]>(["tarefas", "sono"]);
+  const [patterns, setPatterns] = useState<api.PatternInsightsResponse | null>(
+    null
+  );
+  const [loadingPatterns, setLoadingPatterns] = useState(true);
+
+  useEffect(() => {
+    api
+      .getPatternInsights()
+      .then(setPatterns)
+      .catch(() => setPatterns(null))
+      .finally(() => setLoadingPatterns(false));
+  }, []);
+
+  useEffect(() => {
+    setLoadingTasks(true);
+    api
+      .getTaskInsights(period)
+      .then(setTaskInsights)
+      .catch(() => setTaskInsights(null))
+      .finally(() => setLoadingTasks(false));
+  }, [period]);
+
+  useEffect(() => {
+    api
+      .getDailyLogHistory(7)
+      .then((logs) => setSleepHistory(logs.filter((l) => l.hours_slept != null)))
+      .catch(() => setSleepHistory([]))
+      .finally(() => setLoadingSleep(false));
+  }, []);
+
+  useEffect(() => {
+    const days = period === "week" ? 7 : 30;
+    api
+      .getDailyLogHistory(days)
+      .then(setCompareLogs)
+      .catch(() => setCompareLogs([]));
+  }, [period]);
+
+  function toggleSeries(key: SeriesKey) {
+    setActive((cur) =>
+      cur.includes(key)
+        ? cur.filter((k) => k !== key)
+        : cur.length < 2
+        ? [...cur, key]
+        : cur
+    );
+  }
+
+  // Une por data. days do insights/tasks é a espinha (sempre 7 ou 30 dias).
+  const chartData = useMemo(() => {
+    const byDate = new Map(compareLogs.map((l) => [l.date, l]));
+    return (taskInsights?.days ?? []).map((d) => {
+      const log = byDate.get(d.date);
+      const humor = log?.mood_rating ?? null;
+      const prod = log?.productivity_rating ?? null;
+      const qualidade = log?.sleep_rating ?? null;
+      return {
+        date: d.date,
+        label: d.weekday,
+        // valores reais (para o tooltip)
+        tarefas: d.completion_rate,
+        sono: log?.hours_slept ?? null,
+        qualidade,
+        humor,
+        prod,
+        // valores escalados p/ o eixo esquerdo 0–100 (notas ×20)
+        qualidade_plot: qualidade != null ? qualidade * 20 : null,
+        humor_plot: humor != null ? humor * 20 : null,
+        prod_plot: prod != null ? prod * 20 : null,
+      };
+    });
+  }, [taskInsights, compareLogs]);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -73,6 +187,14 @@ export default function Insights() {
   }, []);
 
   const result = results[resultKey];
+
+  const sleepTarget =
+    SLEEP_TARGET_BY_CHRONOTYPE[resultKey] ?? DEFAULT_SLEEP_TARGET;
+  const sleptValues = sleepHistory.map((l) => l.hours_slept as number);
+  const avgSleep = sleptValues.length
+    ? sleptValues.reduce((a, b) => a + b, 0) / sleptValues.length
+    : 0;
+  const deficit = Math.max(0, sleepTarget - avgSleep);
 
   const bestFocusLabel =
     resultKey === "Matutino"
@@ -175,8 +297,12 @@ export default function Insights() {
           <MetricCard
             icon={TrendingUp}
             label="Consistência"
-            value="68%"
-            helper="Últimos dias"
+            value={
+              loadingTasks
+                ? "..."
+                : `${taskInsights?.summary.avg_completion_rate ?? 0}%`
+            }
+            helper="Conclusão média"
           />
         </section>
 
@@ -221,39 +347,338 @@ export default function Insights() {
         </section>
 
         <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-          <div className="mb-5 flex items-center justify-between">
+          <div className="mb-5 flex items-center justify-between gap-3">
             <div>
               <p className="text-sm font-semibold text-white">
-                Foco na semana
+                Tarefas concluídas
               </p>
               <p className="mt-1 text-xs text-white/38">
-                Tendência de execução
+                {period === "week" ? "Últimos 7 dias" : "Últimos 30 dias"}
               </p>
             </div>
 
-            <BarChart3 className="h-5 w-5 text-purple-200" />
+            <div className="flex shrink-0 rounded-full border border-white/10 bg-black/20 p-1 text-xs">
+              <button
+                onClick={() => setPeriod("week")}
+                className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
+                  period === "week"
+                    ? "bg-purple-500/30 text-purple-100"
+                    : "text-white/40"
+                }`}
+              >
+                Semana
+              </button>
+              <button
+                onClick={() => setPeriod("month")}
+                className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
+                  period === "month"
+                    ? "bg-purple-500/30 text-purple-100"
+                    : "text-white/40"
+                }`}
+              >
+                Mês
+              </button>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            {focusData.map((item, index) => (
-              <div key={`${item.day}-${index}`} className="flex items-center gap-3">
-                <p className="w-5 text-xs font-medium text-white/40">
-                  {item.day}
-                </p>
-
-                <div className="h-3 flex-1 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_14px_rgba(192,132,252,0.45)]"
-                    style={{ width: `${item.value}%` }}
-                  />
-                </div>
-
-                <p className="w-8 text-right text-xs text-white/38">
-                  {item.value}%
-                </p>
+          <div className="flex h-44 items-end gap-1.5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+            {loadingTasks ? (
+              <div className="flex h-full w-full items-center justify-center">
+                <p className="text-xs text-white/35">Carregando...</p>
               </div>
-            ))}
+            ) : (
+              (taskInsights?.days ?? []).map((d, i) => (
+                <div
+                  key={d.date}
+                  className="flex flex-1 flex-col items-center gap-2"
+                >
+                  <div className="flex h-28 w-full items-end">
+                    <div
+                      className="w-full rounded-t-xl bg-gradient-to-t from-purple-500/35 to-fuchsia-300 shadow-[0_0_12px_rgba(168,85,247,0.18)]"
+                      style={{ height: `${d.completion_rate}%` }}
+                      title={`${d.completed}/${d.total} concluídas`}
+                    />
+                  </div>
+
+                  <p className="text-[0.6rem] text-white/35">
+                    {period === "week" || i % 5 === 0 ? d.weekday : ""}
+                  </p>
+                </div>
+              ))
+            )}
           </div>
+
+          {taskInsights && !loadingTasks && (
+            <div className="mt-4 rounded-[1.4rem] border border-purple-300/20 bg-purple-500/10 p-4">
+              <p className="text-sm leading-6 text-white/58">
+                {taskInsights.summary.best_weekday ? (
+                  <>
+                    Seu dia mais produtivo costuma ser{" "}
+                    <span className="font-semibold text-purple-100">
+                      {taskInsights.summary.best_weekday}
+                    </span>
+                    . Você concluiu{" "}
+                    <span className="font-semibold text-purple-100">
+                      {taskInsights.summary.total_completed}
+                    </span>{" "}
+                    tarefas no período.
+                  </>
+                ) : (
+                  "Conclua tarefas no Planejamento para ver seus padrões de produtividade aqui."
+                )}
+              </p>
+            </div>
+          )}
+        </section>
+
+        <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <p className="text-sm font-semibold text-white">Horas de sono</p>
+              <p className="mt-1 text-xs text-white/38">
+                Últimos dias registrados
+              </p>
+            </div>
+            <Moon className="h-5 w-5 text-purple-200" />
+          </div>
+
+          {loadingSleep ? (
+            <div className="h-44 rounded-[1.5rem] border border-white/10 bg-black/20" />
+          ) : sleepHistory.length === 0 ? (
+            <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-5 py-8 text-center">
+              <Moon className="mb-3 h-6 w-6 text-purple-200/70" />
+              <p className="text-sm font-semibold text-white">
+                Sem dados de sono ainda
+              </p>
+              <p className="mt-1 text-xs leading-5 text-white/42">
+                Preencha o registro diário por alguns dias para ver seu padrão de
+                sono aqui.
+              </p>
+            </div>
+          ) : (
+            <>
+              <div className="relative flex h-44 items-end gap-2 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+                <div
+                  className="pointer-events-none absolute inset-x-4 border-t border-dashed border-fuchsia-300/60"
+                  style={{
+                    bottom: `calc(1rem + ${(sleepTarget / CHART_MAX) * 100}% * 0.72)`,
+                  }}
+                  title={`Meta: ${sleepTarget}h`}
+                />
+                {sleepHistory.map((l) => {
+                  const h = l.hours_slept as number;
+                  const reachedTarget = h >= sleepTarget;
+                  return (
+                    <div
+                      key={l.date}
+                      className="flex flex-1 flex-col items-center gap-2"
+                    >
+                      <div className="flex h-28 w-full items-end">
+                        <div
+                          className={`w-full rounded-t-xl ${
+                            reachedTarget
+                              ? "bg-gradient-to-t from-purple-500/35 to-fuchsia-300"
+                              : "bg-gradient-to-t from-amber-500/30 to-amber-300/80"
+                          }`}
+                          style={{
+                            height: `${Math.min(100, (h / CHART_MAX) * 100)}%`,
+                          }}
+                          title={`~${h}h`}
+                        />
+                      </div>
+                      <p className="text-[0.6rem] text-white/35">
+                        {formatDayLabel(l.date)}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2 rounded-[1.4rem] border border-purple-300/20 bg-purple-500/10 p-4 text-center">
+                <div>
+                  <p className="text-[0.65rem] uppercase tracking-wide text-white/40">
+                    Média
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-purple-100">
+                    ~{avgSleep.toFixed(1)}h
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[0.65rem] uppercase tracking-wide text-white/40">
+                    Meta
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-white">
+                    {sleepTarget}h
+                  </p>
+                </div>
+                <div>
+                  <p className="text-[0.65rem] uppercase tracking-wide text-white/40">
+                    Déficit
+                  </p>
+                  <p className="mt-1 text-sm font-semibold text-amber-200">
+                    {deficit > 0 ? `~${deficit.toFixed(1)}h` : "—"}
+                  </p>
+                </div>
+              </div>
+            </>
+          )}
+        </section>
+
+        <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold text-white">
+                Comparar métricas
+              </p>
+              <p className="mt-1 text-xs text-white/38">Compare 2 indicadores</p>
+            </div>
+
+            <div className="flex shrink-0 rounded-full border border-white/10 bg-black/20 p-1 text-xs">
+              <button
+                onClick={() => setPeriod("week")}
+                className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
+                  period === "week"
+                    ? "bg-purple-500/30 text-purple-100"
+                    : "text-white/40"
+                }`}
+              >
+                Semana
+              </button>
+              <button
+                onClick={() => setPeriod("month")}
+                className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
+                  period === "month"
+                    ? "bg-purple-500/30 text-purple-100"
+                    : "text-white/40"
+                }`}
+              >
+                Mês
+              </button>
+            </div>
+          </div>
+
+          <div className="mb-4 flex flex-wrap gap-2">
+            {SERIES.map((s) => {
+              const on = active.includes(s.key);
+              const blocked = !on && active.length >= 2;
+              return (
+                <button
+                  key={s.key}
+                  onClick={() => toggleSeries(s.key)}
+                  disabled={blocked}
+                  className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                    on
+                      ? "border-white/20 bg-white/10 text-white"
+                      : "border-white/10 bg-black/20 text-white/40"
+                  } ${blocked ? "opacity-30" : "active:scale-[0.97]"}`}
+                >
+                  <span
+                    className="h-2.5 w-2.5 rounded-full"
+                    style={{ backgroundColor: on ? s.color : "#555" }}
+                  />
+                  {s.label}
+                </button>
+              );
+            })}
+          </div>
+
+          {chartData.length === 0 ? (
+            <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-5 py-8 text-center">
+              <p className="text-sm font-semibold text-white">
+                Ainda sem dados para comparar
+              </p>
+              <p className="mt-1 text-xs leading-5 text-white/42">
+                Use o registro diário e conclua tarefas por alguns dias para
+                liberar as comparações.
+              </p>
+            </div>
+          ) : (
+            <div className="h-64 w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <ComposedChart
+                  data={chartData}
+                  margin={{ top: 8, right: 8, bottom: 0, left: -16 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="rgba(255,255,255,0.06)"
+                  />
+                  <XAxis
+                    dataKey="label"
+                    tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
+                  />
+                  <YAxis
+                    yAxisId="pct"
+                    domain={[0, 100]}
+                    tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  />
+                  <YAxis
+                    yAxisId="hours"
+                    orientation="right"
+                    domain={[0, 12]}
+                    tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                  />
+                  <Tooltip content={<CustomTooltip />} />
+
+                  {active.includes("tarefas") && (
+                    <Line
+                      yAxisId="pct"
+                      dataKey="tarefas"
+                      name="Tarefas %"
+                      stroke="#c084fc"
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls={false}
+                    />
+                  )}
+                  {active.includes("qualidade") && (
+                    <Line
+                      yAxisId="pct"
+                      dataKey="qualidade_plot"
+                      name="Qualidade do sono"
+                      stroke="#f472b6"
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls={false}
+                    />
+                  )}
+                  {active.includes("humor") && (
+                    <Line
+                      yAxisId="pct"
+                      dataKey="humor_plot"
+                      name="Humor"
+                      stroke="#34d399"
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls={false}
+                    />
+                  )}
+                  {active.includes("prod") && (
+                    <Line
+                      yAxisId="pct"
+                      dataKey="prod_plot"
+                      name="Produtividade"
+                      stroke="#fbbf24"
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls={false}
+                    />
+                  )}
+                  {active.includes("sono") && (
+                    <Line
+                      yAxisId="hours"
+                      dataKey="sono"
+                      name="Sono"
+                      stroke="#60a5fa"
+                      strokeWidth={2}
+                      dot={false}
+                      connectNulls={false}
+                    />
+                  )}
+                </ComposedChart>
+              </ResponsiveContainer>
+            </div>
+          )}
         </section>
 
         <section className="mb-5">
@@ -290,25 +715,122 @@ export default function Insights() {
           </div>
         </section>
 
-        <section className="rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-4 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
-          <div className="mb-4 flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-purple-200" />
-            <p className="text-sm font-semibold text-purple-100">
-              Recomendação do Axon
-            </p>
+        <section className="rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-5 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img
+                src="/axon-logo.svg"
+                alt="Axon"
+                className="h-5 w-5 object-contain"
+              />
+              <p className="text-sm font-semibold text-purple-100">
+                O que o Axon descobriu
+              </p>
+            </div>
+
+            {patterns?.status === "ready" &&
+              formatUpdatedBadge(patterns.generated_at) && (
+                <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/45">
+                  {formatUpdatedBadge(patterns.generated_at)}
+                </span>
+              )}
           </div>
 
-          <p className="text-sm leading-6 text-white/58">
-            {result.recommendation}
-          </p>
+          {loadingPatterns ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-16 animate-pulse rounded-[1.4rem] border border-white/10 bg-white/[0.04]"
+                />
+              ))}
+            </div>
+          ) : patterns?.status === "collecting" ? (
+            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5 text-center">
+              <Sparkles className="mx-auto mb-3 h-6 w-6 text-purple-200" />
+              <p className="text-sm leading-6 text-white/65">
+                {patterns.message}
+              </p>
 
-          <button
-            onClick={() => navigate("/planning")}
-            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/20 px-5 text-sm font-semibold text-purple-100 active:scale-[0.98]"
-          >
-            Aplicar no planejamento
-            <CalendarDays className="ml-2 h-4 w-4" />
-          </button>
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/40">
+                  <span>Progresso</span>
+                  <span>
+                    {patterns.data_points ?? 0}/{patterns.days_needed ?? 7} dias
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        ((patterns.data_points ?? 0) /
+                          (patterns.days_needed ?? 7)) *
+                          100
+                      )}%`,
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          ) : patterns?.status === "ready" &&
+            (patterns.insights?.length ?? 0) > 0 ? (
+            <div className="space-y-3">
+              {patterns.insights!.map((it, i) => {
+                const style = TYPE_STYLE[it.type] ?? TYPE_STYLE.general;
+                const Icon = style.icon;
+                return (
+                  <div
+                    key={i}
+                    className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4"
+                  >
+                    <div className="mb-2 flex items-start gap-3">
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10"
+                        style={{
+                          backgroundColor: `${style.color}1a`,
+                          color: style.color,
+                        }}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <p className="pt-1 text-sm font-semibold leading-5 text-white">
+                        {it.title}
+                      </p>
+                    </div>
+                    <p className="text-xs leading-6 text-white/55">
+                      {it.detail}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5 text-center">
+              <p className="text-sm leading-6 text-white/55">
+                {patterns?.message ??
+                  "Os insights do Axon aparecerão aqui conforme você registra seus dias."}
+              </p>
+            </div>
+          )}
+
+          {patterns?.status === "ready" && (
+            <button
+              onClick={() => {
+                setLoadingPatterns(true);
+                api
+                  .getPatternInsights(true)
+                  .then(setPatterns)
+                  .catch(() => {})
+                  .finally(() => setLoadingPatterns(false));
+              }}
+              className="mt-4 inline-flex items-center gap-2 rounded-full px-1 text-xs font-semibold text-purple-200/80 active:scale-[0.98]"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Atualizar insights
+            </button>
+          )}
         </section>
       </div>
 
@@ -365,6 +887,72 @@ function PatternCard({
         <p className="text-xs font-medium text-purple-100">{value}</p>
       </div>
     </div>
+  );
+}
+
+function formatDayLabel(iso: string) {
+  const d = new Date(iso + "T00:00:00");
+  return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d.getDay()];
+}
+
+function formatUpdatedBadge(iso?: string): string | null {
+  if (!iso) return null;
+  const gen = new Date(iso);
+  gen.setHours(0, 0, 0, 0);
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.floor((today.getTime() - gen.getTime()) / 86400000);
+  if (diff <= 0) return "Atualizado hoje";
+  if (diff === 1) return "Atualizado ontem";
+  return `Atualizado há ${diff} dias`;
+}
+
+type TooltipRow = {
+  tarefas: number | null;
+  sono: number | null;
+  qualidade: number | null;
+  humor: number | null;
+  prod: number | null;
+};
+
+function CustomTooltip({
+  active,
+  payload,
+  label,
+}: {
+  active?: boolean;
+  payload?: { payload: TooltipRow }[];
+  label?: string;
+}) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0].payload;
+  return (
+    <div className="rounded-xl border border-white/10 bg-[#15141f]/95 px-3 py-2 text-xs shadow-lg backdrop-blur-xl">
+      <p className="mb-1 font-semibold text-white/70">{label}</p>
+      {row.tarefas != null && (
+        <Row color="#c084fc" text={`Tarefas: ${row.tarefas}%`} />
+      )}
+      {row.sono != null && <Row color="#60a5fa" text={`Sono: ~${row.sono}h`} />}
+      {row.qualidade != null && (
+        <Row color="#f472b6" text={`Qualidade do sono: ${row.qualidade}/5`} />
+      )}
+      {row.humor != null && <Row color="#34d399" text={`Humor: ${row.humor}/5`} />}
+      {row.prod != null && (
+        <Row color="#fbbf24" text={`Produtividade: ${row.prod}/5`} />
+      )}
+    </div>
+  );
+}
+
+function Row({ color, text }: { color: string; text: string }) {
+  return (
+    <p className="flex items-center gap-2 text-white/80">
+      <span
+        className="h-2 w-2 rounded-full"
+        style={{ backgroundColor: color }}
+      />
+      {text}
+    </p>
   );
 }
 

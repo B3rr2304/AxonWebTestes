@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
@@ -8,6 +8,7 @@ import {
   Home,
   LogOut,
   MessageCircle,
+  Moon,
   Settings,
   Sparkles,
   User,
@@ -27,12 +28,27 @@ type SidebarProps = {
   userAvatar?: string;
 };
 
-const mainItems = [
+type NavItem = {
+  label: string;
+  description: string;
+  icon: React.ElementType;
+  path: string;
+  state?: Record<string, unknown>;
+};
+
+const mainItems: NavItem[] = [
   {
     label: "Dashboard",
     description: "Resumo inteligente do dia",
     icon: Home,
     path: "/dashboard",
+  },
+  {
+    label: "Registro do dia",
+    description: "Sono, humor e energia",
+    icon: Moon,
+    path: "/dashboard",
+    state: { openDayReview: true },
   },
   {
     label: "Chat",
@@ -103,8 +119,12 @@ export default function Sidebar({
     return displayName.trim().charAt(0).toUpperCase() || "A";
   }, [displayName]);
 
-  function goTo(path: string) {
-    navigate(path);
+  function goTo(path: string, navState?: Record<string, unknown>) {
+    if (navState) {
+      navigate(path, { state: navState });
+    } else {
+      navigate(path);
+    }
     onClose();
   }
 
@@ -227,7 +247,7 @@ export default function Sidebar({
                       return (
                         <button
                           key={item.label}
-                          onClick={() => goTo(item.path)}
+                          onClick={() => goTo(item.path, item.state)}
                           className="group flex w-full items-center gap-3 rounded-[1.35rem] border border-white/0 px-3 py-3 text-left transition active:scale-[0.98] hover:border-white/10 hover:bg-white/[0.055]"
                         >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/45 group-hover:border-purple-300/20 group-hover:bg-purple-500/10 group-hover:text-purple-200">
