@@ -529,6 +529,108 @@ export function rejectNotification(id: string) {
   });
 }
 
+// --- Daily Log ---
+
+export interface DailyLog {
+  id: string;
+  date: string;
+  sleep_time: string | null;
+  wake_time: string | null;
+  hours_slept: number | null;
+  sleep_rating: number | null;
+  sleep_tags: string[];
+  mood_rating: number | null;
+  mood_tags: string[];
+  productivity_rating: number | null;
+  productivity_tags: string[];
+  exercised: boolean | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DailyLogInput {
+  sleep_time?: string;
+  wake_time?: string;
+  sleep_rating?: number;
+  sleep_tags?: string[];
+  mood_rating?: number;
+  mood_tags?: string[];
+  productivity_rating?: number;
+  productivity_tags?: string[];
+  exercised?: boolean;
+  notes?: string;
+}
+
+export function getDailyLogToday() {
+  return request<DailyLog | null>("/daily-log/today");
+}
+
+export function getDailyLogHistory(days = 30) {
+  return request<DailyLog[]>(`/daily-log/history?days=${days}`);
+}
+
+export function saveDailyLog(body: DailyLogInput) {
+  return request<DailyLog>("/daily-log/", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+// --- Task Insights ---
+
+export interface TaskInsightDay {
+  date: string;
+  weekday: string; // "Seg", "Ter", ...
+  completed: number;
+  total: number;
+  completion_rate: number; // 0–100
+  carried_forward: number;
+}
+
+export interface TaskInsightSummary {
+  total_completed: number;
+  avg_completion_rate: number;
+  best_weekday: string | null;
+  carry_forward_total: number;
+}
+
+export interface TaskInsights {
+  period: "week" | "month";
+  days: TaskInsightDay[];
+  summary: TaskInsightSummary;
+}
+
+export function getTaskInsights(period: "week" | "month" = "week") {
+  return request<TaskInsights>(`/insights/tasks?period=${period}`);
+}
+
+// --- Pattern Insights (IA) ---
+
+export interface PatternInsight {
+  title: string;
+  detail: string;
+  type: "sleep" | "productivity" | "mood" | "habit" | "general";
+}
+
+export interface PatternInsightsResponse {
+  status: "collecting" | "ready";
+  // quando "collecting":
+  data_points?: number;
+  days_needed?: number;
+  message?: string;
+  // quando "ready":
+  insights?: PatternInsight[];
+  generated_at?: string;
+  cached?: boolean;
+}
+
+export function getPatternInsights(refresh = false) {
+  return request<PatternInsightsResponse>(
+    `/insights/patterns${refresh ? "?refresh=true" : ""}`
+  );
+}
+
 export function streamChat(
   message: string,
   history: ChatMessage[],

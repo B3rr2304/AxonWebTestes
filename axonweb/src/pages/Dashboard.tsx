@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ElementType } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   CheckCircle2,
@@ -17,6 +17,7 @@ import {
   Zap,
 } from "lucide-react";
 
+import DayReview from "../components/DayReview";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 import type { DashboardData, FocusBlock } from "../lib/api";
@@ -30,11 +31,14 @@ type MetricCardProps = {
 
 export default function Dashboard() {
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNextBlock, setShowNextBlock] = useState(false);
+  const [todayLog, setTodayLog] = useState<api.DailyLog | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
 
   useEffect(() => {
     if (!api.isLoggedIn()) {
@@ -51,6 +55,7 @@ export default function Dashboard() {
     };
 
     load();
+    api.getDailyLogToday().then(setTodayLog).catch(() => setTodayLog(null));
     api.analyzeNotifications().catch(() => null);
 
     const interval = window.setInterval(load, 30 * 60 * 1000);
@@ -69,6 +74,15 @@ export default function Dashboard() {
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [navigate]);
+
+  useEffect(() => {
+    if (location.state?.openDayReview) {
+      setReviewOpen(true);
+      window.history.replaceState({}, "", location.pathname);
+    }
+  }, [location.state, location.pathname]);
+
+  const showReviewCard = new Date().getHours() >= 18 && todayLog === null;
 
   const chronotypeKey =
     data?.chronotype_key ??
@@ -201,6 +215,31 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {showReviewCard && (
+          <section className="mb-4">
+            <button
+              type="button"
+              onClick={() => setReviewOpen(true)}
+              className="group w-full overflow-hidden rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-4 text-left shadow-xl shadow-purple-950/20 backdrop-blur-2xl active:scale-[0.98]"
+            >
+              <div className="flex items-center gap-3">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
+                  <Moon className="h-5 w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-white">Como foi o seu dia?</p>
+                  <p className="mt-0.5 text-xs text-white/45">
+                    Leva menos de 1 minuto · Alimenta seus Insights
+                  </p>
+                </div>
+                <span className="shrink-0 rounded-full border border-purple-300/20 bg-purple-500/20 px-3 py-1.5 text-xs font-semibold text-purple-100">
+                  Registrar
+                </span>
+              </div>
+            </button>
+          </section>
+        )}
+
         <section className="mb-4 grid grid-cols-2 gap-3">
           <MetricCard
             icon={Zap}
@@ -316,6 +355,13 @@ export default function Dashboard() {
         onClose={() => setIsSidebarOpen(false)}
         chronotypeLabel={chronotypeLabel}
         energyPeak={energyPeak}
+      />
+
+      <DayReview
+        isOpen={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        existing={todayLog}
+        onSaved={(log) => setTodayLog(log)}
       />
     </main>
   );
