@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Activity,
-  BarChart3,
   CalendarDays,
   Clock3,
   Focus,
@@ -175,6 +174,14 @@ export default function Insights() {
       };
     });
   }, [taskInsights, compareLogs]);
+
+  // Maior volume de tarefas no período — escala as barras por volume real.
+  const maxTaskTotal = Math.max(
+    1,
+    ...(taskInsights?.days ?? []).map((d) => d.total)
+  );
+  // Largura fixa das barras: garante arredondamento uniforme (raio = largura/2).
+  const taskBarWidth = period === "week" ? "1.5rem" : "0.5rem";
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -387,24 +394,40 @@ export default function Insights() {
                 <p className="text-xs text-white/35">Carregando...</p>
               </div>
             ) : (
-              (taskInsights?.days ?? []).map((d, i) => (
-                <div
-                  key={d.date}
-                  className="flex flex-1 flex-col items-center gap-2"
-                >
-                  <div className="flex h-28 w-full items-end">
-                    <div
-                      className="w-full rounded-t-xl bg-gradient-to-t from-purple-500/35 to-fuchsia-300 shadow-[0_0_12px_rgba(168,85,247,0.18)]"
-                      style={{ height: `${d.completion_rate}%` }}
-                      title={`${d.completed}/${d.total} concluídas`}
-                    />
-                  </div>
+              (taskInsights?.days ?? []).map((d, i) => {
+                const totalH = (d.total / maxTaskTotal) * 100;
+                const completedFill = d.total
+                  ? (d.completed / d.total) * 100
+                  : 0;
+                return (
+                  <div
+                    key={d.date}
+                    className="flex flex-1 flex-col items-center gap-2"
+                  >
+                    <div className="flex h-28 w-full items-end justify-center">
+                      {/* Cápsula cinza = total; roxo preenche de baixo = concluídas */}
+                      <div
+                        className="relative overflow-hidden rounded-full bg-white/[0.07]"
+                        style={{
+                          width: taskBarWidth,
+                          height: `${totalH}%`,
+                          minHeight: taskBarWidth,
+                        }}
+                        title={`${d.completed}/${d.total} concluídas`}
+                      >
+                        <div
+                          className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-purple-500 to-fuchsia-400"
+                          style={{ height: `${completedFill}%` }}
+                        />
+                      </div>
+                    </div>
 
-                  <p className="text-[0.6rem] text-white/35">
-                    {period === "week" || i % 5 === 0 ? d.weekday : ""}
-                  </p>
-                </div>
-              ))
+                    <p className="text-[0.6rem] text-white/35">
+                      {period === "week" || i % 5 === 0 ? d.weekday : ""}
+                    </p>
+                  </div>
+                );
+              })
             )}
           </div>
 
