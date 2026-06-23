@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Dumbbell, Moon, Smile, Target, X, Zap } from "lucide-react";
@@ -32,6 +32,26 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // O sheet fica sempre montado, então o estado inicial é lido antes de
+  // `existing` carregar. Re-sincroniza os campos toda vez que o sheet abre.
+  useEffect(() => {
+    if (!isOpen) return;
+    setSleepTime(existing?.sleep_time ?? "23:30");
+    setWakeTime(existing?.wake_time ?? "07:00");
+    setSleepRating(existing?.sleep_rating ?? null);
+    setSleepTags(existing?.sleep_tags ?? []);
+    setMoodRating(existing?.mood_rating ?? null);
+    setMoodTags(existing?.mood_tags ?? []);
+    setProdRating(existing?.productivity_rating ?? null);
+    setProdTags(existing?.productivity_tags ?? []);
+    setExercised(existing?.exercised ?? false);
+    setNotes(existing?.notes ?? "");
+    setError(null);
+  }, [isOpen, existing]);
+
+  // Data do registro: do dia já registrado (edição) ou de hoje (novo).
+  const reviewDate = formatReviewDate(existing?.date);
 
   const canSave =
     sleepRating !== null && moodRating !== null && prodRating !== null && !saving;
@@ -97,7 +117,12 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
                 <h2 className="text-xl font-semibold tracking-tight text-white">
                   Como foi o seu dia?
                 </h2>
-                <p className="mt-1 text-xs text-white/40">Leva menos de 1 minuto</p>
+                <p className="mt-1 text-xs font-medium capitalize text-purple-200/70">
+                  {reviewDate}
+                </p>
+                <p className="mt-0.5 text-xs text-white/40">
+                  Leva menos de 1 minuto
+                </p>
               </div>
               <button
                 type="button"
@@ -197,6 +222,19 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
       )}
     </AnimatePresence>
   );
+}
+
+// --- Helpers ---
+
+// Formata a data do registro (ex.: "segunda-feira, 23 de junho").
+// `iso` ("YYYY-MM-DD") vem do registro em edição; sem ela, usa hoje.
+function formatReviewDate(iso?: string | null) {
+  const date = iso ? new Date(`${iso}T00:00:00`) : new Date();
+  return date.toLocaleDateString("pt-BR", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  });
 }
 
 // --- Subcomponents ---

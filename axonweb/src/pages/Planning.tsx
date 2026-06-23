@@ -106,6 +106,20 @@ function getDisplayStatus(task: Task, selectedIso: string): DisplayStatus {
   return task.status as DisplayStatus;
 }
 
+function isEventCompleted(task: Task, now: Date): boolean {
+  // evento multi-dia marcado manualmente já conta como concluído
+  if (task.status === "done") return true;
+
+  const endIso = getTaskEndDate(task) || task.scheduled_date;
+  if (!endIso) return false;
+
+  // usa o fim do evento; se não houver, o início; se não houver horário, fim do dia
+  const time = hhmm(task.end_time) || hhmm(task.start_time) || "23:59";
+  const endDateTime = new Date(`${endIso}T${time}:00`);
+
+  return now >= endDateTime;
+}
+
 function isTaskOnDate(task: Task, isoDate: string): boolean {
   if (!task.scheduled_date) return false;
 
@@ -278,10 +292,12 @@ export default function Planning() {
     [tasks]
   );
 
-  const actionable = tasks.filter(
-    (t) => t.task_type === "task" || t.task_type === "routine"
-  );
-  const completedItems = actionable.filter((t) => t.status === "done").length;
+  const now = new Date();
+  // base = itens do dia selecionado (dayTasks já filtra por isTaskOnDate); agora inclui eventos
+  const actionable = dayTasks;
+  const completedItems = actionable.filter((t) =>
+    t.task_type === "event" ? isEventCompleted(t, now) : t.status === "done"
+  ).length;
   const progress =
     actionable.length === 0
       ? 0
