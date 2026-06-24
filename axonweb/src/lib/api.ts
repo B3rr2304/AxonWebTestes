@@ -631,6 +631,137 @@ export function getPatternInsights(refresh = false) {
   );
 }
 
+// --- Routines ---
+
+export type RoutineStatus = "active" | "paused";
+
+// Espelha RoutineItemResponse (backend/models/schemas.py)
+export interface RoutineItem {
+  id: string;
+  routine_id: string;
+  title: string;
+  days_of_week: number[]; // 0=Seg, 1=Ter, ..., 6=Dom
+  start_time?: string | null; // "HH:MM" (item fixo)
+  end_time?: string | null; // "HH:MM" (item fixo)
+  duration_minutes?: number | null; // item flexível
+  created_at: string;
+  updated_at: string;
+}
+
+// Espelha RoutineListItem (GET /routines)
+export interface Routine {
+  id: string;
+  name: string;
+  status: RoutineStatus;
+  start_date: string; // "YYYY-MM-DD"
+  end_date?: string | null;
+  paused_until?: string | null;
+  generated_until: string;
+  created_at: string;
+  updated_at: string;
+  streak: number;
+  streak_unit: string; // sempre "dias"
+  item_count: number;
+}
+
+// Espelha RoutineResponse (GET /routines/{id}) — inclui os itens
+export interface RoutineDetail extends Omit<Routine, "item_count"> {
+  items: RoutineItem[];
+}
+
+// Espelha RoutineItemCreate — item fixo (start_time+end_time) OU flexível (duration_minutes)
+export interface RoutineItemCreateInput {
+  title: string;
+  days_of_week: number[]; // 0=Seg, ..., 6=Dom
+  start_time?: string; // "HH:MM"
+  end_time?: string; // "HH:MM"
+  duration_minutes?: number;
+}
+
+// Espelha RoutineCreate
+export interface RoutineCreateInput {
+  name: string;
+  start_date?: string; // "YYYY-MM-DD" (default: hoje, no backend)
+  end_date?: string | null;
+  items: RoutineItemCreateInput[];
+}
+
+export function createRoutine(body: RoutineCreateInput) {
+  return request<RoutineDetail>("/routines", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function getRoutines() {
+  return request<Routine[]>("/routines");
+}
+
+export function getRoutine(id: string) {
+  return request<RoutineDetail>(`/routines/${id}`);
+}
+
+export function pauseRoutine(id: string, pausedUntil?: string | null) {
+  return request<RoutineDetail>(`/routines/${id}/pause`, {
+    method: "POST",
+    body: JSON.stringify({ paused_until: pausedUntil ?? null }),
+  });
+}
+
+export function resumeRoutine(id: string) {
+  return request<RoutineDetail>(`/routines/${id}/resume`, {
+    method: "POST",
+  });
+}
+
+export function updateRoutine(
+  id: string,
+  body: { name?: string; end_date?: string | null; status?: RoutineStatus }
+) {
+  return request<RoutineDetail>(`/routines/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteRoutine(id: string) {
+  return request<void>(`/routines/${id}`, { method: "DELETE" });
+}
+
+// Espelha RoutineItemUpdate. Atenção: o backend NÃO revalida fixo-vs-flexível
+// no PATCH, então ao trocar de modo envie null no lado não usado para limpá-lo.
+export interface RoutineItemUpdateInput {
+  title?: string;
+  days_of_week?: number[];
+  start_time?: string | null;
+  end_time?: string | null;
+  duration_minutes?: number | null;
+}
+
+export function updateRoutineItem(
+  routineId: string,
+  itemId: string,
+  body: RoutineItemUpdateInput
+) {
+  return request<RoutineItem>(`/routines/${routineId}/items/${itemId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
+}
+
+export function addRoutineItem(routineId: string, body: RoutineItemCreateInput) {
+  return request<RoutineItem>(`/routines/${routineId}/items`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteRoutineItem(routineId: string, itemId: string) {
+  return request<void>(`/routines/${routineId}/items/${itemId}`, {
+    method: "DELETE",
+  });
+}
+
 export function streamChat(
   message: string,
   history: ChatMessage[],

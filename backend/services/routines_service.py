@@ -1,0 +1,643 @@
+"""
+Lógica de CRUD de rotinas (tabelas `routines` e `routine_items`) isolada do
+router HTTP, seguindo o mesmo padrão de tasks_service.
+
+Todas as funções recebem o `user_id` explicitamente e garantem a posse das
+linhas (`.eq("user_id", …)`), pois o cliente Supabase usa service_role e
+bypassa RLS — o backend é a fronteira de segurança.
+
+Erros de validação/posse levantam ValueError com mensagem amigável; o router
+converte para HTTPException.
+
+Esta fase (2) cobre só o CRUD. A geração de tarefas concretas no calendário a
+partir dos items (horário fixo + slot flexível escolhido pelo Axon + detecção
+de conflito) é a Fase 3.
+"""
+
+from collections import defaultdict
+from datetime import date, timedelta
+
+from database import supabase
+from services import calendar_sync, chronotype
+
+# Quantos dias para trás olhamos ao calcular o streak.
+_STREAK_LOOKBACK_DAYS = 90
+
+# Horizonte de geração ao criar/renovar uma rotina (dias à frente).
+GENERATION_HORIZON_DAYS = 60
+
+# Cronotipo salvo no perfil (PT ou chave em inglês) -> chave das curvas/blocos.
+_CURVE_KEY = {
+    "Matutino": "morning", "Vespertino": "evening", "Noturno": "night",
+    "Misto": "intermediate", "Bimodal": "bimodal",
+    "morning": "morning", "evening": "evening", "night": "night",
+    "intermediate": "intermediate", "bimodal": "bimodal",
+}
+
+# Minutos em um dia — limite para um slot caber sem cruzar a meia-noite.
+_DAY_MINUTES = 24 * 60
+
+_ROUTINE_DATE_FIELDS = ("start_date", "end_date", "paused_until", "generated_until")
+_ITEM_TIME_FIELDS = ("start_time", "end_time")
+
+
+def _serialize_routine(row: dict) -> dict:
+    for field in _ROUTINE_DATE_FIELDS:
+        if row.get(field) is not None:
+            row[field] = str(row[field])
+    return row
+
+
+def _serialize_item(row: dict) -> dict:
+    # Postgres devolve `time` como "HH:MM:SS"; o front usa "HH:MM".
+    for field in _ITEM_TIME_FIELDS:
+        if row.get(field) is not None:
+            row[field] = str(row[field])[:5]
+    row["days_of_week"] = row.get("days_of_week") or []
+    return row
+
+
+# --- Posse ---------------------------------------------------------------
+
+def _get_owned_routine(user_id: str, routine_id: str) -> dict:
+    res = (
+        supabase.table("routines")
+        .select("*")
+        .eq("id", routine_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not res.data:
+        raise ValueError("Rotina não encontrada")
+    return res.data[0]
+
+
+def _get_items(routine_id: str) -> list[dict]:
+    res = (
+        supabase.table("routine_items")
+        .select("*")
+        .eq("routine_id", routine_id)
+        .order("created_at", desc=False)
+        .execute()
+    )
+    return res.data or []
+
+
+# --- Streak --------------------------------------------------------------
+
+def _compute_streak(user_id: str, items: list[dict], today: date) -> int:
+    """
+    Dias consecutivos encerrados ontem em que TODAS as tarefas geradas pela
+    rotina naquele dia foram concluídas (status='done').
+
+    - Usa as tasks realmente materializadas no banco — não os days_of_week dos
+      itens. Isso torna dias pausados automaticamente neutros (sem tasks = pula).
+    - Conta de ontem para trás; hoje não entra (o usuário ainda pode concluir).
+    - Dia sem nenhuma task gerada é neutro: não conta nem quebra.
+    - Primeiro dia com task não concluída encerra a contagem.
+    """
+    if not items:
+        return 0
+
+    item_ids = [it["id"] for it in items]
+    yesterday = today - timedelta(days=1)
+    lookback_start = today - timedelta(days=_STREAK_LOOKBACK_DAYS)
+
+    res = (
+        supabase.table("tasks")
+        .select("scheduled_date, status")
+        .eq("user_id", user_id)
+        .in_("routine_item_id", item_ids)
+        .gte("scheduled_date", str(lookback_start))
+        .lte("scheduled_date", str(yesterday))
+        .execute()
+    )
+
+    # date_str -> [status, ...]
+    by_date: dict[str, list[str]] = defaultdict(list)
+    for t in res.data or []:
+        by_date[str(t["scheduled_date"])].append(t["status"])
+
+    streak = 0
+    day = yesterday
+    while day >= lookback_start:
+        day_statuses = by_date.get(str(day))
+        if not day_statuses:
+            day -= timedelta(days=1)
+            continue  # sem tasks nesse dia (pausa ou item não previsto) → neutro
+
+        if all(s == "done" for s in day_statuses):
+            streak += 1
+        else:
+            break  # dia incompleto encerra a sequência
+
+        day -= timedelta(days=1)
+
+    return streak
+
+
+# --- Exclusão de tarefas futuras geradas ---------------------------------
+
+def _delete_future_tasks(user_id: str, item_ids: list[str], today: date) -> None:
+    """
+    Remove apenas as tarefas geradas a partir dos items informados que ainda
+    estão no futuro (scheduled_date >= hoje) e não foram concluídas
+    (status != 'done'). Tarefas passadas/concluídas ficam intactas.
+
+    Espelha cada exclusão no Google Agenda (best-effort, em background).
+    """
+    if not item_ids:
+        return
+
+    res = (
+        supabase.table("tasks")
+        .select("*")
+        .eq("user_id", user_id)
+        .in_("routine_item_id", item_ids)
+        .gte("scheduled_date", str(today))
+        .neq("status", "done")
+        .execute()
+    )
+    rows = res.data or []
+    if not rows:
+        return
+
+    ids = [r["id"] for r in rows]
+    supabase.table("tasks").delete().eq("user_id", user_id).in_("id", ids).execute()
+
+    for task in rows:
+        calendar_sync.sync_task_async(user_id, task, "delete")
+
+
+# --- Geração de tarefas (Fase 3) -----------------------------------------
+#
+# Itens de horário fixo viram tarefas no horário definido. Itens flexíveis
+# (só duração) têm o slot escolhido pelo Axon a partir dos blocos de energia
+# do cronotipo, evitando conflito com tudo que já está no dia — inclusive as
+# tarefas geradas pelos outros itens da mesma rotina no mesmo lote.
+
+def _to_min(t: str) -> int:
+    """'HH:MM' ou 'HH:MM:SS' -> minutos desde 00:00."""
+    h, m = t[:5].split(":")
+    return int(h) * 60 + int(m)
+
+
+def _min_to_hhmm(m: int) -> str:
+    return f"{m // 60:02d}:{m % 60:02d}"
+
+
+def _overlap(s1: int, e1: int, s2: int, e2: int) -> bool:
+    """Dois intervalos [s1,e1) e [s2,e2) se sobrepõem?"""
+    return s1 < e2 and s2 < e1
+
+
+def _block_energy(level: str) -> int:
+    # .get com fallback: os dados de CHRONOTYPE_BLOCKS têm alguns níveis com
+    # typo (ex.: 'Recuperacao') que não existem em BLOCK_LEVELS.
+    return chronotype.BLOCK_LEVELS.get(level, {}).get("energy", 0)
+
+
+def _user_curve(user_id: str) -> str:
+    """Chave da curva de energia do cronotipo do usuário (fallback: misto)."""
+    try:
+        res = (
+            supabase.table("profiles")
+            .select("chronotype")
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+        ct = (res.data or {}).get("chronotype")
+    except Exception:
+        ct = None
+    return _CURVE_KEY.get(ct or "intermediate", "intermediate")
+
+
+def _free_slot(
+    curve_key: str, duration_minutes: int, busy: list[tuple[int, int]]
+) -> tuple[str, str] | None:
+    """
+    Primeiro bloco livre (do maior para o menor nível de energia) cujo intervalo
+    de `duration_minutes` cabe no dia sem conflitar com `busy`. None se nenhum
+    couber.
+    """
+    blocks = chronotype.CHRONOTYPE_BLOCKS.get(
+        curve_key, chronotype.CHRONOTYPE_BLOCKS["intermediate"]
+    )
+    # Índices dos blocos ordenados por energia desc; empate pelo mais cedo.
+    ranked = sorted(range(len(blocks)), key=lambda i: (-_block_energy(blocks[i][0]), i))
+
+    for i in ranked:
+        start = i * 90
+        end = start + duration_minutes
+        if end > _DAY_MINUTES:
+            continue  # não cabe antes da meia-noite
+        if not any(_overlap(start, end, bs, be) for bs, be in busy):
+            return _min_to_hhmm(start), _min_to_hhmm(end)
+    return None
+
+
+def _busy_intervals(user_id: str, day: date) -> list[tuple[int, int]]:
+    res = (
+        supabase.table("tasks")
+        .select("start_time, end_time")
+        .eq("user_id", user_id)
+        .eq("scheduled_date", str(day))
+        .execute()
+    )
+    out = []
+    for t in res.data or []:
+        s, e = t.get("start_time"), t.get("end_time")
+        if s and e:
+            out.append((_to_min(s), _to_min(e)))
+    return out
+
+
+def pick_best_slot(user_id: str, day: date, duration_minutes: int) -> tuple[str, str] | None:
+    """
+    Melhor horário para uma tarefa flexível de `duration_minutes` em `day`,
+    segundo o cronotipo do usuário e o que já está agendado naquele dia.
+    Retorna ('HH:MM', 'HH:MM') ou None se não houver janela livre.
+    """
+    return _free_slot(_user_curve(user_id), duration_minutes, _busy_intervals(user_id, day))
+
+
+def _materialize(
+    user_id: str,
+    items: list[dict],
+    from_date: date,
+    until_date: date,
+    *,
+    curve_key: str,
+) -> list[dict]:
+    """
+    Cria as tarefas concretas dos `items` no intervalo [from_date, until_date]
+    e as insere em lote. Não atualiza generated_until (quem chama decide).
+    """
+    if not items or from_date > until_date:
+        return []
+
+    # Pré-carrega os horários já ocupados em todo o intervalo, agrupados por dia.
+    existing = (
+        supabase.table("tasks")
+        .select("scheduled_date, start_time, end_time")
+        .eq("user_id", user_id)
+        .gte("scheduled_date", str(from_date))
+        .lte("scheduled_date", str(until_date))
+        .execute()
+    )
+    busy_by_date: dict[str, list[tuple[int, int]]] = defaultdict(list)
+    for t in existing.data or []:
+        s, e = t.get("start_time"), t.get("end_time")
+        if s and e:
+            busy_by_date[str(t["scheduled_date"])].append((_to_min(s), _to_min(e)))
+
+    # Fixos primeiro: garante que os flexíveis enxergam e evitam os horários fixos.
+    ordered = sorted(items, key=lambda it: 0 if it.get("start_time") else 1)
+
+    new_tasks: list[dict] = []
+    day = from_date
+    while day <= until_date:
+        weekday = day.weekday()  # 0=Seg … 6=Dom
+        dstr = str(day)
+        for it in ordered:
+            if weekday not in (it.get("days_of_week") or []):
+                continue
+
+            if it.get("start_time"):
+                start_s = str(it["start_time"])[:5]
+                end_s = str(it["end_time"])[:5]
+                task_type = "event"
+            else:
+                slot = _free_slot(curve_key, it["duration_minutes"], busy_by_date[dstr])
+                if slot is None:
+                    continue  # dia sem janela livre para esse item — pula
+                start_s, end_s = slot
+                task_type = "task"
+
+            busy_by_date[dstr].append((_to_min(start_s), _to_min(end_s)))
+            new_tasks.append({
+                "user_id": user_id,
+                "title": it["title"],
+                "task_type": task_type,
+                "status": "todo",
+                "priority": "medium",
+                "scheduled_date": dstr,
+                "start_time": start_s,
+                "end_time": end_s,
+                "routine_item_id": it["id"],
+                "created_by": "agent",
+            })
+        day += timedelta(days=1)
+
+    if new_tasks:
+        supabase.table("tasks").insert(new_tasks).execute()
+    return new_tasks
+
+
+def generate_tasks_for_routine(
+    routine_id: str, user_id: str, from_date: date, until_date: date
+) -> list[dict]:
+    """
+    Gera as tarefas de TODOS os itens da rotina no intervalo e avança
+    generated_until para until_date. Usada na criação e na renovação (Fase 5).
+    """
+    _get_owned_routine(user_id, routine_id)
+    items = _get_items(routine_id)
+
+    created = _materialize(
+        user_id, items, from_date, until_date, curve_key=_user_curve(user_id)
+    )
+
+    supabase.table("routines").update(
+        {"generated_until": str(until_date)}
+    ).eq("id", routine_id).eq("user_id", user_id).execute()
+
+    return created
+
+
+# --- Renovação automática (Fase 5) ---------------------------------------
+
+def renew_routines(user_id: str, today: date) -> int:
+    """
+    Renova automaticamente as rotinas ativas cujo horizonte de geração vence em
+    menos de 30 dias. Chamado silenciosamente em list_routines (verificação lazy).
+
+    Para cada rotina elegível:
+    - Gera de generated_until+1 até hoje+60.
+    - Respeita end_date: não gera além dela; pula se already past.
+
+    Retorna o número de rotinas renovadas.
+    """
+    threshold = today + timedelta(days=30)
+
+    res = (
+        supabase.table("routines")
+        .select("id, end_date, generated_until")
+        .eq("user_id", user_id)
+        .eq("status", "active")
+        .lt("generated_until", str(threshold))
+        .execute()
+    )
+
+    renewed = 0
+    for r in res.data or []:
+        from_date = date.fromisoformat(str(r["generated_until"])) + timedelta(days=1)
+        until_date = today + timedelta(days=GENERATION_HORIZON_DAYS)
+
+        if r.get("end_date"):
+            end = date.fromisoformat(str(r["end_date"]))
+            if from_date > end:
+                continue  # rotina já passou do fim, nada a gerar
+            until_date = min(until_date, end)
+
+        if from_date <= until_date:
+            generate_tasks_for_routine(r["id"], user_id, from_date, until_date)
+            renewed += 1
+
+    return renewed
+
+
+# --- CRUD rotinas --------------------------------------------------------
+
+def list_routines(user_id: str, today: date) -> list[dict]:
+    renew_routines(user_id, today)  # renovação lazy ao abrir o app
+    routines = (
+        supabase.table("routines")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("created_at", desc=True)
+        .execute()
+    ).data or []
+
+    out = []
+    for r in routines:
+        items = _get_items(r["id"])
+        r = _serialize_routine(r)
+        r["item_count"] = len(items)
+        r["streak"] = _compute_streak(user_id, items, today)
+        out.append(r)
+    return out
+
+
+def get_routine(user_id: str, routine_id: str, today: date) -> dict:
+    routine = _serialize_routine(_get_owned_routine(user_id, routine_id))
+    items = _get_items(routine_id)
+    routine["streak"] = _compute_streak(user_id, items, today)
+    routine["items"] = [_serialize_item(it) for it in items]
+    return routine
+
+
+def create_routine(user_id: str, data: dict, today: date) -> dict:
+    start = data.get("start_date") or today
+    payload = {
+        "user_id": user_id,
+        "name": data["name"],
+        "start_date": str(start),
+        "end_date": str(data["end_date"]) if data.get("end_date") else None,
+        # Nada gerado ainda (Fase 3): generated_until no dia anterior ao início
+        # indica que nenhum dia foi materializado no calendário.
+        "generated_until": str(start - timedelta(days=1)),
+    }
+    res = supabase.table("routines").insert(payload).execute()
+    if not res.data:
+        raise ValueError("Erro ao criar rotina")
+
+    routine_id = res.data[0]["id"]
+
+    # Cria os itens inline (se houver) em lote.
+    items_in = data.get("items") or []
+    if items_in:
+        rows = [{
+            "user_id": user_id,
+            "routine_id": routine_id,
+            "title": it["title"],
+            "days_of_week": it["days_of_week"],
+            "start_time": it.get("start_time"),
+            "end_time": it.get("end_time"),
+            "duration_minutes": it.get("duration_minutes"),
+        } for it in items_in]
+        supabase.table("routine_items").insert(rows).execute()
+
+        # Gera as tarefas dos próximos GENERATION_HORIZON_DAYS dias, a partir de
+        # hoje ou do início (o que vier depois). Atualiza generated_until.
+        gen_from = max(start, today)
+        gen_until = gen_from + timedelta(days=GENERATION_HORIZON_DAYS)
+        generate_tasks_for_routine(routine_id, user_id, gen_from, gen_until)
+
+    return get_routine(user_id, routine_id, today)
+
+
+def update_routine(user_id: str, routine_id: str, data: dict, today: date) -> dict:
+    _get_owned_routine(user_id, routine_id)
+
+    payload: dict = {}
+    if "name" in data:
+        payload["name"] = data["name"]
+    if "end_date" in data:
+        payload["end_date"] = str(data["end_date"]) if data["end_date"] else None
+    if "status" in data:
+        payload["status"] = data["status"]
+
+    if not payload:
+        raise ValueError("Nenhum campo para atualizar")
+
+    res = (
+        supabase.table("routines")
+        .update(payload)
+        .eq("id", routine_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not res.data:
+        raise ValueError("Erro ao atualizar rotina")
+
+    return get_routine(user_id, routine_id, today)
+
+
+def delete_routine(user_id: str, routine_id: str, today: date) -> None:
+    _get_owned_routine(user_id, routine_id)
+
+    items = _get_items(routine_id)
+    item_ids = [it["id"] for it in items]
+    _delete_future_tasks(user_id, item_ids, today)
+
+    # Cascade em routine_items; tasks.routine_item_id é ON DELETE SET NULL,
+    # então as tarefas passadas/concluídas permanecem no calendário sem vínculo.
+    supabase.table("routines").delete().eq("id", routine_id).eq("user_id", user_id).execute()
+
+
+# --- Pausa / Retomada (Fase 4) -------------------------------------------
+
+def pause_routine(
+    user_id: str, routine_id: str, paused_until: date | None, today: date
+) -> dict:
+    routine = _get_owned_routine(user_id, routine_id)
+    if routine["status"] == "paused":
+        raise ValueError("Rotina já está pausada")
+
+    items = _get_items(routine_id)
+    _delete_future_tasks(user_id, [it["id"] for it in items], today)
+
+    supabase.table("routines").update({
+        "status": "paused",
+        "paused_until": str(paused_until) if paused_until else None,
+        # Retrocede generated_until para que o resume saiba que precisa gerar
+        # a partir de hoje (sem lacunas nem sobreposição).
+        "generated_until": str(today - timedelta(days=1)),
+    }).eq("id", routine_id).eq("user_id", user_id).execute()
+
+    return get_routine(user_id, routine_id, today)
+
+
+def resume_routine(user_id: str, routine_id: str, today: date) -> dict:
+    routine = _get_owned_routine(user_id, routine_id)
+    if routine["status"] == "active":
+        raise ValueError("Rotina já está ativa")
+
+    # Limpa a pausa e gera as tarefas dos próximos 60 dias.
+    supabase.table("routines").update({
+        "status": "active",
+        "paused_until": None,
+    }).eq("id", routine_id).eq("user_id", user_id).execute()
+
+    gen_until = today + timedelta(days=GENERATION_HORIZON_DAYS)
+    generate_tasks_for_routine(routine_id, user_id, today, gen_until)
+
+    return get_routine(user_id, routine_id, today)
+
+
+# --- CRUD items ----------------------------------------------------------
+
+def add_item(user_id: str, routine_id: str, data: dict, today: date) -> dict:
+    routine = _get_owned_routine(user_id, routine_id)
+
+    payload = {
+        "user_id": user_id,
+        "routine_id": routine_id,
+        "title": data["title"],
+        "days_of_week": data["days_of_week"],
+        "start_time": data.get("start_time"),
+        "end_time": data.get("end_time"),
+        "duration_minutes": data.get("duration_minutes"),
+    }
+    res = supabase.table("routine_items").insert(payload).execute()
+    if not res.data:
+        raise ValueError("Erro ao adicionar item")
+
+    item = res.data[0]
+
+    # Gera as tarefas do novo item de hoje até onde a rotina já está gerada.
+    gen_until = date.fromisoformat(str(routine["generated_until"]))
+    if gen_until >= today:
+        _materialize(user_id, [item], today, gen_until, curve_key=_user_curve(user_id))
+
+    return _serialize_item(item)
+
+
+def update_item(user_id: str, routine_id: str, item_id: str, data: dict, today: date) -> dict:
+    routine = _get_owned_routine(user_id, routine_id)
+
+    existing = (
+        supabase.table("routine_items")
+        .select("id")
+        .eq("id", item_id)
+        .eq("routine_id", routine_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not existing.data:
+        raise ValueError("Item não encontrado")
+
+    payload = {k: v for k, v in data.items() if k in (
+        "title", "days_of_week", "start_time", "end_time", "duration_minutes"
+    )}
+    if not payload:
+        raise ValueError("Nenhum campo para atualizar")
+
+    # Ao trocar de modo (fixo↔flexível), zera o lado oposto para evitar
+    # inconsistência onde o item fica com start/end E duration no banco.
+    if "duration_minutes" in payload and payload["duration_minutes"] is not None:
+        payload.setdefault("start_time", None)
+        payload.setdefault("end_time", None)
+    elif "start_time" in payload or "end_time" in payload:
+        payload.setdefault("duration_minutes", None)
+
+    res = (
+        supabase.table("routine_items")
+        .update(payload)
+        .eq("id", item_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not res.data:
+        raise ValueError("Erro ao atualizar item")
+
+    item = res.data[0]
+
+    # Editar afeta só o futuro: apaga as tarefas futuras desse item e regera
+    # de hoje até generated_until com o item atualizado. Passadas ficam intactas.
+    _delete_future_tasks(user_id, [item_id], today)
+    gen_until = date.fromisoformat(str(routine["generated_until"]))
+    if gen_until >= today:
+        _materialize(user_id, [item], today, gen_until, curve_key=_user_curve(user_id))
+
+    return _serialize_item(item)
+
+
+def delete_item(user_id: str, routine_id: str, item_id: str, today: date) -> None:
+    _get_owned_routine(user_id, routine_id)
+
+    existing = (
+        supabase.table("routine_items")
+        .select("id")
+        .eq("id", item_id)
+        .eq("routine_id", routine_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not existing.data:
+        raise ValueError("Item não encontrado")
+
+    _delete_future_tasks(user_id, [item_id], today)
+    supabase.table("routine_items").delete().eq("id", item_id).eq("user_id", user_id).execute()
