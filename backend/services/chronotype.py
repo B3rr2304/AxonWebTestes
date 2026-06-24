@@ -162,7 +162,7 @@ CHRONOTYPE_BLOCKS: dict[str, list[tuple[str, str]]] = {
         ("sono",          "Sono profundo ativo. Seu cérebro está consolidando memória e recuperando energia, deixe esse processo acontecer sem interrupções."),                   # 03:00
         ("sono",          "Ainda em sono. Respeite seu ritmo biológico lembre-se que seu descanso é o seu maior aliado para manter um dia de alta produtividade."),                   # 04:30
         ("sono",          "Seu corpo ainda está em recuperação. Acordar forçado agora vai comprometer toda sua performance ao longo do dia."),                           # 06:00
-        ("Recuperacao",   "Seu corpo está acordando gradualmente. Mentenha-se descansando para evitar cansoços ao longo do dia "),                                  # 07:30
+        ("recuperacao",   "Seu corpo está acordando gradualmente. Mentenha-se descansando para evitar cansoços ao longo do dia "),                                  # 07:30
         ("foco_leve",     "Despertar gradual, seu cérebro está acordando. Café, alongamento, tarefas automáticas, dê tempo para o seu organismo estar totalmente preparado antes de exigir foco profundo."),           # 09:00
         ("foco_leve",     "Use esse momento para e-mails, WhatsApp, planejamento e tarefas simples que não exigem muito raciocínio."),     # 10:30
         ("foco_moderado", "Energia subindo de forma constante. Use esse bloco para organizar sua agenda, almoçar resolver pendências operacionais e se preparar para o restante do dia."),            # 12:00
@@ -179,7 +179,7 @@ CHRONOTYPE_BLOCKS: dict[str, list[tuple[str, str]]] = {
         ("sono",          "Sono profundo ativo. Seu cérebro está consolidando memória e recuperando energia — deixe esse processo acontecer sem interrupções."),                                  # 01:30
         ("sono",          "Ainda em sono. Respeite esse tempo, ele é a base de toda sua performance como bimodal."),                   # 03:00
         ("sono",          "Seu organismo ainda está em recuperação. Aproveite cada minuto restante de descanso antes do seu primeiro pico do dia."),                     # 04:30
-        ("recuperacoo",   "Você está acordadndo. Hidrate-se, faça atividades leves e use esse momento para planejar o seu dia."),         # 06:00
+        ("recuperacao",   "Você está acordadndo. Hidrate-se, faça atividades leves e use esse momento para planejar o seu dia."),         # 06:00
         ("foco_profundo", "Ótimo momento para começar seus projetos ou atividades mais importantes e trabalho que exige concentração."),        # 07:30
         ("pico",          "Esse é o momento de fazer a tarefa mais importante e mais difícil na do seu dia, seu cérebro está no máximo da capacidade. Evite ao máximo distrações nessse período."),       # 09:00
         ("pico",          "Decisões críticas, criação profunda e trabalho de alta complexidade pertencem são ideais para serem feitos nesse bloco."),        # 10:30

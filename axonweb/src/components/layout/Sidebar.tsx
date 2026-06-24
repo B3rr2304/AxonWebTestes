@@ -9,6 +9,7 @@ import {
   LogOut,
   MessageCircle,
   Moon,
+  Repeat,
   Settings,
   Sparkles,
   User,
@@ -67,6 +68,12 @@ const mainItems: NavItem[] = [
     description: "Padrões e produtividade",
     icon: BarChart3,
     path: "/insights",
+  },
+  {
+    label: "Rotinas",
+    description: "Hábitos recorrentes",
+    icon: Repeat,
+    path: "/rotinas",
   },
   {
     label: "Focus",

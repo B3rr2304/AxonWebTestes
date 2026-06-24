@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import {
   Activity,
   CalendarDays,
-  Clock3,
   Focus,
   Menu,
   Moon,
@@ -11,8 +10,6 @@ import {
   Smile,
   Sparkles,
   Target,
-  TrendingUp,
-  Zap,
 } from "lucide-react";
 
 import {
@@ -51,13 +48,6 @@ const TYPE_STYLE: Record<
   general: { icon: Sparkles, color: "#c084fc" },
 };
 
-type MetricCardProps = {
-  icon: React.ElementType;
-  label: string;
-  value: string;
-  helper: string;
-};
-
 type PatternCardProps = {
   title: string;
   description: string;
@@ -71,15 +61,6 @@ const validKeys: ChronotypeResultKey[] = [
   "Noturno",
   "Misto",
   "Bimodal",
-];
-
-const energyData = [
-  { label: "06h", value: 32 },
-  { label: "09h", value: 68 },
-  { label: "12h", value: 76 },
-  { label: "15h", value: 58 },
-  { label: "18h", value: 64 },
-  { label: "21h", value: 47 },
 ];
 
 const SLEEP_TARGET_BY_CHRONOTYPE: Record<string, number> = {
@@ -279,78 +260,122 @@ export default function Insights() {
           </div>
         </section>
 
-        <section className="mb-5 grid grid-cols-2 gap-3">
-          <MetricCard
-            icon={Zap}
-            label="Energia"
-            value={result.energyPeak}
-            helper="Pico estimado"
-          />
-
-          <MetricCard
-            icon={Target}
-            label="Foco"
-            value={result.focusWindow}
-            helper="Melhor janela"
-          />
-
-          <MetricCard
-            icon={Clock3}
-            label="Queda"
-            value={result.lowEnergy}
-            helper="Baixa energia"
-          />
-
-          <MetricCard
-            icon={TrendingUp}
-            label="Consistência"
-            value={
-              loadingTasks
-                ? "..."
-                : `${taskInsights?.summary.avg_completion_rate ?? 0}%`
-            }
-            helper="Conclusão média"
-          />
-        </section>
-
-        <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-          <div className="mb-5 flex items-center justify-between">
-            <div>
-              <p className="text-sm font-semibold text-white">
-                Curva de energia
-              </p>
-              <p className="mt-1 text-xs text-white/38">
-                Estimativa ao longo do dia
+        <section className="mb-5 rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-5 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <img
+                src="/axon-logo.svg"
+                alt="Axon"
+                className="h-5 w-5 object-contain"
+              />
+              <p className="text-sm font-semibold text-purple-100">
+                O que o Axon descobriu
               </p>
             </div>
 
-            <Activity className="h-5 w-5 text-purple-200" />
+            {patterns?.status === "ready" &&
+              formatUpdatedBadge(patterns.generated_at) && (
+                <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/45">
+                  {formatUpdatedBadge(patterns.generated_at)}
+                </span>
+              )}
           </div>
 
-          <div className="flex h-44 items-end gap-2 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
-            {energyData.map((item) => (
-              <div key={item.label} className="flex flex-1 flex-col items-center gap-2">
-                <div className="flex h-28 w-full items-end">
+          {loadingPatterns ? (
+            <div className="space-y-3">
+              {[0, 1, 2].map((i) => (
+                <div
+                  key={i}
+                  className="h-16 animate-pulse rounded-[1.4rem] border border-white/10 bg-white/[0.04]"
+                />
+              ))}
+            </div>
+          ) : patterns?.status === "collecting" ? (
+            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5 text-center">
+              <Sparkles className="mx-auto mb-3 h-6 w-6 text-purple-200" />
+              <p className="text-sm leading-6 text-white/65">
+                {patterns.message}
+              </p>
+
+              <div className="mt-4">
+                <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/40">
+                  <span>Progresso</span>
+                  <span>
+                    {patterns.data_points ?? 0}/{patterns.days_needed ?? 7} dias
+                  </span>
+                </div>
+                <div className="h-2 overflow-hidden rounded-full bg-white/10">
                   <div
-                    className="w-full rounded-t-2xl bg-gradient-to-t from-purple-500/35 to-fuchsia-300 shadow-[0_0_16px_rgba(168,85,247,0.22)]"
-                    style={{ height: `${item.value}%` }}
+                    className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300"
+                    style={{
+                      width: `${Math.min(
+                        100,
+                        ((patterns.data_points ?? 0) /
+                          (patterns.days_needed ?? 7)) *
+                          100
+                      )}%`,
+                    }}
                   />
                 </div>
-
-                <p className="text-[0.65rem] text-white/35">{item.label}</p>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : patterns?.status === "ready" &&
+            (patterns.insights?.length ?? 0) > 0 ? (
+            <div className="space-y-3">
+              {patterns.insights!.map((it, i) => {
+                const style = TYPE_STYLE[it.type] ?? TYPE_STYLE.general;
+                const Icon = style.icon;
+                return (
+                  <div
+                    key={i}
+                    className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4"
+                  >
+                    <div className="mb-2 flex items-start gap-3">
+                      <div
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10"
+                        style={{
+                          backgroundColor: `${style.color}1a`,
+                          color: style.color,
+                        }}
+                      >
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <p className="pt-1 text-sm font-semibold leading-5 text-white">
+                        {it.title}
+                      </p>
+                    </div>
+                    <p className="text-xs leading-6 text-white/55">
+                      {it.detail}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5 text-center">
+              <p className="text-sm leading-6 text-white/55">
+                {patterns?.message ??
+                  "Os insights do Axon aparecerão aqui conforme você registra seus dias."}
+              </p>
+            </div>
+          )}
 
-          <div className="mt-4 rounded-[1.4rem] border border-purple-300/20 bg-purple-500/10 p-4">
-            <p className="text-sm leading-6 text-white/58">
-              O Axon recomenda reservar tarefas importantes para{" "}
-              <span className="font-semibold text-purple-100">
-                {result.energyPeak}
-              </span>{" "}
-              sempre que possível.
-            </p>
-          </div>
+          {patterns?.status === "ready" && (
+            <button
+              onClick={() => {
+                setLoadingPatterns(true);
+                api
+                  .getPatternInsights(true)
+                  .then(setPatterns)
+                  .catch(() => {})
+                  .finally(() => setLoadingPatterns(false));
+              }}
+              className="mt-4 inline-flex items-center gap-2 rounded-full px-1 text-xs font-semibold text-purple-200/80 active:scale-[0.98]"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Atualizar insights
+            </button>
+          )}
         </section>
 
         <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
@@ -737,124 +762,6 @@ export default function Insights() {
             />
           </div>
         </section>
-
-        <section className="rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-5 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
-          <div className="mb-4 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <img
-                src="/axon-logo.svg"
-                alt="Axon"
-                className="h-5 w-5 object-contain"
-              />
-              <p className="text-sm font-semibold text-purple-100">
-                O que o Axon descobriu
-              </p>
-            </div>
-
-            {patterns?.status === "ready" &&
-              formatUpdatedBadge(patterns.generated_at) && (
-                <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/45">
-                  {formatUpdatedBadge(patterns.generated_at)}
-                </span>
-              )}
-          </div>
-
-          {loadingPatterns ? (
-            <div className="space-y-3">
-              {[0, 1, 2].map((i) => (
-                <div
-                  key={i}
-                  className="h-16 animate-pulse rounded-[1.4rem] border border-white/10 bg-white/[0.04]"
-                />
-              ))}
-            </div>
-          ) : patterns?.status === "collecting" ? (
-            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5 text-center">
-              <Sparkles className="mx-auto mb-3 h-6 w-6 text-purple-200" />
-              <p className="text-sm leading-6 text-white/65">
-                {patterns.message}
-              </p>
-
-              <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/40">
-                  <span>Progresso</span>
-                  <span>
-                    {patterns.data_points ?? 0}/{patterns.days_needed ?? 7} dias
-                  </span>
-                </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300"
-                    style={{
-                      width: `${Math.min(
-                        100,
-                        ((patterns.data_points ?? 0) /
-                          (patterns.days_needed ?? 7)) *
-                          100
-                      )}%`,
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-          ) : patterns?.status === "ready" &&
-            (patterns.insights?.length ?? 0) > 0 ? (
-            <div className="space-y-3">
-              {patterns.insights!.map((it, i) => {
-                const style = TYPE_STYLE[it.type] ?? TYPE_STYLE.general;
-                const Icon = style.icon;
-                return (
-                  <div
-                    key={i}
-                    className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4"
-                  >
-                    <div className="mb-2 flex items-start gap-3">
-                      <div
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10"
-                        style={{
-                          backgroundColor: `${style.color}1a`,
-                          color: style.color,
-                        }}
-                      >
-                        <Icon className="h-4 w-4" />
-                      </div>
-                      <p className="pt-1 text-sm font-semibold leading-5 text-white">
-                        {it.title}
-                      </p>
-                    </div>
-                    <p className="text-xs leading-6 text-white/55">
-                      {it.detail}
-                    </p>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5 text-center">
-              <p className="text-sm leading-6 text-white/55">
-                {patterns?.message ??
-                  "Os insights do Axon aparecerão aqui conforme você registra seus dias."}
-              </p>
-            </div>
-          )}
-
-          {patterns?.status === "ready" && (
-            <button
-              onClick={() => {
-                setLoadingPatterns(true);
-                api
-                  .getPatternInsights(true)
-                  .then(setPatterns)
-                  .catch(() => {})
-                  .finally(() => setLoadingPatterns(false));
-              }}
-              className="mt-4 inline-flex items-center gap-2 rounded-full px-1 text-xs font-semibold text-purple-200/80 active:scale-[0.98]"
-            >
-              <RefreshCw className="h-3.5 w-3.5" />
-              Atualizar insights
-            </button>
-          )}
-        </section>
       </div>
 
       <Sidebar
@@ -864,22 +771,6 @@ export default function Insights() {
         energyPeak={result.energyPeak}
       />
     </main>
-  );
-}
-
-function MetricCard({ icon: Icon, label, value, helper }: MetricCardProps) {
-  return (
-    <div className="rounded-[1.6rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-      <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
-        <Icon className="h-4 w-4" />
-      </div>
-
-      <p className="text-xs text-white/38">{label}</p>
-      <p className="mt-1 text-sm font-semibold leading-5 text-white">
-        {value}
-      </p>
-      <p className="mt-1 text-xs leading-5 text-white/35">{helper}</p>
-    </div>
   );
 }
 

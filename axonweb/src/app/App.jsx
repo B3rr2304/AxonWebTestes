@@ -25,6 +25,8 @@ import Chat from "../pages/Chat";
 import ChatConversation from "../pages/ChatConversation";
 import Planning from "../pages/Planning";
 import Insights from "../pages/Insights";
+import Rotinas from "../pages/Rotinas";
+import RotinaDetalhe from "../pages/RotinaDetalhe";
 import Focus from "../pages/Focus";
 import Profile from "../pages/Profile";
 import Settings from "../pages/Settings";
@@ -69,6 +71,8 @@ export default function App() {
         <Route path="/chat/:chatId" element={<ChatConversation />} />
         <Route path="/planning" element={<Planning />} />
         <Route path="/insights" element={<Insights />} />
+        <Route path="/rotinas" element={<Rotinas />} />
+        <Route path="/rotinas/:id" element={<RotinaDetalhe />} />
         <Route path="/focus" element={<Focus />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />

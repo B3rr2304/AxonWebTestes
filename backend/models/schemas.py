@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, field_validator
+from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Optional
 from datetime import date, time
 
@@ -106,6 +106,7 @@ class TaskResponse(BaseModel):
     recurrence: Optional[str] = None
     location: Optional[str] = None
     parent_task_id: Optional[str] = None
+    routine_item_id: Optional[str] = None
     group_name: Optional[str] = None
     deadline: Optional[str] = None
     created_by: str
@@ -256,3 +257,137 @@ class DailyLogResponse(BaseModel):
     notes:               Optional[str]  = None
     created_at:          str
     updated_at:          str
+
+
+# --- Routines ---
+#
+# days_of_week: 0=Seg, 1=Ter, ..., 6=Dom (convenção Python date.weekday()).
+# Um item tem horário fixo (start_time + end_time) OU duração flexível
+# (duration_minutes, e o Axon escolhe o slot na Fase 3). Nunca os dois.
+
+def _validate_dias(v: list[int]) -> list[int]:
+    if not v:
+        raise ValueError("days_of_week não pode ser vazio")
+    if any(d < 0 or d > 6 for d in v):
+        raise ValueError("days_of_week aceita apenas valores de 0 (Seg) a 6 (Dom)")
+    return sorted(set(v))
+
+
+class RoutineItemCreate(BaseModel):
+    title:            str
+    days_of_week:     list[int]
+    start_time:       Optional[str] = None   # "HH:MM"
+    end_time:         Optional[str] = None    # "HH:MM"
+    duration_minutes: Optional[int] = None
+
+    @field_validator("days_of_week")
+    @classmethod
+    def _dias(cls, v: list[int]) -> list[int]:
+        return _validate_dias(v)
+
+    @model_validator(mode="after")
+    def _fixo_ou_flexivel(self):
+        tem_horario = self.start_time is not None and self.end_time is not None
+        tem_duracao = self.duration_minutes is not None
+        if not tem_horario and not tem_duracao:
+            raise ValueError(
+                "Informe start_time + end_time (horário fixo) ou duration_minutes (flexível)"
+            )
+        if tem_horario and tem_duracao:
+            raise ValueError(
+                "Um item é de horário fixo OU de duração flexível, não os dois"
+            )
+        if self.duration_minutes is not None and self.duration_minutes <= 0:
+            raise ValueError("duration_minutes deve ser maior que zero")
+        return self
+
+
+class RoutineItemUpdate(BaseModel):
+    title:            Optional[str]       = None
+    days_of_week:     Optional[list[int]] = None
+    start_time:       Optional[str]       = None
+    end_time:         Optional[str]       = None
+    duration_minutes: Optional[int]       = None
+
+    @field_validator("days_of_week")
+    @classmethod
+    def _dias(cls, v: Optional[list[int]]) -> Optional[list[int]]:
+        return _validate_dias(v) if v is not None else v
+
+    @model_validator(mode="after")
+    def _nao_ambos(self):
+        tem_horario = self.start_time is not None or self.end_time is not None
+        tem_duracao = self.duration_minutes is not None
+        if tem_horario and tem_duracao:
+            raise ValueError(
+                "Um item é de horário fixo OU de duração flexível, não os dois"
+            )
+        return self
+
+
+class RoutineItemResponse(BaseModel):
+    id:               str
+    routine_id:       str
+    title:            str
+    days_of_week:     list[int]
+    start_time:       Optional[str] = None
+    end_time:         Optional[str] = None
+    duration_minutes: Optional[int] = None
+    created_at:       str
+    updated_at:       str
+
+
+class RoutineCreate(BaseModel):
+    name:       str
+    start_date: Optional[date] = None   # default: hoje (definido no service)
+    end_date:   Optional[date] = None   # null = rotina sem término
+    # Itens inline: o backend cria a rotina + os itens e já gera as tarefas no
+    # calendário numa única chamada. Vazio = cria só o container.
+    items:      list[RoutineItemCreate] = []
+
+
+class RoutineUpdate(BaseModel):
+    name:     Optional[str]  = None
+    end_date: Optional[date] = None
+    status:   Optional[str]  = None     # 'active' | 'paused'
+
+    @field_validator("status")
+    @classmethod
+    def _status_valido(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v not in ("active", "paused"):
+            raise ValueError("status deve ser 'active' ou 'paused'")
+        return v
+
+
+class RoutinePause(BaseModel):
+    paused_until: Optional[date] = None  # null = pausado indefinidamente
+
+
+class RoutineResponse(BaseModel):
+    id:              str
+    name:            str
+    status:          str
+    start_date:      str
+    end_date:        Optional[str] = None
+    paused_until:    Optional[str] = None
+    generated_until: str
+    created_at:      str
+    updated_at:      str
+    streak:          int = 0
+    streak_unit:     str = "dias"
+    items:           list[RoutineItemResponse] = []
+
+
+class RoutineListItem(BaseModel):
+    id:              str
+    name:            str
+    status:          str
+    start_date:      str
+    end_date:        Optional[str] = None
+    paused_until:    Optional[str] = None
+    generated_until: str
+    created_at:      str
+    updated_at:      str
+    streak:          int = 0
+    streak_unit:     str = "dias"
+    item_count:      int = 0
