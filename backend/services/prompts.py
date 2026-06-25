@@ -191,9 +191,21 @@ def _focus_block_context(block: dict) -> str:
     )
 
 
-def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> str:
+def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> list[dict]:
     """
     Monta o system prompt do agente certo para o usuário.
+
+    Retorna uma LISTA de blocos de texto (formato da API Anthropic), dividida em:
+      1. Bloco ESTÁVEL  — identidade + cronotipo + agenda. Igual entre requisições
+         (e compartilhado entre usuários do mesmo cronotipo/agenda). Recebe
+         `cache_control` para ser servido do cache de prompt.
+      2. Bloco VOLÁTIL  — data/hora, calendário, bloco de foco atual, memórias e
+         dados do usuário. Muda a cada minuto, então fica DEPOIS do ponto de cache.
+         Também marcado para cache, o que reaproveita o prefixo nas várias rodadas
+         do loop de tool use de uma mesma mensagem (onde o prompt é idêntico).
+
+    A ordem (estável antes de volátil) é o que torna o cache eficaz: qualquer byte
+    que muda invalida tudo que vem depois dele.
 
     perfil esperado:
       {
@@ -211,6 +223,23 @@ def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> str:
     agora = datetime.now(tz)
     hoje = agora.date()
 
+    # ---- Bloco ESTÁVEL (cacheável entre requisições) ----------------------
+    estaveis = [
+        BASE_IDENTITY,
+        _chronotype_block(cronotipo),
+    ]
+    # O bloco de agenda só entra se soubermos o tipo.
+    # Se ainda não sabemos, instruímos o agente a descobrir.
+    if schedule_type in SCHEDULE_BEHAVIOR:
+        estaveis.append(SCHEDULE_BEHAVIOR[schedule_type])
+    else:
+        estaveis.append(
+            "AGENDA DO USUÁRIO: ainda desconhecida.\n"
+            "Antes de organizar a rotina, descubra de forma natural se ele tem "
+            "horários flexíveis ou compromissos fixos de trabalho/estudo."
+        )
+
+    # ---- Bloco VOLÁTIL (muda a cada requisição) ---------------------------
     # Calendário de referência: o modelo é ruim em CALCULAR datas (erra "amanhã"
     # por um dia), mas ótimo em COPIAR de uma tabela. Listamos os próximos 14 dias
     # já resolvidos para ele nunca precisar fazer aritmética de data de cabeça.
@@ -244,30 +273,29 @@ def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> str:
         "- Se houver qualquer dúvida sobre qual data o usuário quis, pergunte antes de agendar."
     )
 
-    partes = [
-        BASE_IDENTITY,
-        data_atual,
-        _chronotype_block(cronotipo),
-    ]
-
-    # O bloco de agenda só entra se soubermos o tipo.
-    # Se ainda não sabemos, instruímos o agente a descobrir.
-    if schedule_type in SCHEDULE_BEHAVIOR:
-        partes.append(SCHEDULE_BEHAVIOR[schedule_type])
-    else:
-        partes.append(
-            "AGENDA DO USUÁRIO: ainda desconhecida.\n"
-            "Antes de organizar a rotina, descubra de forma natural se ele tem "
-            "horários flexíveis ou compromissos fixos de trabalho/estudo."
-        )
+    volateis = [data_atual]
 
     current_block = perfil.get("current_block")
     if current_block:
-        partes.append(_focus_block_context(current_block))
+        volateis.append(_focus_block_context(current_block))
 
     if memories:
-        partes.append(_memory_block(memories))
+        volateis.append(_memory_block(memories))
 
-    partes.append(_user_block(perfil))
+    volateis.append(_user_block(perfil))
 
-    return "\n\n".join(partes)
+    # Dois blocos com ponto de cache cada. O 1º (estável) é reaproveitado entre
+    # requisições/usuários; o 2º (volátil) é reaproveitado entre as rodadas de
+    # tool use de uma mesma mensagem.
+    return [
+        {
+            "type": "text",
+            "text": "\n\n".join(estaveis),
+            "cache_control": {"type": "ephemeral"},
+        },
+        {
+            "type": "text",
+            "text": "\n\n".join(volateis),
+            "cache_control": {"type": "ephemeral"},
+        },
+    ]

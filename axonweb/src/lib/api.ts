@@ -312,6 +312,7 @@ export interface Task {
   parent_task_id?: string | null;
   group_name?: string | null;
   deadline?: string | null;
+  is_key_task: boolean;
   created_by: "user" | "agent";
   created_at: string;
 }
@@ -333,6 +334,7 @@ export interface TaskCreateInput {
 export type TaskUpdateInput = Partial<TaskCreateInput> & {
   status?: TaskStatus;
   progress?: number;
+  is_key_task?: boolean;
 };
 
 export function getTasks(params?: {

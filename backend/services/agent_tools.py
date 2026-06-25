@@ -8,9 +8,15 @@ usuário logado.
 Datas devem ser passadas pelo modelo no formato YYYY-MM-DD e horários como HH:MM.
 """
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
-from services import tasks_service, memory_service, notification_service, user_tz
+from services import (
+    tasks_service,
+    memory_service,
+    notification_service,
+    routines_service,
+    user_tz,
+)
 
 # --- Resolução determinística de datas relativas ---------------------------
 # O modelo erra ao TRANSCREVER datas absolutas (ex.: escreve 2026-06-17 quando
@@ -63,6 +69,17 @@ def _resolve_date_fields(tool_input: dict, tz_name: str | None) -> dict:
             resolved[field] = _resolve_date(resolved[field], today)
     return resolved
 
+
+def _resolve_to_date(value, today: date) -> date | None:
+    """Resolve uma palavra-chave/ISO para um objeto date (ou None se vazio)."""
+    if not value:
+        return None
+    iso = _resolve_date(value, today)
+    try:
+        return date.fromisoformat(iso)
+    except (ValueError, TypeError):
+        return None
+
 # Rótulos e formas para as notificações de alteração geradas por templates.
 _TYPE_LABEL = {"task": "Tarefa", "event": "Evento", "routine": "Rotina"}
 _TYPE_ADJ = {  # (criada, atualizada, removida) — concordância de gênero
@@ -98,7 +115,10 @@ def _notify_task_change(user_id: str, idx: int, task: dict) -> None:
 
 # Nomes das tools que ALTERAM o estado das tarefas (usado pelo chat para sinalizar
 # ao frontend que o Planejamento precisa ser recarregado).
-MUTATING_TOOLS = {"criar_tarefa", "atualizar_tarefa", "deletar_tarefa"}
+MUTATING_TOOLS = {
+    "criar_tarefa", "atualizar_tarefa", "deletar_tarefa",
+    "criar_rotina", "pausar_rotina", "retomar_rotina", "deletar_rotina",
+}
 
 # Rótulos legíveis em PT-BR para o indicador de ação no chat.
 TOOL_LABELS = {
@@ -109,6 +129,11 @@ TOOL_LABELS = {
     "salvar_memoria": "Registrando aprendizado",
     "listar_memorias": "Consultando aprendizados",
     "atualizar_memoria": "Atualizando aprendizado",
+    "criar_rotina": "Criando rotina",
+    "listar_rotinas": "Consultando rotinas",
+    "pausar_rotina": "Pausando rotina",
+    "retomar_rotina": "Retomando rotina",
+    "deletar_rotina": "Removendo rotina",
 }
 
 _TASK_TYPE = {"type": "string", "enum": ["task", "event", "routine"]}
@@ -253,6 +278,104 @@ TOOLS = [
             "required": ["content"],
         },
     },
+    {
+        "name": "criar_rotina",
+        "description": (
+            "Cria uma ROTINA recorrente nomeada com um ou mais itens (ex.: 'Estudos' "
+            "com 'Matemática seg/qua/sex'). Diferente de criar_tarefa: a rotina gera "
+            "automaticamente as tarefas dos próximos dias e o Axon encaixa os itens "
+            "flexíveis nos melhores blocos de energia do cronotipo. Use quando o "
+            "usuário falar de algo que se repete em dias da semana. "
+            "Cada item é FIXO (start_time + end_time) OU FLEXÍVEL (duration_minutes), "
+            "nunca os dois. days_of_week usa 0=segunda, 1=terça, 2=quarta, 3=quinta, "
+            "4=sexta, 5=sábado, 6=domingo."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "name": {"type": "string", "description": "Nome da rotina (ex.: 'Estudos')"},
+                "items": {
+                    "type": "array",
+                    "description": "Itens da rotina (pelo menos 1).",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "title": {"type": "string", "description": "Título do item"},
+                            "days_of_week": {
+                                "type": "array",
+                                "items": {"type": "integer", "minimum": 0, "maximum": 6},
+                                "description": "Dias da semana (0=seg ... 6=dom)",
+                            },
+                            "start_time": {**_TIME, "description": "Início (item fixo)"},
+                            "end_time": {**_TIME, "description": "Fim (item fixo)"},
+                            "duration_minutes": {
+                                "type": "integer",
+                                "description": "Duração em minutos (item flexível — o Axon escolhe o horário)",
+                            },
+                        },
+                        "required": ["title", "days_of_week"],
+                    },
+                },
+                "start_date": {**_DATE, "description": "Data de início. Padrão: hoje. Aceita 'hoje'/'amanhã'/dia da semana."},
+                "end_date": {**_DATE, "description": "Data final (opcional). Omitir para rotina sem fim."},
+            },
+            "required": ["name", "items"],
+        },
+    },
+    {
+        "name": "listar_rotinas",
+        "description": (
+            "Lista as rotinas do usuário (ativas e pausadas) com nome, status, "
+            "número de itens e streak. Use antes de pausar/retomar/deletar uma rotina "
+            "para descobrir o id correto."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "pausar_rotina",
+        "description": (
+            "Pausa uma rotina: remove as tarefas futuras que ela geraria. Use "
+            "listar_rotinas antes para descobrir o id. paused_until é opcional — "
+            "se informado, indica até quando fica pausada."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "routine_id": {"type": "string", "description": "id (UUID) da rotina"},
+                "paused_until": {**_DATE, "description": "Pausar até esta data (opcional)"},
+            },
+            "required": ["routine_id"],
+        },
+    },
+    {
+        "name": "retomar_rotina",
+        "description": (
+            "Retoma uma rotina pausada, regerando as tarefas a partir de hoje. "
+            "Use listar_rotinas antes para descobrir o id."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "routine_id": {"type": "string", "description": "id (UUID) da rotina"},
+            },
+            "required": ["routine_id"],
+        },
+    },
+    {
+        "name": "deletar_rotina",
+        "description": (
+            "Remove permanentemente uma rotina e suas tarefas futuras. As tarefas "
+            "passadas/concluídas permanecem no histórico. Use listar_rotinas antes "
+            "para descobrir o id."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "routine_id": {"type": "string", "description": "id (UUID) da rotina"},
+            },
+            "required": ["routine_id"],
+        },
+    },
 ]
 
 
@@ -308,6 +431,44 @@ def execute_tool(name: str, tool_input: dict, user_id: str, tz_name: str | None 
         if name == "salvar_memoria":
             mem = memory_service.save_memory(user_id, tool_input["content"])
             return {"ok": True, "memory": mem}
+
+        # --- Rotinas -------------------------------------------------------
+        if name in ("criar_rotina", "pausar_rotina", "retomar_rotina",
+                    "deletar_rotina", "listar_rotinas"):
+            today = datetime.now(user_tz.zone(tz_name)).date()
+
+            if name == "criar_rotina":
+                data = {
+                    "name": tool_input["name"],
+                    "items": tool_input.get("items") or [],
+                    "start_date": _resolve_to_date(tool_input.get("start_date"), today),
+                    "end_date": _resolve_to_date(tool_input.get("end_date"), today),
+                }
+                routine = routines_service.create_routine(user_id, data, today)
+                return {"ok": True, "routine": routine}
+
+            if name == "listar_rotinas":
+                routines = routines_service.list_routines(user_id, today)
+                return {"ok": True, "count": len(routines), "routines": routines}
+
+            if name == "pausar_rotina":
+                routine = routines_service.pause_routine(
+                    user_id,
+                    tool_input["routine_id"],
+                    _resolve_to_date(tool_input.get("paused_until"), today),
+                    today,
+                )
+                return {"ok": True, "routine": routine}
+
+            if name == "retomar_rotina":
+                routine = routines_service.resume_routine(
+                    user_id, tool_input["routine_id"], today
+                )
+                return {"ok": True, "routine": routine}
+
+            if name == "deletar_rotina":
+                routines_service.delete_routine(user_id, tool_input["routine_id"], today)
+                return {"ok": True, "deleted": tool_input["routine_id"]}
 
         return {"ok": False, "error": f"Ferramenta desconhecida: {name}"}
     except ValueError as e:
