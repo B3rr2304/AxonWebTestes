@@ -10,6 +10,7 @@ export default function NotificationToastProvider() {
 
   const [toast, setToast] = useState<api.NotificationData | null>(null);
   const [isVisible, setIsVisible] = useState(false);
+  
 
   const lastSeenIdRef = useRef<string | null>(null);
   const hideTimeoutRef = useRef<number | null>(null);
@@ -66,6 +67,7 @@ export default function NotificationToastProvider() {
 
         setToast(latestUnread);
         setIsVisible(true);
+        playNotificationSound();
 
         if (hideTimeoutRef.current) {
           window.clearTimeout(hideTimeoutRef.current);
@@ -221,5 +223,31 @@ export default function NotificationToastProvider() {
         </div>
       </div>
     </div>
-  );
+  );  
+
+function playNotificationSound() {
+  try {
+    const AudioContextClass =
+      window.AudioContext || (window as any).webkitAudioContext;
+
+    const audioContext = new AudioContextClass();
+    const oscillator = audioContext.createOscillator();
+    const gain = audioContext.createGain();
+
+    oscillator.type = "sine";
+    oscillator.frequency.setValueAtTime(720, audioContext.currentTime);
+
+    gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.06, audioContext.currentTime + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.22);
+
+    oscillator.connect(gain);
+    gain.connect(audioContext.destination);
+
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + 0.24);
+  } catch {
+    // Navegador bloqueou áudio ou não suporta Web Audio
+  }
+}
 }
