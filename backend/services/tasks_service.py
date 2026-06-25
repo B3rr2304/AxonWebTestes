@@ -61,9 +61,26 @@ def list_tasks(
     return [serialize(row) for row in (result.data or [])]
 
 
+def _unset_key_task(user_id: str, scheduled_date: str, exclude_id: str | None = None) -> None:
+    """Garante unicidade de tarefa chave por dia: zera a anterior antes de setar a nova."""
+    q = (
+        supabase.table("tasks")
+        .update({"is_key_task": False})
+        .eq("user_id", user_id)
+        .eq("scheduled_date", scheduled_date)
+        .eq("is_key_task", True)
+    )
+    if exclude_id:
+        q = q.neq("id", exclude_id)
+    q.execute()
+
+
 def create_task(user_id: str, data: dict) -> dict:
     payload = _stringify_dates({**data})
     payload["user_id"] = user_id
+
+    if payload.get("is_key_task") and payload.get("scheduled_date"):
+        _unset_key_task(user_id, payload["scheduled_date"])
 
     result = supabase.table("tasks").insert(payload).execute()
     if not result.data:
@@ -91,11 +108,11 @@ def update_task(user_id: str, task_id: str, data: dict) -> dict:
     if not payload:
         raise ValueError("Nenhum campo para atualizar")
 
-    # Confirma posse e lê o status atual (para sincronizar completed_at sem
-    # sobrescrever o horário de conclusão se a tarefa já estava 'done').
+    # Confirma posse e lê estado atual (status para completed_at; scheduled_date
+    # e is_key_task para a lógica de unicidade de tarefa chave).
     existing = (
         supabase.table("tasks")
-        .select("status")
+        .select("status, scheduled_date, is_key_task")
         .eq("id", task_id)
         .eq("user_id", user_id)
         .execute()
@@ -103,6 +120,12 @@ def update_task(user_id: str, task_id: str, data: dict) -> dict:
     if not existing.data:
         raise ValueError("Tarefa não encontrada")
     current_status = existing.data[0].get("status")
+    current_scheduled_date = existing.data[0].get("scheduled_date")
+
+    if payload.get("is_key_task"):
+        effective_date = str(payload.get("scheduled_date") or current_scheduled_date or "")
+        if effective_date:
+            _unset_key_task(user_id, effective_date, exclude_id=task_id)
 
     if "status" in payload:
         if payload["status"] == "done" and current_status != "done":

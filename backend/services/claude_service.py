@@ -11,15 +11,23 @@ _MODEL = "claude-sonnet-4-6"
 _MAX_TOOL_ROUNDS = 5
 
 
-def call_chat(messages: list[dict], system_prompt: str) -> str:
+def _text_from_content(content) -> str:
+    """Concatena todos os blocos de texto da resposta (ignora thinking/tool_use)."""
+    return "".join(b.text for b in content if getattr(b, "type", None) == "text")
+
+
+def call_chat(messages: list[dict], system_prompt) -> str:
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     response = client.messages.create(
         model=_MODEL,
-        max_tokens=1024,
+        max_tokens=4096,
         system=system_prompt,
+        thinking={"type": "adaptive"},
         messages=messages,
     )
-    return response.content[0].text
+    if response.stop_reason == "refusal":
+        return "Desculpe, não consigo ajudar com esse pedido específico. Podemos tentar outra coisa?"
+    return _text_from_content(response.content)
 
 
 def stream_chat(messages: list[dict], system_prompt: str):
@@ -60,8 +68,9 @@ def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: st
     for _ in range(_MAX_TOOL_ROUNDS):
         with client.messages.stream(
             model=_MODEL,
-            max_tokens=4096,
+            max_tokens=8192,
             system=system_prompt,
+            thinking={"type": "adaptive"},
             tools=agent_tools.TOOLS,
             messages=convo,
         ) as stream:
@@ -77,6 +86,12 @@ def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: st
             yield _sse({"text": "\n\n⚠️ Resposta interrompida (limite de tokens atingido). Por favor, repita seu pedido."})
             break
 
+        # Classificadores de segurança podem recusar o pedido (HTTP 200 com
+        # stop_reason "refusal"). Avisamos o usuário em vez de encerrar em silêncio.
+        if final.stop_reason == "refusal":
+            yield _sse({"text": "\n\nDesculpe, não consigo ajudar com esse pedido específico. Podemos tentar outra coisa?"})
+            break
+
         if final.stop_reason != "tool_use":
             break
 
@@ -86,6 +101,16 @@ def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: st
         for b in final.content:
             if b.type == "text":
                 content_dicts.append({"type": "text", "text": b.text})
+            elif b.type == "thinking":
+                # Com thinking ligado, os blocos de raciocínio precisam ser
+                # reenviados sem alteração (com a assinatura) numa rodada de tool use.
+                content_dicts.append({
+                    "type": "thinking",
+                    "thinking": b.thinking,
+                    "signature": b.signature,
+                })
+            elif b.type == "redacted_thinking":
+                content_dicts.append({"type": "redacted_thinking", "data": b.data})
             elif b.type == "tool_use":
                 content_dicts.append({
                     "type": "tool_use",

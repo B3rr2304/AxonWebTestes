@@ -72,6 +72,7 @@ class TaskCreate(BaseModel):
     group_name: Optional[str] = None
     deadline: Optional[date] = None
     created_by: str = "user"           # 'user' | 'agent'
+    is_key_task: bool = False
 
 
 class TaskUpdate(BaseModel):
@@ -89,6 +90,7 @@ class TaskUpdate(BaseModel):
     location: Optional[str] = None
     group_name: Optional[str] = None
     deadline: Optional[date] = None
+    is_key_task: Optional[bool] = None
 
 
 class TaskResponse(BaseModel):
@@ -111,6 +113,7 @@ class TaskResponse(BaseModel):
     deadline: Optional[str] = None
     created_by: str
     created_at: str
+    is_key_task: bool = False
 
 
 # --- Conversations ---

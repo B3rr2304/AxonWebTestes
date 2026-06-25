@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
@@ -13,6 +13,7 @@ import {
   Plus,
   Repeat,
   Sparkles,
+  Star,
   Trash2,
   X,
 } from "lucide-react";
@@ -206,6 +207,8 @@ export default function Planning() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  const toastTimer = useRef<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [carriedCount, setCarriedCount] = useState(0);
   const [calendarSetupChoice, setCalendarSetupChoice] =
@@ -284,7 +287,11 @@ export default function Planning() {
     () =>
       tasks
         .filter((task) => isTaskOnDate(task, selectedIso))
-        .sort((a, b) => (a.start_time ?? "").localeCompare(b.start_time ?? "")),
+        .sort((a, b) => {
+          // Tarefa chave sempre no topo, independente do horário.
+          if (!!a.is_key_task !== !!b.is_key_task) return a.is_key_task ? -1 : 1;
+          return (a.start_time ?? "").localeCompare(b.start_time ?? "");
+        }),
     [tasks, selectedIso]
   );
   const undatedTasks = useMemo(
@@ -311,6 +318,40 @@ export default function Planning() {
     try {
       await api.updateTask(task.id, next);
       await loadTasks();
+    } catch {
+      // mantém o estado atual em caso de erro
+    }
+  }
+
+  function showToast(message: string) {
+    setToast(message);
+    if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setToast(null), 2800);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (toastTimer.current) window.clearTimeout(toastTimer.current);
+    };
+  }, []);
+
+  async function handleToggleKey(task: Task) {
+    const marking = !task.is_key_task;
+    // Troca: já existe outra tarefa chave no mesmo dia? (o backend desmarca-a)
+    const hadOtherKey =
+      marking && dayTasks.some((t) => t.is_key_task && t.id !== task.id);
+    try {
+      await api.updateTask(task.id, { is_key_task: marking });
+      // O backend desmarca a anterior automaticamente, então recarregamos o dia
+      // inteiro em vez de atualizar só o card clicado.
+      await loadTasks();
+      if (marking) {
+        showToast(
+          hadOtherKey ? "Tarefa chave atualizada" : "Tarefa chave definida"
+        );
+      } else {
+        showToast("Tarefa chave removida");
+      }
     } catch {
       // mantém o estado atual em caso de erro
     }
@@ -564,6 +605,7 @@ export default function Planning() {
                             task={task}
                             selectedIso={selectedIso}
                             onToggle={handleToggleDone}
+                            onToggleKey={handleToggleKey}
                             onEdit={handleEdit}
                             onDelete={handleDelete}
                           />
@@ -646,6 +688,15 @@ export default function Planning() {
         onClose={cancelDeleteTask}
         onConfirm={confirmDeleteTask}
       />
+
+      {toast && (
+        <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[120] flex justify-center px-4">
+          <div className="flex items-center gap-2 rounded-full border border-amber-300/25 bg-[#1b1b27]/95 px-4 py-2.5 text-sm font-medium text-amber-100 shadow-xl shadow-black/40 backdrop-blur-xl">
+            <Star className="h-4 w-4 fill-amber-300 text-amber-300" />
+            {toast}
+          </div>
+        </div>
+      )}
     </main>
   );
 }
@@ -1078,15 +1129,18 @@ function TimelineItem({
   task,
   selectedIso,
   onToggle,
+  onToggleKey,
   onEdit,
   onDelete,
 }: {
   task: Task;
   selectedIso: string;
   onToggle: (t: Task) => void;
+  onToggleKey?: (t: Task) => void;
   onEdit: (t: Task) => void;
   onDelete: (t: Task) => void;
 }) {
+  const isKey = !!task.is_key_task;
   const Icon =
     task.task_type === "task"
       ? ListTodo
@@ -1146,7 +1200,11 @@ const isDisplayScheduled = displayStatus === "scheduled";
 
       <div
         className={`rounded-[1.55rem] border p-4 shadow-xl shadow-black/20 ${
-          isDone
+          isKey ? "ring-1 ring-amber-300/45 " : ""
+        }${
+          isKey
+            ? "border-amber-300/30 bg-amber-400/[0.08]"
+            : isDone
             ? "border-emerald-300/20 bg-emerald-400/10"
             : isEvent
             ? "border-cyan-300/20 bg-cyan-400/10"
@@ -1158,7 +1216,13 @@ const isDisplayScheduled = displayStatus === "scheduled";
         }`}
       >
         <div className="mb-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {isKey && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-400/10 px-3 py-1 text-[0.65rem] font-semibold text-amber-100">
+                <Star className="h-3 w-3 fill-amber-300 text-amber-300" />
+                Tarefa chave
+              </span>
+            )}
             <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.65rem] font-semibold ${
                 isEvent
@@ -1192,6 +1256,27 @@ const isDisplayScheduled = displayStatus === "scheduled";
           </div>
 
           <div className="flex items-center gap-2">
+            {onToggleKey && (
+              <button
+                onClick={() => onToggleKey(task)}
+                className={`flex h-8 w-8 items-center justify-center rounded-xl active:scale-[0.94] ${
+                  isKey
+                    ? "bg-amber-400/15 text-amber-200"
+                    : "bg-white/[0.055] text-white/45"
+                }`}
+                aria-label={
+                  isKey ? "Desmarcar tarefa chave" : "Marcar como tarefa chave"
+                }
+                title={
+                  isKey ? "Desmarcar tarefa chave" : "Marcar como tarefa chave"
+                }
+              >
+                <Star
+                  className={`h-4 w-4 ${isKey ? "fill-amber-300 text-amber-300" : ""}`}
+                />
+              </button>
+            )}
+
             <button
               onClick={() => onEdit(task)}
               className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/45 active:scale-[0.94]"
