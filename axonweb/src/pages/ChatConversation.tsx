@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import ReactMarkdown from "react-markdown";
+import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import {
   Archive,
@@ -987,7 +987,7 @@ function AxonMarkdown({ text }: { text: string }) {
         td: ({ children }) => (
           <td className="border-t border-white/8 px-3 py-2 text-white/60">{children}</td>
         ),
-      }}
+      } satisfies Components}
     >
       {text}
     </ReactMarkdown>
