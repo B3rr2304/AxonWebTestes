@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ElementType } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import { useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import {
   CalendarDays,
   CheckCircle2,
@@ -15,9 +15,11 @@ import {
   Sparkles,
   Target,
   Zap,
+  Bell,
+  X,
 } from "lucide-react";
 
-import DayReview from "../components/DayReview";
+import DayReview from "./DayReview";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 import type { DashboardData, FocusBlock } from "../lib/api";
@@ -33,20 +35,44 @@ export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ---------------------------------------------------------------------------
+  // ESTADOS GERAIS DA TELA
+  // ---------------------------------------------------------------------------
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [showNextBlock, setShowNextBlock] = useState(false);
   const [todayLog, setTodayLog] = useState<api.DailyLog | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [searchParams, setSearchParams] = useSearchParams();
 
+  // ---------------------------------------------------------------------------
+  // NOTIFICAÇÕES
+  // ---------------------------------------------------------------------------
+  const refreshUnreadCount = useCallback(() => {
+    api
+      .getUnreadCount()
+      .then((res) => setUnreadCount(res.unread))
+      .catch(() => null);
+  }, []);
+
+  // ---------------------------------------------------------------------------
+  // CARREGAMENTO PRINCIPAL DO DASHBOARD
+  // - Valida login
+  // - Busca dados do dashboard
+  // - Busca revisão diária
+  // - Atualiza notificações
+  // - Dá auto-refresh a cada 30 minutos e ao voltar para a aba
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     if (!api.isLoggedIn()) {
       navigate("/login");
       return;
     }
 
-    const load = () => {
+    const loadDashboard = () => {
       api
         .getDashboard()
         .then(setData)
@@ -54,17 +80,40 @@ export default function Dashboard() {
         .finally(() => setLoading(false));
     };
 
-    load();
-    api.getDailyLogToday().then(setTodayLog).catch(() => setTodayLog(null));
-    api.analyzeNotifications().catch(() => null);
+    const loadDailyLog = () => {
+      api
+        .getDailyLogToday()
+        .then(setTodayLog)
+        .catch(() => setTodayLog(null));
+    };
 
-    const interval = window.setInterval(load, 30 * 60 * 1000);
+    let delayedNotificationRefresh: number | undefined;
+
+    const analyzeNotificationsAndRefreshLater = () => {
+      api
+        .analyzeNotifications()
+        .then(() => {
+          delayedNotificationRefresh = window.setTimeout(
+            refreshUnreadCount,
+            10000
+          );
+        })
+        .catch(() => null);
+    };
+
+    loadDashboard();
+    loadDailyLog();
+    refreshUnreadCount();
+    analyzeNotificationsAndRefreshLater();
+
+    const interval = window.setInterval(loadDashboard, 30 * 60 * 1000);
 
     const handleVisibility = () => {
-      if (!document.hidden) {
-        load();
-        api.analyzeNotifications().catch(() => null);
-      }
+      if (document.hidden) return;
+
+      loadDashboard();
+      refreshUnreadCount();
+      analyzeNotificationsAndRefreshLater();
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
@@ -72,9 +121,17 @@ export default function Dashboard() {
     return () => {
       window.clearInterval(interval);
       document.removeEventListener("visibilitychange", handleVisibility);
-    };
-  }, [navigate]);
 
+      if (delayedNotificationRefresh) {
+        window.clearTimeout(delayedNotificationRefresh);
+      }
+    };
+  }, [navigate, refreshUnreadCount]);
+
+  // ---------------------------------------------------------------------------
+  // ABERTURA AUTOMÁTICA DA REVISÃO DIÁRIA
+  // Usado quando outra tela navega para o dashboard pedindo para abrir o DayReview.
+  // ---------------------------------------------------------------------------
   useEffect(() => {
     if (location.state?.openDayReview) {
       setReviewOpen(true);
@@ -82,6 +139,26 @@ export default function Dashboard() {
     }
   }, [location.state, location.pathname]);
 
+  // ---------------------------------------------------------------------------
+  // ABERTURA AUTOMÁTICA DAS NOTIFICAÇÕES VIA URL
+  // O toast global navega para /dashboard?notifications=open.
+  // Este efeito abre o modal e limpa o parâmetro da URL.
+  // ---------------------------------------------------------------------------
+  useEffect(() => {
+    if (searchParams.get("notifications") !== "open") return;
+
+    setIsNotificationsOpen(true);
+
+    const nextParams = new URLSearchParams(searchParams);
+    nextParams.delete("notifications");
+    setSearchParams(nextParams, { replace: true });
+  }, [searchParams, setSearchParams]);
+
+  // ---------------------------------------------------------------------------
+  // DADOS DERIVADOS
+  // Valores calculados a partir da resposta do backend.
+  // Mantemos fallbacks para evitar tela quebrada enquanto carrega.
+  // ---------------------------------------------------------------------------
   const showReviewCard = new Date().getHours() >= 18 && todayLog === null;
 
   const chronotypeKey =
@@ -122,6 +199,7 @@ export default function Dashboard() {
       <Background />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
+        {/* Header: logo, sino de notificações e menu lateral */}
         <header className="mb-5 flex items-center justify-between">
           <button
             onClick={() => navigate("/dashboard")}
@@ -141,15 +219,30 @@ export default function Dashboard() {
             </div>
           </button>
 
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-            aria-label="Abrir menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setIsNotificationsOpen(true)}
+              className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+              aria-label="Abrir notificações"
+            >
+              <Bell className="h-5 w-5" />
+
+              {unreadCount > 0 && (
+                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
+              )}
+            </button>
+
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+              aria-label="Abrir menu"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
         </header>
 
+        {/* Hero principal: mostra o estado atual do dia e o bloco de foco */}
         <section className="mb-4">
           <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
@@ -215,6 +308,7 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {/* Card de revisão diária: aparece à noite se o usuário ainda não registrou */}
         {showReviewCard && (
           <section className="mb-4">
             <button
@@ -240,6 +334,7 @@ export default function Dashboard() {
           </section>
         )}
 
+        {/* Métricas rápidas do dia */}
         <section className="mb-4 grid grid-cols-2 gap-3">
           <MetricCard
             icon={Zap}
@@ -270,6 +365,7 @@ export default function Dashboard() {
           />
         </section>
 
+        {/* Lista resumida de tarefas/blocos do dia */}
         <section className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/75 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -350,6 +446,7 @@ export default function Dashboard() {
         </section>
       </div>
 
+      {/* Modais e overlays globais da página */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -363,9 +460,19 @@ export default function Dashboard() {
         existing={todayLog}
         onSaved={(log) => setTodayLog(log)}
       />
+
+      <NotificationsSheet
+        isOpen={isNotificationsOpen}
+        onClose={() => setIsNotificationsOpen(false)}
+        onUnreadCountChange={setUnreadCount}
+      />
     </main>
   );
 }
+
+// ===========================================================================
+// COMPONENTES DE UI DO DASHBOARD
+// ===========================================================================
 
 function MetricCard({ icon: Icon, label, value, helper }: MetricCardProps) {
   return (
@@ -523,6 +630,10 @@ function CurrentFocusBlockCard({
   );
 }
 
+// ===========================================================================
+// HELPERS DE CÁLCULO E FORMATAÇÃO
+// ===========================================================================
+
 function getCurrentBlockProgress(block: FocusBlock) {
   const now = new Date();
 
@@ -555,6 +666,10 @@ function clampPercent(value: number) {
   return Math.min(Math.max(value, 0), 100);
 }
 
+// ===========================================================================
+// BACKGROUND VISUAL DA PÁGINA
+// ===========================================================================
+
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -565,6 +680,484 @@ function Background() {
       <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
 
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
+    </div>
+  );
+}
+
+
+// ===========================================================================
+// NOTIFICAÇÕES
+// Modal aberto pelo sino do header e pelo toast global (/dashboard?notifications=open)
+// ===========================================================================
+
+type NotificationAction = {
+  task_id?: string;
+  new_date?: string | null;
+  new_start_time?: string | null;
+  new_end_time?: string | null;
+  reason?: string | null;
+};
+
+type NotificationWithAction = api.NotificationData & {
+  action?: NotificationAction | null;
+};
+
+function NotificationItem({
+  notification,
+  onRead,
+  onAccept,
+  onReject,
+}: {
+  notification: api.NotificationData;
+  onRead: (id: string) => void;
+  onAccept: (id: string) => void;
+  onReject: (id: string) => void;
+}) {
+  const typedNotification = notification as NotificationWithAction;
+
+  const isUnread = notification.status === "unread";
+  const isImprovement = notification.type === "improvement";
+  const isChange = notification.type === "change";
+  const isAccepted = notification.status === "accepted";
+  const isRejected = notification.status === "rejected";
+  const isHandled = isAccepted || isRejected;
+
+  const canAct = isImprovement && !isHandled;
+  const action = typedNotification.action;
+
+  function handleCardClick() {
+    if (isUnread) {
+      onRead(notification.id);
+    }
+  }
+
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={handleCardClick}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          handleCardClick();
+        }
+      }}
+      className={`rounded-[1.55rem] border p-4 text-left transition active:scale-[0.99] ${
+        isImprovement
+          ? isHandled
+            ? "border-white/10 bg-white/[0.035] opacity-55"
+            : "border-purple-300/24 bg-purple-500/12"
+          : isUnread
+          ? "border-purple-300/18 bg-purple-500/8"
+          : "border-white/10 bg-white/[0.035] opacity-50"
+      }`}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="flex min-w-0 items-start gap-3">
+          <div
+            className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border ${
+              isImprovement
+                ? "border-purple-300/25 bg-purple-500/16 text-purple-100"
+                : isChange
+                ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+                : "border-white/10 bg-white/[0.055] text-white/50"
+            }`}
+          >
+            {isImprovement ? (
+              <Sparkles className="h-4 w-4" />
+            ) : (
+              <Bell className="h-4 w-4" />
+            )}
+          </div>
+
+          <div className="min-w-0">
+            <div className="mb-2 flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-full border px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] ${
+                  isImprovement
+                    ? "border-purple-300/20 bg-purple-500/12 text-purple-100"
+                    : isChange
+                    ? "border-emerald-300/15 bg-emerald-400/10 text-emerald-100/75"
+                    : "border-white/10 bg-white/[0.045] text-white/38"
+                }`}
+              >
+                {isImprovement
+                  ? "Sugestão"
+                  : isChange
+                  ? "Alteração"
+                  : "Aviso"}
+              </span>
+
+              {isUnread && (
+                <span className="h-1.5 w-1.5 rounded-full bg-purple-300" />
+              )}
+            </div>
+
+            <p className="text-sm font-semibold leading-5 text-white">
+              {notification.title}
+            </p>
+
+            <p className="mt-1 text-xs leading-5 text-white/44">
+              {notification.body}
+            </p>
+          </div>
+        </div>
+
+        <span className="shrink-0 text-[0.65rem] font-medium text-white/28">
+          {formatNotificationTime(notification.created_at)}
+        </span>
+      </div>
+
+      {isImprovement && action && !isHandled && (
+        <div className="mb-3 rounded-[1.15rem] border border-white/10 bg-black/18 p-3">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+            Ajuste sugerido
+          </p>
+
+          {(action.new_date || action.new_start_time || action.new_end_time) && (
+            <p className="mt-2 text-xs font-semibold text-white/70">
+              {action.new_date && <>Data: {action.new_date}</>}
+              {action.new_start_time && (
+                <>
+                  {action.new_date ? " · " : ""}
+                  {action.new_start_time}
+                  {action.new_end_time ? ` – ${action.new_end_time}` : ""}
+                </>
+              )}
+            </p>
+          )}
+
+          {action.reason && (
+            <p className="mt-1 text-xs leading-5 text-white/38">
+              {action.reason}
+            </p>
+          )}
+        </div>
+      )}
+
+      {canAct && (
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onAccept(notification.id);
+            }}
+            className="inline-flex min-h-10 items-center justify-center rounded-2xl bg-purple-500 px-4 text-xs font-semibold text-white shadow-lg shadow-purple-950/25 active:scale-[0.98]"
+          >
+            Aceitar
+          </button>
+
+          <button
+            type="button"
+            onClick={(event) => {
+              event.stopPropagation();
+              onReject(notification.id);
+            }}
+            className="inline-flex min-h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-xs font-semibold text-white/55 active:scale-[0.98]"
+          >
+            Recusar
+          </button>
+        </div>
+      )}
+
+      {!isImprovement && isUnread && (
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onRead(notification.id);
+          }}
+          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.045] px-3 text-[0.68rem] font-semibold text-white/45 active:scale-[0.98]"
+        >
+          Marcar como lida
+        </button>
+      )}
+
+      {isAccepted && (
+        <p className="mt-3 text-[0.68rem] font-semibold text-purple-200/70">
+          Sugestão aceita
+        </p>
+      )}
+
+      {isRejected && (
+        <p className="mt-3 text-[0.68rem] font-semibold text-white/30">
+          Sugestão recusada
+        </p>
+      )}
+    </div>
+  );
+}
+
+function formatNotificationTime(createdAt: string) {
+  const date = new Date(createdAt);
+  const now = new Date();
+
+  const diffMin = Math.floor((now.getTime() - date.getTime()) / 60000);
+
+  if (diffMin < 1) return "Agora";
+  if (diffMin < 60) return `Há ${diffMin} min`;
+
+  const diffH = Math.floor(diffMin / 60);
+
+  if (diffH < 24) return `Há ${diffH}h`;
+
+  const diffDays = Math.floor(diffH / 24);
+
+  if (diffDays === 1) return "Ontem";
+
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+function NotificationsSheet({
+  isOpen,
+  onClose,
+  onUnreadCountChange,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onUnreadCountChange: (count: number) => void;
+}) {
+  const [notifications, setNotifications] = useState<api.NotificationData[]>([]);
+  const [notificationView, setNotificationView] = useState<"unread" | "read">(
+    "unread"
+  );
+  const [hasMore, setHasMore] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const NOTIFICATIONS_PAGE_SIZE = 10;
+
+  const unreadNotifications = notifications.filter(
+    (notification) => notification.status === "unread"
+  );
+
+  const readNotifications = notifications.filter(
+    (notification) => notification.status !== "unread"
+  );
+
+  const filteredNotifications =
+    notificationView === "unread" ? unreadNotifications : readNotifications;
+  const shouldShowLoadMore =
+    hasMore && filteredNotifications.length >= NOTIFICATIONS_PAGE_SIZE;
+
+  const unreadCount = unreadNotifications.length;
+  const readCount = readNotifications.length;
+
+  useEffect(() => {
+    onUnreadCountChange(unreadCount);
+  }, [unreadCount, onUnreadCountChange]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setLoading(true);
+
+    api
+      .getNotifications(NOTIFICATIONS_PAGE_SIZE + 1, 0)
+      .then((data) => {
+        const visibleNotifications = data.slice(0, NOTIFICATIONS_PAGE_SIZE);
+
+        setNotifications(visibleNotifications);
+        setHasMore(data.length > NOTIFICATIONS_PAGE_SIZE);
+
+      })
+      .catch(() => null)
+      .finally(() => setLoading(false));
+  }, [isOpen, onUnreadCountChange]);
+
+  async function loadMore() {
+    try {
+      const more = await api.getNotifications(
+        NOTIFICATIONS_PAGE_SIZE + 1,
+        notifications.length
+      );
+
+      const visibleMore = more.slice(0, NOTIFICATIONS_PAGE_SIZE);
+
+      setNotifications((prev) => {
+        const next = [...prev, ...visibleMore];
+
+        return next;
+      });
+
+      setHasMore(more.length > NOTIFICATIONS_PAGE_SIZE);
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleRead(id: string) {
+    const currentNotification = notifications.find(
+      (notification) => notification.id === id
+    );
+
+    if (!currentNotification || currentNotification.status !== "unread") {
+      return;
+    }
+
+    await api.markNotificationRead(id).catch(() => null);
+
+    setNotifications((prev) => {
+      const next = prev.map((notification) =>
+        notification.id === id
+          ? { ...notification, status: "read" as const }
+          : notification
+      );
+
+      return next;
+    });
+  }
+
+  async function handleAccept(id: string) {
+    await api.acceptNotification(id).catch(() => null);
+
+    setNotifications((prev) => {
+      const next = prev.map((notification) =>
+        notification.id === id
+          ? { ...notification, status: "accepted" as const }
+          : notification
+      );
+
+      return next;
+    });
+
+    setNotificationView("read");
+  }
+
+  async function handleReject(id: string) {
+    await api.rejectNotification(id).catch(() => null);
+
+    setNotifications((prev) => {
+      const next = prev.map((notification) =>
+        notification.id === id
+          ? { ...notification, status: "rejected" as const }
+          : notification
+      );
+
+      return next;
+    });
+
+    setNotificationView("read");
+  }
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <div className="relative flex max-h-[82vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+
+        <div className="relative border-b border-white/10 px-5 pb-4 pt-5">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <Bell className="h-3.5 w-3.5" />
+                Central do Axon
+              </div>
+
+              <h2 className="text-[1.65rem] font-semibold leading-[1.05] tracking-[-0.055em] text-white">
+                Notificações
+              </h2>
+
+              <p className="mt-2 text-xs leading-5 text-white/45">
+                Avisos importantes, lembretes inteligentes e sugestões para
+                melhorar seu planejamento.
+              </p>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
+              aria-label="Fechar notificações"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+
+          <div className="flex rounded-2xl border border-white/10 bg-white/[0.045] p-1">
+            <button
+              type="button"
+              onClick={() => setNotificationView("unread")}
+              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                notificationView === "unread"
+                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                  : "text-white/42"
+              }`}
+            >
+              Não lidas
+              {unreadCount > 0 && (
+                <span className="ml-1 text-[0.65rem] opacity-75">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setNotificationView("read")}
+              className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                notificationView === "read"
+                  ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                  : "text-white/42"
+              }`}
+            >
+              Lidas
+              {readCount > 0 && (
+                <span className="ml-1 text-[0.65rem] opacity-75">
+                  {readCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </div>
+
+        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+          {loading ? (
+            <div className="py-8 text-center text-sm text-white/35">
+              Carregando...
+            </div>
+          ) : filteredNotifications.length === 0 ? (
+            <div className="py-8 text-center">
+              <Bell className="mx-auto mb-3 h-6 w-6 text-purple-200/40" />
+
+              <p className="text-sm font-semibold text-white/55">
+                {notificationView === "unread"
+                  ? "Nenhuma notificação não lida"
+                  : "Nenhuma notificação lida"}
+              </p>
+
+              <p className="mt-1 text-xs leading-5 text-white/30">
+                {notificationView === "unread"
+                  ? "Quando houver novos avisos ou sugestões, eles aparecerão aqui."
+                  : "Notificações já lidas, aceitas ou recusadas aparecerão nesta aba."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {filteredNotifications.map((notification) => (
+                <NotificationItem
+                  key={notification.id}
+                  notification={notification}
+                  onRead={handleRead}
+                  onAccept={handleAccept}
+                  onReject={handleReject}
+                />
+              ))}
+
+              {shouldShowLoadMore && (
+                <button
+                  type="button"
+                  onClick={loadMore}
+                  className="mt-1 inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
+                >
+                  Ver mais
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

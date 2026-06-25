@@ -18,6 +18,7 @@ import Analyzing from "../pages/Analyzing";
 import Result from "../pages/Result";
 import DashboardLoading from "../pages/DashboardLoading";
 import AppLoading from "../pages/AppLoading";
+import NotificationToastProvider from "../components/notifications/NotificationToastProvider";
 
 // App
 import Dashboard from "../pages/Dashboard";
@@ -35,6 +36,8 @@ export default function App() {
   return (
     <BrowserRouter>
       <ScrollToTop />
+
+      <NotificationToastProvider />
 
       <Routes>
         {/* Public */}
@@ -76,6 +79,7 @@ export default function App() {
         <Route path="/focus" element={<Focus />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />
+        
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
