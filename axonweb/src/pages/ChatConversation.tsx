@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import {
   Archive,
   ArrowLeft,
@@ -920,9 +922,75 @@ function MessageBubble({ message }: { message: Message }) {
           </div>
         )}
 
-        {message.text}
+        {isUser ? (
+          message.text
+        ) : (
+          <AxonMarkdown text={message.text} />
+        )}
       </div>
     </div>
+  );
+}
+
+function AxonMarkdown({ text }: { text: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      components={{
+        p: ({ children }) => (
+          <p className="mb-2 last:mb-0 leading-6">{children}</p>
+        ),
+        h1: ({ children }) => (
+          <h1 className="mb-2 mt-3 text-base font-semibold text-white first:mt-0">{children}</h1>
+        ),
+        h2: ({ children }) => (
+          <h2 className="mb-2 mt-3 text-sm font-semibold text-white first:mt-0">{children}</h2>
+        ),
+        h3: ({ children }) => (
+          <h3 className="mb-1.5 mt-3 text-sm font-semibold text-white/90 first:mt-0">{children}</h3>
+        ),
+        ul: ({ children }) => (
+          <ul className="mb-2 space-y-1 pl-4 last:mb-0">{children}</ul>
+        ),
+        ol: ({ children }) => (
+          <ol className="mb-2 space-y-1 pl-4 last:mb-0">{children}</ol>
+        ),
+        li: ({ children }) => (
+          <li className="leading-6 [&::marker]:text-purple-300/60" style={{ listStyleType: "disc" }}>{children}</li>
+        ),
+        strong: ({ children }) => (
+          <strong className="font-semibold text-white/88">{children}</strong>
+        ),
+        em: ({ children }) => (
+          <em className="italic text-white/72">{children}</em>
+        ),
+        hr: () => (
+          <hr className="my-3 border-white/12" />
+        ),
+        code: ({ children }) => (
+          <code className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-mono text-purple-200">{children}</code>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="my-2 border-l-2 border-purple-400/40 pl-3 text-white/55">{children}</blockquote>
+        ),
+        table: ({ children }) => (
+          <div className="my-2 overflow-x-auto rounded-xl border border-white/10">
+            <table className="w-full text-xs">{children}</table>
+          </div>
+        ),
+        thead: ({ children }) => (
+          <thead className="bg-white/[0.06]">{children}</thead>
+        ),
+        th: ({ children }) => (
+          <th className="px-3 py-2 text-left font-semibold text-white/80">{children}</th>
+        ),
+        td: ({ children }) => (
+          <td className="border-t border-white/8 px-3 py-2 text-white/60">{children}</td>
+        ),
+      }}
+    >
+      {text}
+    </ReactMarkdown>
   );
 }
 
