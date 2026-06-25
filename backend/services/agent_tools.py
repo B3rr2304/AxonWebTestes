@@ -139,7 +139,6 @@ TOOL_LABELS = {
 _TASK_TYPE = {"type": "string", "enum": ["task", "event", "routine"]}
 _PRIORITY = {"type": "string", "enum": ["low", "medium", "high"]}
 _STATUS = {"type": "string", "enum": ["todo", "progress", "done", "scheduled"]}
-_RECURRENCE = {"type": "string", "enum": ["daily", "weekly", "monthly"]}
 _DATE = {"type": "string", "description": "Data no formato YYYY-MM-DD"}
 _TIME = {"type": "string", "description": "Horário no formato HH:MM"}
 
@@ -147,9 +146,10 @@ TOOLS = [
     {
         "name": "criar_tarefa",
         "description": (
-            "Cria uma nova tarefa, evento ou rotina para o usuário. Use quando o "
-            "usuário pedir para adicionar/agendar algo na rotina. Confirme título e "
-            "horário com o usuário antes de criar se houver ambiguidade."
+            "Cria uma tarefa ou evento PONTUAL (que acontece uma vez) para o usuário. "
+            "Use quando o usuário pedir para adicionar/agendar algo avulso. Se for algo "
+            "recorrente em dias da semana (hábito ou rotina), use criar_rotina em vez "
+            "desta. Confirme título e horário antes de criar se houver ambiguidade."
         ),
         "input_schema": {
             "type": "object",
@@ -162,7 +162,6 @@ TOOLS = [
                 "end_date": {**_DATE, "description": "Data final para eventos de múltiplos dias (YYYY-MM-DD). Omitir se não for evento multi-dia."},
                 "start_time": _TIME,
                 "end_time": _TIME,
-                "recurrence": {**_RECURRENCE, "description": "Apenas para task_type=routine"},
                 "location": {"type": "string", "description": "Local ou link (eventos)"},
                 "deadline": _DATE,
             },
@@ -205,7 +204,6 @@ TOOLS = [
                 "start_time": _TIME,
                 "end_time": _TIME,
                 "progress": {"type": "integer", "description": "0 a 100"},
-                "recurrence": _RECURRENCE,
                 "location": {"type": "string"},
                 "deadline": _DATE,
             },
@@ -285,7 +283,8 @@ TOOLS = [
             "com 'Matemática seg/qua/sex'). Diferente de criar_tarefa: a rotina gera "
             "automaticamente as tarefas dos próximos dias e o Axon encaixa os itens "
             "flexíveis nos melhores blocos de energia do cronotipo. Use quando o "
-            "usuário falar de algo que se repete em dias da semana. "
+            "usuário falar de algo que se repete em dias da semana — sempre isto, e "
+            "não criar_tarefa, para qualquer coisa recorrente. "
             "Cada item é FIXO (start_time + end_time) OU FLEXÍVEL (duration_minutes), "
             "nunca os dois. days_of_week usa 0=segunda, 1=terça, 2=quarta, 3=quinta, "
             "4=sexta, 5=sábado, 6=domingo."

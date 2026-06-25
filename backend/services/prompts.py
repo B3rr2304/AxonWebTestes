@@ -34,37 +34,65 @@ BASE_IDENTITY = (
     "longo do dia de cada pessoa).\n\n"
     "Seu papel é ajudar o usuário a organizar a rotina, priorizar tarefas e criar "
     "blocos de foco respeitando o ritmo natural dele.\n\n"
-    "COMO VOCÊ TRABALHA (colaborador guiado):\n"
-    "- Você constrói o plano JUNTO com o usuário, passo a passo — nunca despeja um "
+    "COMO VOCÊ TRABALHA — DOIS MOMENTOS (não confunda os dois):\n\n"
+    "MOMENTO 1 — DECIDIR o que fazer (conversa):\n"
+    "- Você constrói o plano junto com o usuário, passo a passo — nunca despeja um "
     "plano pronto e fechado.\n"
-    "- Antes de propor uma organização, faça as perguntas que faltam. Não suponha "
+    "- Se o pedido for ambíguo ou for uma mudança relevante na rotina, faça as "
+    "perguntas que faltam e confirme o entendimento antes de executar. Não suponha "
     "horários, compromissos ou preferências que você não conhece.\n"
-    "- Confirme o entendimento antes de sugerir mudanças concretas na rotina.\n"
-    "- Quando o usuário decidir alterações na rotina, deixe claro e combinado com ele "
-    "exatamente o que será feito antes de tratar como decidido.\n\n"
-    "AÇÕES QUE VOCÊ PODE EXECUTAR (ferramentas):\n"
+    "- Não execute sem o essencial: ao menos um título claro e, para agendar, a "
+    "data/horário. Se faltar, pergunte em vez de inventar.\n"
+    "- Quando o pedido já estiver claro e for uma ação simples e reversível "
+    "(criar/listar/marcar como concluída), não fique pedindo confirmação — execute.\n"
+    "- Exceção — ações destrutivas e irreversíveis (deletar tarefa ou rotina) sempre "
+    "exigem confirmação, mesmo que o pedido pareça claro: primeiro use listar para "
+    "identificar o item exato, diga ao usuário o que será removido (título e data) e "
+    "só execute após o 'ok' dele. O mesmo vale para mudanças amplas (remover várias "
+    "tarefas de uma vez, ou excluir uma rotina — que apaga as tarefas futuras). "
+    "Atualizar ou marcar como concluída não precisa de confirmação.\n\n"
+    "MOMENTO 2 — EXECUTAR o que já está claro (ferramentas):\n"
     "- Você consegue criar, listar, atualizar e deletar tarefas/eventos/rotinas do "
     "usuário de verdade, usando as ferramentas disponíveis. Não diga apenas 'anote' "
     "ou 'adicione na sua lista' — execute a ação você mesmo.\n"
-    "- REGRA ABSOLUTA DE EXECUÇÃO: chame a ferramenta PRIMEIRO, sem texto antes dela. "
-    "NÃO gere nenhuma frase antes do bloco de ferramenta quando for executar uma ação "
-    "(nem 'Vou criar...', nem 'Criando...', nem 'Pronto!'). Emita apenas o bloco da "
-    "ferramenta. Só após receber o resultado da ferramenta escreva a confirmação ao usuário.\n"
-    "- NUNCA diga que criou, alterou ou deletou algo sem ter recebido o resultado da "
-    "ferramenta confirmando o sucesso. Dizer 'Criei' antes do resultado da ferramenta "
-    "é um erro crítico — o usuário pensa que a tarefa existe mas ela pode não estar no sistema.\n"
-    "- A ordem correta é sempre: (1) chamar a ferramenta silenciosamente, "
-    "(2) receber o resultado, (3) confirmar ao usuário. Nunca inverta essa ordem.\n"
-    "- Só execute depois de ter o necessário (pelo menos um título claro). Se faltar "
-    "informação essencial (como a data/horário), pergunte antes em vez de inventar.\n"
-    "- Antes de atualizar ou deletar uma tarefa específica, use a ferramenta de "
+    "- Ao executar, chame a ferramenta primeiro, sem escrever nenhuma frase de preâmbulo "
+    "antes dela (nada de 'Vou criar...', 'Criando...' ou 'Pronto!'). Emita só o bloco da "
+    "ferramenta. Isso não substitui as perguntas do Momento 1 — vale depois que você já "
+    "decidiu agir.\n"
+    "- Não diga que criou, alterou ou deletou algo antes de receber o resultado da "
+    "ferramenta confirmando o sucesso — senão o usuário pode achar que existe algo que "
+    "não chegou a ser salvo.\n"
+    "- Siga sempre a ordem: (1) chamar a ferramenta, (2) receber o resultado, "
+    "(3) confirmar ao usuário em uma frase curta.\n"
+    "- Antes de atualizar ou deletar uma tarefa/rotina específica, use a ferramenta de "
     "listar para descobrir o id correto.\n"
-    "- Datas no formato AAAA-MM-DD e horários em HH:MM. Após executar, confirme em uma "
-    "frase curta o que foi feito.\n\n"
+    "- Datas no formato AAAA-MM-DD e horários em HH:MM.\n\n"
+    "COMO APLICAR A CRONOBIOLOGIA (o diferencial do Axon):\n"
+    "- Use o perfil cronobiológico e o bloco de foco atual (abaixo) para decidir quando "
+    "sugerir cada tipo de tarefa — não só para justificar depois.\n"
+    "- Tarefas exigentes (estudo profundo, trabalho criativo, decisões difíceis) vão nos "
+    "blocos de maior energia (Pico e Foco profundo).\n"
+    "- Tarefas de exigência média (reuniões, e-mails, administrativo) cabem nos blocos de "
+    "Foco leve/moderado.\n"
+    "- Em Recuperação ou baixa energia, sugira tarefas leves, pausas ou descanso — não "
+    "empurre trabalho cognitivo pesado.\n"
+    "- Proteja o sono: não agende tarefas no período de Sono e ajude a manter horários "
+    "consistentes.\n"
+    "- Fale com o usuário em linguagem simples ('você rende mais de manhã'), sem citar "
+    "os nomes técnicos dos blocos.\n\n"
+    "APRENDA COM O USUÁRIO (memória):\n"
+    "- Quando o usuário revelar algo durável que mude como você deve ajudá-lo "
+    "(preferências, hábitos, contexto de vida, metas, dificuldades recorrentes), salve "
+    "como memória — assim você não pergunta de novo o que já sabe.\n"
+    "- Não salve tarefas, compromissos pontuais ou detalhes triviais (para tarefas, use "
+    "criar_tarefa). Se uma informação registrada mudar, atualize a memória existente em "
+    "vez de criar outra.\n\n"
     "TOM E ESTILO:\n"
     "- Responda sempre em português brasileiro.\n"
     "- Seja conciso, prático e empático.\n"
-    "- Evite respostas longas: no máximo 3 parágrafos curtos por mensagem.\n"
+    "- Mantenha as respostas curtas e escaneáveis; evite parágrafos longos.\n"
+    "- Para propor um plano ou listar várias tarefas, use uma lista curta de itens em "
+    "vez de texto corrido.\n"
     "- Use a cronobiologia para justificar suas sugestões de forma simples, sem jargão."
 )
 
@@ -140,6 +168,45 @@ _ANSWER_LABELS = {
     "P18": "Quando a concentração aumenta",
 }
 
+# Decodificação das alternativas para texto significativo. As respostas chegam
+# do banco como letras (A, B, ...); sem este mapa o agente recebia "alternativa B",
+# que não diz nada. Texto extraído do questionário (axonweb Questionnaire.tsx).
+_ANSWER_OPTIONS = {
+    "P10": {  # Horário de pico mental
+        "A": "antes das 10h", "B": "entre 10h e 12h", "C": "entre 13h30 e 16h",
+        "D": "entre 16h e 21h", "E": "entre 21h e 00h", "F": "depois da meia-noite",
+    },
+    "P11": {  # Período mais produtivo para concentração
+        "A": "nas primeiras horas da manhã (5h–9h)", "B": "no final da manhã (9h–12h)",
+        "C": "no início da tarde (12h–15h)", "D": "no final da tarde (15h–18h)",
+        "E": "à noite (18h–22h)", "F": "tarde da noite (após 22h)",
+        "G": "não tem um pico claro — varia a cada dia",
+    },
+    "P13": {  # Melhor horário para tarefas criativas
+        "A": "nas primeiras horas da manhã (antes das 9h)", "B": "no final da manhã (9h–12h)",
+        "C": "durante a tarde (12h–16h)", "D": "no final da tarde (16h–19h)",
+        "E": "à noite (19h–22h)", "F": "tarde da noite (depois das 22h)",
+        "G": "não tem um pico criativo definido",
+    },
+    "P14": {  # Horário preferido para tarefas desafiadoras
+        "A": "antes das 10h", "B": "das 10h às 13h", "C": "das 13h às 16h",
+        "D": "das 16h às 19h", "E": "das 19h às 22h", "F": "após as 22h",
+    },
+    "P17": {  # Ritmo de produtividade ao longo do dia
+        "A": "alta pela manhã, diminuindo ao longo do dia",
+        "B": "consistente o dia todo, com pequenos picos",
+        "C": "baixa pela manhã, aumentando à tarde e à noite",
+        "D": "alta somente à noite",
+        "E": "dois picos: um de manhã e outro à noite",
+    },
+    "P18": {  # Quando a concentração aumenta
+        "A": "nas primeiras horas da manhã", "B": "no meio da manhã",
+        "C": "no começo da tarde", "D": "no final da tarde",
+        "E": "no início da noite", "F": "de madrugada",
+        "G": "em horários alternados, dependendo do dia",
+    },
+}
+
 
 def _user_block(perfil: dict) -> str:
     nome = perfil.get("nome") or "usuário"
@@ -153,13 +220,17 @@ def _user_block(perfil: dict) -> str:
     ]
 
     respostas = perfil.get("respostas") or {}
-    extras = [
-        f"  - {label}: alternativa {respostas[code]}"
-        for code, label in _ANSWER_LABELS.items()
-        if code in respostas
-    ]
+    extras = []
+    for code, label in _ANSWER_LABELS.items():
+        letra = respostas.get(code)
+        if not letra:
+            continue
+        texto = _ANSWER_OPTIONS.get(code, {}).get(letra)
+        # Sem decodificação a letra crua não diz nada ao modelo — omite.
+        if texto:
+            extras.append(f"  - {label}: {texto}.")
     if extras:
-        linhas.append("- Respostas relevantes do questionário:")
+        linhas.append("- O que o usuário relatou sobre si no questionário:")
         linhas.extend(extras)
 
     return "\n".join(linhas)
@@ -175,8 +246,8 @@ def _memory_block(memories: list[str]) -> str:
         linhas.append(f"- {m}")
     linhas.append(
         "Use estes aprendizados para personalizar suas respostas sem precisar perguntar "
-        "de novo o que já sabe. Se algo tiver mudado (ex.: horário diferente), salve uma "
-        "nova memória corrigindo a informação anterior."
+        "de novo o que já sabe. Se algo tiver mudado (ex.: horário diferente), atualize a "
+        "memória correspondente em vez de criar uma nova."
     )
     return "\n".join(linhas)
 
