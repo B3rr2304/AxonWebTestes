@@ -106,7 +106,7 @@ def _fetch_tasks_with_times(user_id: str, today: str) -> list[dict]:
     """Busca as tarefas de hoje que têm start_time, para distribuir nos blocos."""
     res = (
         supabase.table("tasks")
-        .select("id, title, status, task_type, start_time, end_time, is_key_task, priority")
+        .select("id, title, status, task_type, start_time, end_time, is_key_task, priority, objectives(title)")
         .eq("user_id", user_id)
         .eq("scheduled_date", today)
         .not_.is_("start_time", "null")
@@ -114,11 +114,28 @@ def _fetch_tasks_with_times(user_id: str, today: str) -> list[dict]:
         .order("start_time", desc=False)
         .execute()
     )
-    return res.data or []
+    rows = res.data or []
+    for r in rows:
+        obj = r.pop("objectives", None)
+        r["objective_title"] = (obj or {}).get("title") if isinstance(obj, dict) else None
+    return rows
+
+
+# Peso de ordenação por prioridade: menor = aparece primeiro.
+_PRIORITY_WEIGHT = {"high": 0, "medium": 1, "low": 2}
+
+
+def _task_sort_key(t: dict) -> tuple:
+    """Tarefa chave → Alta → Média → Baixa → mesmo nível: por start_time."""
+    return (
+        0 if t.get("is_key_task") else 1,
+        _PRIORITY_WEIGHT.get(t.get("priority") or "medium", 1),
+        t.get("start_time") or "",
+    )
 
 
 def _tasks_for_block(tasks: list[dict], block_idx: int) -> list[dict]:
-    """Filtra as tarefas que pertencem ao bloco de índice block_idx."""
+    """Filtra e ordena as tarefas que pertencem ao bloco de índice block_idx."""
     result = []
     for t in tasks:
         st = t.get("start_time")
@@ -133,7 +150,7 @@ def _tasks_for_block(tasks: list[dict], block_idx: int) -> list[dict]:
                 "is_key_task": bool(t.get("is_key_task")),
                 "priority": t.get("priority"),
             })
-    return result
+    return sorted(result, key=_task_sort_key)
 
 
 def _get_block(curve_key: str, current_hour: int, offset: int = 0,
@@ -234,6 +251,6 @@ def _today_blocks(curve_key: str, tasks: list[dict]) -> list[dict]:
             "end": end,
             "level": level,
             "level_label": chronotype_service.BLOCK_LEVELS[level]["label"],
-            "tasks": by_idx[idx],
+            "tasks": sorted(by_idx[idx], key=_task_sort_key),
         })
     return result

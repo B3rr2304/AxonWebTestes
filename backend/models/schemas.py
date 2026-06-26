@@ -75,6 +75,7 @@ class TaskCreate(BaseModel):
     is_key_task: bool = False
     axon_pick_time: bool = False        # true = Axon escolhe o melhor horário pelo cronotipo
     duration_minutes: Optional[int] = None  # necessário quando axon_pick_time=True
+    objective_id: Optional[str] = None  # UUID do objetivo ao qual esta tarefa pertence
 
 
 class TaskUpdate(BaseModel):
@@ -93,6 +94,7 @@ class TaskUpdate(BaseModel):
     group_name: Optional[str] = None
     deadline: Optional[date] = None
     is_key_task: Optional[bool] = None
+    objective_id: Optional[str] = None
 
 
 class TaskResponse(BaseModel):
@@ -111,6 +113,8 @@ class TaskResponse(BaseModel):
     location: Optional[str] = None
     parent_task_id: Optional[str] = None
     routine_item_id: Optional[str] = None
+    objective_id: Optional[str] = None
+    objective_title: Optional[str] = None
     group_name: Optional[str] = None
     deadline: Optional[str] = None
     created_by: str
@@ -396,3 +400,34 @@ class RoutineListItem(BaseModel):
     streak:          int = 0
     streak_unit:     str = "dias"
     item_count:      int = 0
+
+
+# --- Objectives ---
+
+class ObjectiveCreate(BaseModel):
+    title: str
+    description: Optional[str] = None
+    deadline: Optional[date] = None
+    priority: Optional[str] = None
+
+
+class ObjectiveUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    deadline: Optional[date] = None
+    status: Optional[str] = None
+    priority: Optional[str] = None
+
+
+class ObjectiveResponse(BaseModel):
+    id: str
+    title: str
+    description: Optional[str] = None
+    deadline: Optional[str] = None
+    status: str
+    priority: Optional[str] = None
+    progress: int
+    subtask_count: int = 0
+    done_count: int = 0
+    created_at: str
+    updated_at: str

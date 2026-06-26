@@ -256,6 +256,7 @@ export interface BlockTask {
   end_time?: string | null;
   is_key_task: boolean;
   priority?: string | null;
+  objective_title?: string | null;
 }
 
 export interface DayBlock {
@@ -326,6 +327,8 @@ export interface Task {
   group_name?: string | null;
   deadline?: string | null;
   is_key_task: boolean;
+  objective_id?: string | null;
+  objective_title?: string | null;
   created_by: "user" | "agent";
   created_at: string;
 }
@@ -344,6 +347,7 @@ export interface TaskCreateInput {
   deadline?: string;
   axon_pick_time?: boolean;
   duration_minutes?: number;
+  objective_id?: string;
 }
 
 export type TaskUpdateInput = Partial<TaskCreateInput> & {
@@ -841,7 +845,63 @@ export function streamChat(
       pump();
     })
     .catch(onError);
-    
+
+}
+
+// --- Objectives ---
+
+export interface Objective {
+  id: string;
+  title: string;
+  description?: string | null;
+  deadline?: string | null;
+  status: "active" | "done";
+  priority?: "low" | "medium" | "high" | null;
+  progress: number;
+  subtask_count: number;
+  done_count: number;
+  created_at: string;
+  updated_at: string;
+  subtasks?: Task[];
+}
+
+export function getObjectives() {
+  return request<Objective[]>("/objectives");
+}
+
+export function getObjective(id: string) {
+  return request<Objective & { subtasks: Task[] }>(`/objectives/${id}`);
+}
+
+export function createObjective(payload: {
+  title: string;
+  description?: string;
+  deadline?: string;
+  priority?: "low" | "medium" | "high";
+}) {
+  return request<Objective>("/objectives", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateObjective(
+  id: string,
+  payload: {
+    title?: string;
+    description?: string;
+    deadline?: string | null;
+    priority?: "low" | "medium" | "high";
+  }
+) {
+  return request<Objective>(`/objectives/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteObjective(id: string) {
+  return request<void>(`/objectives/${id}`, { method: "DELETE" });
 }
 
 

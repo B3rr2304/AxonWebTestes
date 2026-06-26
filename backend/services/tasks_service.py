@@ -22,10 +22,13 @@ _WRITE_DATE_FIELDS = ("scheduled_date", "end_date", "deadline")
 
 
 def serialize(row: dict) -> dict:
-    """Converte campos de data/hora para string antes de retornar."""
+    """Converte campos de data/hora para string e achata o join com objectives."""
     for field in _DATE_FIELDS:
         if row.get(field) is not None:
             row[field] = str(row[field])
+    # Achata o join objectives(title) → objective_title
+    obj = row.pop("objectives", None)
+    row["objective_title"] = (obj or {}).get("title") if isinstance(obj, dict) else None
     return row
 
 
@@ -36,16 +39,29 @@ def _stringify_dates(payload: dict) -> dict:
     return payload
 
 
+_PRIORITY_WEIGHT = {"high": 0, "medium": 1, "low": 2}
+
+
+def _task_sort_key(t: dict) -> tuple:
+    """Tarefa chave → Alta → Média → Baixa → mesmo nível: por start_time."""
+    return (
+        0 if t.get("is_key_task") else 1,
+        _PRIORITY_WEIGHT.get(t.get("priority") or "medium", 1),
+        t.get("start_time") or "",
+    )
+
+
 def list_tasks(
     user_id: str,
     *,
     scheduled_date: str | None = None,
     status: str | None = None,
     task_type: str | None = None,
+    objective_id: str | None = None,
 ) -> list[dict]:
     query = (
         supabase.table("tasks")
-        .select("*")
+        .select("*, objectives(title)")
         .eq("user_id", user_id)
         .order("start_time", desc=False)
     )
@@ -56,9 +72,12 @@ def list_tasks(
         query = query.eq("status", status)
     if task_type:
         query = query.eq("task_type", task_type)
+    if objective_id:
+        query = query.eq("objective_id", objective_id)
 
     result = query.execute()
-    return [serialize(row) for row in (result.data or [])]
+    tasks = [serialize(row) for row in (result.data or [])]
+    return sorted(tasks, key=_task_sort_key)
 
 
 def _unset_key_task(user_id: str, scheduled_date: str, exclude_id: str | None = None) -> None:
@@ -106,6 +125,11 @@ def create_task(user_id: str, data: dict) -> dict:
 
     task = serialize(result.data[0])
     calendar_sync.sync_task_async(user_id, task, "create")
+
+    if task.get("objective_id"):
+        from services.objectives_service import recalculate_progress
+        recalculate_progress(task["objective_id"])
+
     return task
 
 
@@ -164,6 +188,11 @@ def update_task(user_id: str, task_id: str, data: dict) -> dict:
 
     task = serialize(result.data[0])
     calendar_sync.sync_task_async(user_id, task, "update")
+
+    if task.get("objective_id"):
+        from services.objectives_service import recalculate_progress
+        recalculate_progress(task["objective_id"])
+
     return task
 
 
@@ -180,8 +209,13 @@ def delete_task(user_id: str, task_id: str) -> None:
         raise ValueError("Tarefa não encontrada")
 
     task = existing.data[0]
+    objective_id = task.get("objective_id")
     supabase.table("tasks").delete().eq("id", task_id).eq("user_id", user_id).execute()
     calendar_sync.sync_task_async(user_id, task, "delete")
+
+    if objective_id:
+        from services.objectives_service import recalculate_progress
+        recalculate_progress(objective_id)
 
 
 def carry_forward_tasks(user_id: str) -> list[dict]:

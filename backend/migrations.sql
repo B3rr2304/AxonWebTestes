@@ -188,3 +188,62 @@ alter table public.tasks
 alter table public.routine_items
   add column if not exists not_before time null,
   add column if not exists not_after  time null;
+
+
+-- =============================================
+-- MIGRAÇÃO 7: Objetivos (tarefa mãe com subtarefas)
+-- Um objetivo é um container de tarefas relacionadas com prazo e progresso
+-- automático. As subtarefas são tarefas normais vinculadas via objective_id.
+-- Cascade: ao deletar um objetivo, todas as suas subtarefas são deletadas.
+-- =============================================
+
+create table if not exists public.objectives (
+  id          uuid default gen_random_uuid() primary key,
+  user_id     uuid references auth.users(id) on delete cascade not null,
+  title       text not null,
+  description text,
+  deadline    date,
+  status      text check (status in ('active', 'done')) default 'active',
+  progress    integer default 0 check (progress >= 0 and progress <= 100),
+  created_at  timestamp with time zone default now(),
+  updated_at  timestamp with time zone default now()
+);
+
+create index if not exists objectives_user_id_idx on public.objectives(user_id);
+
+drop trigger if exists objectives_updated_at on public.objectives;
+create trigger objectives_updated_at
+  before update on public.objectives
+  for each row execute procedure public.handle_updated_at();
+
+alter table public.objectives enable row level security;
+
+create policy "Usuários veem apenas seus próprios objetivos"
+  on public.objectives for select using (auth.uid() = user_id);
+
+create policy "Usuários inserem apenas seus próprios objetivos"
+  on public.objectives for insert with check (auth.uid() = user_id);
+
+create policy "Usuários editam apenas seus próprios objetivos"
+  on public.objectives for update using (auth.uid() = user_id);
+
+create policy "Usuários excluem apenas seus próprios objetivos"
+  on public.objectives for delete using (auth.uid() = user_id);
+
+-- Vínculo tarefa → objetivo (cascade: tarefa deletada junto com o objetivo)
+alter table public.tasks
+  add column if not exists objective_id uuid
+  references public.objectives(id) on delete cascade;
+
+create index if not exists tasks_objective_id_idx on public.tasks(objective_id);
+
+-- =============================================
+-- Migration 8: prioridade dos objetivos
+-- ---------------------------------------------
+-- Cada objetivo passa a ter um nível de prioridade (low/medium/high).
+-- A listagem ordena por prioridade: alta → média → baixa.
+-- =============================================
+
+alter table public.objectives
+  add column if not exists priority text
+  check (priority in ('low', 'medium', 'high')) default 'medium';

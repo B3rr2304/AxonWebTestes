@@ -8,8 +8,6 @@ import {
   Home,
   LogOut,
   MessageCircle,
-  Moon,
-  Repeat,
   Settings,
   Sparkles,
   User,
@@ -45,13 +43,6 @@ const mainItems: NavItem[] = [
     path: "/dashboard",
   },
   {
-    label: "Registro do dia",
-    description: "Sono, humor e energia",
-    icon: Moon,
-    path: "/dashboard",
-    state: { openDayReview: true },
-  },
-  {
     label: "Chat",
     description: "Converse com o Axon",
     icon: MessageCircle,
@@ -59,7 +50,7 @@ const mainItems: NavItem[] = [
   },
   {
     label: "Planejamento",
-    description: "Rotina, tarefas e agenda",
+    description: "Agenda, rotinas e objetivos",
     icon: CalendarDays,
     path: "/planning",
   },
@@ -68,12 +59,6 @@ const mainItems: NavItem[] = [
     description: "Padrões e produtividade",
     icon: BarChart3,
     path: "/insights",
-  },
-  {
-    label: "Rotinas",
-    description: "Hábitos recorrentes",
-    icon: Repeat,
-    path: "/rotinas",
   },
   {
     label: "Focus",
