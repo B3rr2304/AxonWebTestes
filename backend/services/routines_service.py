@@ -214,26 +214,63 @@ def _user_curve(user_id: str) -> str:
 
 
 def _free_slot(
-    curve_key: str, duration_minutes: int, busy: list[tuple[int, int]]
+    curve_key: str,
+    duration_minutes: int,
+    busy: list[tuple[int, int]],
+    not_before_min: int | None = None,
+    not_after_min: int | None = None,
 ) -> tuple[str, str] | None:
     """
-    Primeiro bloco livre (do maior para o menor nível de energia) cujo intervalo
-    de `duration_minutes` cabe no dia sem conflitar com `busy`. None se nenhum
-    couber.
+    Melhor slot livre de `duration_minutes` no dia, respeitando opcionalmente
+    uma janela [not_before_min, not_after_min).
+
+    Estratégia em dois passos:
+      1. Tenta encaixar o slot inteiro dentro da janela, priorizando o bloco de
+         maior energia disponível nessa janela.
+      2. Se nenhum bloco de 90 min couber inteiro, aceita qualquer slot livre
+         dentro da janela (sem filtro de energia — só evita conflitos).
+      3. Se a janela for impossível (sem espaço), ignora a restrição e cai no
+         comportamento padrão (melhor energia no dia todo).
     """
     blocks = chronotype.CHRONOTYPE_BLOCKS.get(
         curve_key, chronotype.CHRONOTYPE_BLOCKS["intermediate"]
     )
-    # Índices dos blocos ordenados por energia desc; empate pelo mais cedo.
     ranked = sorted(range(len(blocks)), key=lambda i: (-_block_energy(blocks[i][0]), i))
 
+    def _fits(start: int, end: int) -> bool:
+        if end > _DAY_MINUTES:
+            return False
+        if not_before_min is not None and start < not_before_min:
+            return False
+        if not_after_min is not None and end > not_after_min:
+            return False
+        return not any(_overlap(start, end, bs, be) for bs, be in busy)
+
+    # Passo 1 — melhor bloco de energia dentro da janela
+    for i in ranked:
+        start = i * 90
+        end = start + duration_minutes
+        if _fits(start, end):
+            return _min_to_hhmm(start), _min_to_hhmm(end)
+
+    # Passo 2 — qualquer slot livre dentro da janela (minuto a minuto)
+    if not_before_min is not None or not_after_min is not None:
+        window_start = not_before_min or 0
+        window_end = not_after_min or _DAY_MINUTES
+        for start in range(window_start, window_end - duration_minutes + 1):
+            end = start + duration_minutes
+            if not any(_overlap(start, end, bs, be) for bs, be in busy):
+                return _min_to_hhmm(start), _min_to_hhmm(end)
+
+    # Passo 3 — fallback sem restrição de janela
     for i in ranked:
         start = i * 90
         end = start + duration_minutes
         if end > _DAY_MINUTES:
-            continue  # não cabe antes da meia-noite
+            continue
         if not any(_overlap(start, end, bs, be) for bs, be in busy):
             return _min_to_hhmm(start), _min_to_hhmm(end)
+
     return None
 
 
@@ -309,7 +346,14 @@ def _materialize(
                 end_s = str(it["end_time"])[:5]
                 task_type = "event"
             else:
-                slot = _free_slot(curve_key, it["duration_minutes"], busy_by_date[dstr])
+                nb = it.get("not_before")
+                na = it.get("not_after")
+                nb_min = _to_min(str(nb)[:5]) if nb else None
+                na_min = _to_min(str(na)[:5]) if na else None
+                slot = _free_slot(
+                    curve_key, it["duration_minutes"], busy_by_date[dstr],
+                    not_before_min=nb_min, not_after_min=na_min,
+                )
                 if slot is None:
                     continue  # dia sem janela livre para esse item — pula
                 start_s, end_s = slot
@@ -456,6 +500,8 @@ def create_routine(user_id: str, data: dict, today: date) -> dict:
             "start_time": it.get("start_time"),
             "end_time": it.get("end_time"),
             "duration_minutes": it.get("duration_minutes"),
+            "not_before": it.get("not_before"),
+            "not_after": it.get("not_after"),
         } for it in items_in]
         supabase.table("routine_items").insert(rows).execute()
 
@@ -560,6 +606,8 @@ def add_item(user_id: str, routine_id: str, data: dict, today: date) -> dict:
         "start_time": data.get("start_time"),
         "end_time": data.get("end_time"),
         "duration_minutes": data.get("duration_minutes"),
+        "not_before": data.get("not_before"),
+        "not_after": data.get("not_after"),
     }
     res = supabase.table("routine_items").insert(payload).execute()
     if not res.data:
@@ -590,7 +638,8 @@ def update_item(user_id: str, routine_id: str, item_id: str, data: dict, today: 
         raise ValueError("Item não encontrado")
 
     payload = {k: v for k, v in data.items() if k in (
-        "title", "days_of_week", "start_time", "end_time", "duration_minutes"
+        "title", "days_of_week", "start_time", "end_time", "duration_minutes",
+        "not_before", "not_after",
     )}
     if not payload:
         raise ValueError("Nenhum campo para atualizar")

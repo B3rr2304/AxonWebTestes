@@ -149,3 +149,42 @@ create policy "Usuários editam apenas suas próprias tarefas"
 create policy "Usuários excluem apenas suas próprias tarefas"
   on public.tasks for delete
   using (auth.uid() = user_id);
+
+
+-- =============================================
+-- MIGRAÇÃO 5: Colunas adicionadas diretamente no Supabase (documentação)
+-- Estas colunas já existem no banco — este bloco serve apenas como registro.
+-- =============================================
+
+-- Tarefa chave: máximo 1 por dia por usuário (unicidade garantida no backend).
+alter table public.tasks
+  add column if not exists is_key_task boolean default false;
+
+-- Contador de carries: quantas vezes uma tarefa foi postergada para o dia seguinte.
+alter table public.tasks
+  add column if not exists carry_count integer default 0;
+
+-- Timestamp de conclusão: preenchido automaticamente ao marcar status = 'done'.
+alter table public.tasks
+  add column if not exists completed_at timestamp with time zone;
+
+-- ID do evento espelhado no Google Agenda (integração Google Calendar).
+alter table public.tasks
+  add column if not exists google_event_id text;
+
+-- Vínculo com item de rotina que gerou esta tarefa (ON DELETE SET NULL).
+alter table public.tasks
+  add column if not exists routine_item_id uuid
+  references public.routine_items(id) on delete set null;
+
+
+-- =============================================
+-- MIGRAÇÃO 6: Janela de horário em routine_items (not_before / not_after)
+-- Permite que itens flexíveis respeitem uma preferência de janela informada
+-- pelo usuário no chat (ex: "leitura depois do almoço" → not_before = '13:00').
+-- O Axon ainda escolhe o melhor bloco de energia DENTRO dessa janela.
+-- =============================================
+
+alter table public.routine_items
+  add column if not exists not_before time null,
+  add column if not exists not_after  time null;

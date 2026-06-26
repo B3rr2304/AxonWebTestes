@@ -13,6 +13,7 @@ import {
   Moon,
   Plus,
   Sparkles,
+  Star,
   Target,
   Zap,
   Bell,
@@ -22,7 +23,7 @@ import {
 import DayReview from "./DayReview";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
-import type { DashboardData, FocusBlock } from "../lib/api";
+import type { DashboardData, FocusBlock, BlockTask, Task } from "../lib/api";
 
 type MetricCardProps = {
   icon: ElementType;
@@ -41,6 +42,7 @@ export default function Dashboard() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [keyTask, setKeyTask] = useState<Task | null>(null);
   const [showNextBlock, setShowNextBlock] = useState(false);
   const [todayLog, setTodayLog] = useState<api.DailyLog | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -72,12 +74,21 @@ export default function Dashboard() {
       return;
     }
 
+    const todayISO = new Date().toISOString().slice(0, 10);
+
     const loadDashboard = () => {
       api
         .getDashboard()
         .then(setData)
         .catch(() => setData(null))
         .finally(() => setLoading(false));
+    };
+
+    const loadKeyTask = () => {
+      api
+        .getTasks({ scheduled_date: todayISO })
+        .then((tasks) => setKeyTask(tasks.find((t) => t.is_key_task) ?? null))
+        .catch(() => null);
     };
 
     const loadDailyLog = () => {
@@ -103,10 +114,14 @@ export default function Dashboard() {
 
     loadDashboard();
     loadDailyLog();
+    loadKeyTask();
     refreshUnreadCount();
     analyzeNotificationsAndRefreshLater();
 
-    const interval = window.setInterval(loadDashboard, 30 * 60 * 1000);
+    const interval = window.setInterval(() => {
+      loadDashboard();
+      loadKeyTask();
+    }, 30 * 60 * 1000);
 
     const handleVisibility = () => {
       if (document.hidden) return;
@@ -308,6 +323,50 @@ export default function Dashboard() {
           </div>
         </section>
 
+        {/* Tarefa chave do dia */}
+        {keyTask && (
+          <section className="mb-4">
+            <button
+              type="button"
+              onClick={() => navigate("/planning")}
+              className={`group w-full overflow-hidden rounded-[2rem] border p-4 text-left shadow-xl backdrop-blur-2xl active:scale-[0.98] transition ${
+                keyTask.status === "done"
+                  ? "border-emerald-300/20 bg-emerald-400/[0.07] shadow-emerald-950/10"
+                  : "border-amber-300/25 bg-amber-400/[0.07] shadow-amber-950/10"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
+                  keyTask.status === "done"
+                    ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-200"
+                    : "border-amber-300/25 bg-amber-400/15 text-amber-200"
+                }`}>
+                  <Star className={`h-5 w-5 ${keyTask.status !== "done" ? "fill-amber-300 text-amber-300" : ""}`} />
+                </div>
+
+                <div className="min-w-0 flex-1">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/38">
+                    Tarefa chave de hoje
+                  </p>
+                  <p className={`mt-0.5 truncate text-sm font-semibold ${
+                    keyTask.status === "done" ? "text-emerald-100 line-through opacity-60" : "text-white"
+                  }`}>
+                    {keyTask.title}
+                  </p>
+                </div>
+
+                <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  keyTask.status === "done"
+                    ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+                    : "border-amber-300/20 bg-amber-400/10 text-amber-100"
+                }`}>
+                  {keyTask.status === "done" ? "Concluída" : "Pendente"}
+                </span>
+              </div>
+            </button>
+          </section>
+        )}
+
         {/* Card de revisão diária: aparece à noite se o usuário ainda não registrou */}
         {showReviewCard && (
           <section className="mb-4">
@@ -378,63 +437,78 @@ export default function Dashboard() {
             <CalendarDays className="h-5 w-5 text-purple-200" />
           </div>
 
-          {dayBlocks.length === 0 ? (
-            <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-5 py-8 text-center">
-              <p className="text-sm font-semibold text-white">
-                Nenhuma tarefa para hoje
-              </p>
+          {(() => {
+            const flatTasks = dayBlocks.flatMap((b) => b.tasks);
+            const typeLabel: Record<string, string> = {
+              task: "Tarefa", event: "Evento", routine: "Rotina",
+            };
 
-              <p className="mt-1 text-xs leading-5 text-white/42">
-                Converse com o Axon para organizar seu dia ou adicione tarefas
-                no Planejamento.
-              </p>
-
-              <button
-                onClick={() => navigate("/planning")}
-                className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-purple-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.97]"
-              >
-                <Plus className="h-4 w-4" />
-                Adicionar tarefa
-              </button>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {dayBlocks.slice(0, 5).map((block) => (
-                <div
-                  key={`${block.time}-${block.title}`}
-                  className={`flex items-center gap-3 rounded-[1.45rem] border p-3 ${
-                    block.active
-                      ? "border-purple-300/25 bg-purple-500/10"
-                      : "border-white/10 bg-black/20"
-                  }`}
-                >
-                  <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${
-                      block.active
-                        ? "border-purple-300/25 bg-purple-500/20 text-purple-100"
-                        : "border-white/10 bg-white/[0.05] text-white/45"
-                    }`}
+            if (flatTasks.length === 0) {
+              return (
+                <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-5 py-8 text-center">
+                  <p className="text-sm font-semibold text-white">
+                    Nenhuma tarefa para hoje
+                  </p>
+                  <p className="mt-1 text-xs leading-5 text-white/42">
+                    Converse com o Axon para organizar seu dia ou adicione
+                    tarefas no Planejamento.
+                  </p>
+                  <button
+                    onClick={() => navigate("/planning")}
+                    className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-purple-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.97]"
                   >
-                    {block.time}
-                  </div>
-
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold text-white">
-                      {block.title}
-                    </p>
-
-                    <p className="mt-1 text-xs text-white/38">
-                      {block.type}
-                    </p>
-                  </div>
-
-                  {block.active && (
-                    <CheckCircle2 className="h-5 w-5 shrink-0 text-purple-200" />
-                  )}
+                    <Plus className="h-4 w-4" />
+                    Adicionar tarefa
+                  </button>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            }
+
+            return (
+              <div className="space-y-3">
+                {flatTasks.slice(0, 5).map((task) => {
+                  const isActive = task.status === "progress";
+                  const isKey = task.is_key_task;
+                  return (
+                    <div
+                      key={task.id}
+                      className={`flex items-center gap-3 rounded-[1.45rem] border p-3 ${
+                        isKey
+                          ? "border-amber-300/25 bg-amber-400/[0.07]"
+                          : isActive
+                          ? "border-purple-300/25 bg-purple-500/10"
+                          : "border-white/10 bg-black/20"
+                      }`}
+                    >
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${
+                          isKey
+                            ? "border-amber-300/25 bg-amber-400/15 text-amber-200"
+                            : isActive
+                            ? "border-purple-300/25 bg-purple-500/20 text-purple-100"
+                            : "border-white/10 bg-white/[0.05] text-white/45"
+                        }`}
+                      >
+                        {task.start_time ?? "—"}
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <p className={`truncate text-sm font-semibold ${isKey ? "text-amber-100" : "text-white"}`}>
+                          {task.title}
+                        </p>
+                        <p className="mt-1 text-xs text-white/38">
+                          {typeLabel[task.task_type] ?? "Tarefa"}
+                        </p>
+                      </div>
+
+                      {isKey && <Star className="h-4 w-4 shrink-0 fill-amber-300 text-amber-300" />}
+                      {!isKey && isActive && <CheckCircle2 className="h-5 w-5 shrink-0 text-purple-200" />}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
 
           <button
             onClick={() => navigate("/planning")}
@@ -571,6 +645,14 @@ function CurrentFocusBlockCard({
         {currentBlock.description}
       </p>
 
+      {currentBlock.tasks.length > 0 && (
+        <div className="mt-3 space-y-2">
+          {currentBlock.tasks.map((task) => (
+            <BlockTaskRow key={task.id} task={task} />
+          ))}
+        </div>
+      )}
+
       <div className="mt-3">
         <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/32">
           <span>Progresso</span>
@@ -622,9 +704,45 @@ function CurrentFocusBlockCard({
               <p className="text-xs leading-5 text-white/42">
                 {nextBlock.description}
               </p>
+
+              {nextBlock.tasks.length > 0 && (
+                <div className="mt-2.5 space-y-1.5">
+                  {nextBlock.tasks.map((task) => (
+                    <BlockTaskRow key={task.id} task={task} compact />
+                  ))}
+                </div>
+              )}
             </div>
           )}
         </div>
+      )}
+    </div>
+  );
+}
+
+function BlockTaskRow({ task, compact = false }: { task: BlockTask; compact?: boolean }) {
+  const isProgress = task.status === "progress";
+
+  return (
+    <div className={`flex items-center gap-2.5 ${compact ? "px-0 py-1" : "px-3 py-2.5"}`}>
+      {task.is_key_task ? (
+        <Star className="h-3.5 w-3.5 shrink-0 fill-amber-300 text-amber-300" />
+      ) : (
+        <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${
+          isProgress ? "bg-purple-300" : "bg-white/25"
+        }`} />
+      )}
+
+      <p className={`min-w-0 flex-1 truncate text-xs font-semibold ${
+        task.is_key_task ? "text-amber-100" : "text-white/80"
+      }`}>
+        {task.title}
+      </p>
+
+      {task.start_time && (
+        <p className="shrink-0 text-[0.65rem] text-white/30">
+          {task.start_time}{task.end_time ? `–${task.end_time}` : ""}
+        </p>
       )}
     </div>
   );

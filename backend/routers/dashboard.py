@@ -68,6 +68,10 @@ def get_dashboard(current_user: dict = Depends(get_current_user)):
     hour = now.hour
     ctx = chronotype_service.get_chronotype_context(curve_key, hour)
 
+    # Busca todas as tarefas de hoje com horário definido — usadas para enriquecer
+    # os blocos de foco com as tarefas reais que o usuário deveria estar fazendo.
+    todays_tasks = _fetch_tasks_with_times(user_id, str(date.today()))
+
     return {
         "greeting": f"{_greeting(hour)}, {data['name']}" if data.get("name") else _greeting(hour),
         "chronotype_label": meta["label"],
@@ -81,9 +85,9 @@ def get_dashboard(current_user: dict = Depends(get_current_user)):
             "Aproveite sua janela de foco para a tarefa mais importante do dia."
         ),
         "next_focus": _next_focus_block(curve_key, hour),
-        "current_block": _get_block(curve_key, hour, offset=0),
-        "next_block": _get_block(curve_key, hour, offset=1),
-        "day_blocks": _today_blocks(user_id, now),
+        "current_block": _get_block(curve_key, hour, offset=0, tasks=todays_tasks),
+        "next_block": _get_block(curve_key, hour, offset=1, tasks=todays_tasks),
+        "day_blocks": _today_blocks(curve_key, todays_tasks),
     }
 
 
@@ -91,8 +95,50 @@ def get_dashboard(current_user: dict = Depends(get_current_user)):
 _FOCUS_LEVELS = {"foco_moderado", "foco_profundo", "pico"}
 
 
-def _get_block(curve_key: str, current_hour: int, offset: int = 0) -> dict:
-    """Retorna o bloco atual (offset=0) ou o próximo (offset=1)."""
+def _block_idx_for_time(time_str: str) -> int:
+    """Converte 'HH:MM' ou 'HH:MM:SS' para o índice do bloco de 90 min."""
+    parts = time_str[:5].split(":")
+    minutes = int(parts[0]) * 60 + int(parts[1])
+    return min(minutes // 90, 15)
+
+
+def _fetch_tasks_with_times(user_id: str, today: str) -> list[dict]:
+    """Busca as tarefas de hoje que têm start_time, para distribuir nos blocos."""
+    res = (
+        supabase.table("tasks")
+        .select("id, title, status, task_type, start_time, end_time, is_key_task, priority")
+        .eq("user_id", user_id)
+        .eq("scheduled_date", today)
+        .not_.is_("start_time", "null")
+        .neq("status", "done")
+        .order("start_time", desc=False)
+        .execute()
+    )
+    return res.data or []
+
+
+def _tasks_for_block(tasks: list[dict], block_idx: int) -> list[dict]:
+    """Filtra as tarefas que pertencem ao bloco de índice block_idx."""
+    result = []
+    for t in tasks:
+        st = t.get("start_time")
+        if st and _block_idx_for_time(str(st)) == block_idx:
+            result.append({
+                "id": t["id"],
+                "title": t["title"],
+                "status": t["status"],
+                "task_type": t.get("task_type", "task"),
+                "start_time": str(st)[:5] if st else None,
+                "end_time": str(t["end_time"])[:5] if t.get("end_time") else None,
+                "is_key_task": bool(t.get("is_key_task")),
+                "priority": t.get("priority"),
+            })
+    return result
+
+
+def _get_block(curve_key: str, current_hour: int, offset: int = 0,
+               tasks: list[dict] | None = None) -> dict:
+    """Retorna o bloco atual (offset=0) ou o próximo (offset=1) com suas tarefas."""
     blocks = chronotype_service.CHRONOTYPE_BLOCKS.get(
         curve_key, chronotype_service.CHRONOTYPE_BLOCKS["intermediate"]
     )
@@ -106,6 +152,7 @@ def _get_block(curve_key: str, current_hour: int, offset: int = 0) -> dict:
         "level": level,
         "level_label": chronotype_service.BLOCK_LEVELS[level]["label"],
         "description": description,
+        "tasks": _tasks_for_block(tasks or [], idx),
     }
 
 
@@ -153,30 +200,40 @@ def _next_focus_block(curve_key: str, current_hour: int) -> dict | None:
     return None
 
 
-_TYPE_LABEL = {"task": "Tarefa", "event": "Evento", "routine": "Rotina"}
-
-
-def _today_blocks(user_id: str, now: datetime) -> list[dict]:
-    today = str(date.today())
-    result = (
-        supabase.table("tasks")
-        .select("title, task_type, status, start_time")
-        .eq("user_id", user_id)
-        .eq("scheduled_date", today)
-        .neq("status", "done")
-        .order("start_time", desc=False)
-        .limit(5)
-        .execute()
+def _today_blocks(curve_key: str, tasks: list[dict]) -> list[dict]:
+    """
+    Agrupa as tarefas de hoje por bloco de foco (90 min). Retorna apenas os blocos
+    que têm pelo menos uma tarefa, em ordem cronológica. Cada bloco inclui o nível
+    de energia para o frontend diferenciar visualmente pico vs. recuperação.
+    """
+    blocks_meta = chronotype_service.CHRONOTYPE_BLOCKS.get(
+        curve_key, chronotype_service.CHRONOTYPE_BLOCKS["intermediate"]
     )
-    blocks = []
-    for row in (result.data or []):
-        start = row.get("start_time")
-        time_label = start[:5] if start else "—"
-        is_active = row.get("status") == "progress"
-        blocks.append({
-            "time": time_label,
-            "title": row["title"],
-            "type": _TYPE_LABEL.get(row.get("task_type", "task"), "Tarefa"),
-            "active": is_active,
+
+    # Agrupa índice → lista de tarefas
+    by_idx: dict[int, list[dict]] = {}
+    for t in tasks:
+        idx = _block_idx_for_time(str(t["start_time"]))
+        by_idx.setdefault(idx, []).append({
+            "id": t["id"],
+            "title": t["title"],
+            "status": t["status"],
+            "task_type": t.get("task_type", "task"),
+            "start_time": str(t["start_time"])[:5],
+            "end_time": str(t["end_time"])[:5] if t.get("end_time") else None,
+            "is_key_task": bool(t.get("is_key_task")),
+            "priority": t.get("priority"),
         })
-    return blocks
+
+    result = []
+    for idx in sorted(by_idx.keys()):
+        start, end = _block_times(idx)
+        level, _ = blocks_meta[idx]
+        result.append({
+            "start": start,
+            "end": end,
+            "level": level,
+            "level_label": chronotype_service.BLOCK_LEVELS[level]["label"],
+            "tasks": by_idx[idx],
+        })
+    return result

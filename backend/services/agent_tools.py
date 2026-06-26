@@ -164,6 +164,15 @@ TOOLS = [
                 "end_time": _TIME,
                 "location": {"type": "string", "description": "Local ou link (eventos)"},
                 "deadline": _DATE,
+                "is_key_task": {
+                    "type": "boolean",
+                    "description": (
+                        "Marca esta tarefa como a tarefa chave do dia — a única que, "
+                        "se feita, torna o dia bem-sucedido. Só pode existir uma por dia; "
+                        "marcar uma nova desmarca a anterior automaticamente. Use quando o "
+                        "usuário indicar claramente qual é a prioridade máxima do dia."
+                    ),
+                },
             },
             "required": ["title"],
         },
@@ -206,6 +215,13 @@ TOOLS = [
                 "progress": {"type": "integer", "description": "0 a 100"},
                 "location": {"type": "string"},
                 "deadline": _DATE,
+                "is_key_task": {
+                    "type": "boolean",
+                    "description": (
+                        "True para marcar como tarefa chave do dia; false para desmarcar. "
+                        "Marcar uma nova desmarca a anterior do mesmo dia automaticamente."
+                    ),
+                },
             },
             "required": ["task_id"],
         },
@@ -310,6 +326,26 @@ TOOLS = [
                             "duration_minutes": {
                                 "type": "integer",
                                 "description": "Duração em minutos (item flexível — o Axon escolhe o horário)",
+                            },
+                            "not_before": {
+                                **_TIME,
+                                "description": (
+                                    "Só para itens flexíveis (duration_minutes). "
+                                    "O Axon não agendará este item antes deste horário. "
+                                    "Use quando o usuário indicar uma preferência de janela: "
+                                    "'depois do almoço' → '13:00', 'à tarde' → '13:00', "
+                                    "'à noite' → '19:00', 'depois das 15h' → '15:00'."
+                                ),
+                            },
+                            "not_after": {
+                                **_TIME,
+                                "description": (
+                                    "Só para itens flexíveis (duration_minutes). "
+                                    "O Axon não agendará este item depois deste horário. "
+                                    "Use quando o usuário quiser um limite superior: "
+                                    "'de manhã' → '12:00', 'antes do almoço' → '12:00', "
+                                    "'antes das 10h' → '10:00'."
+                                ),
                             },
                         },
                         "required": ["title", "days_of_week"],
