@@ -75,7 +75,7 @@ export default function NotificationToastProvider() {
 
         hideTimeoutRef.current = window.setTimeout(() => {
           setIsVisible(false);
-        }, 6000);
+        }, 10000);
       } catch {
         // silencioso
       }
@@ -115,6 +115,9 @@ export default function NotificationToastProvider() {
 
     try {
       await api.markNotificationRead(toast.id);
+
+      window.dispatchEvent(new Event("axon:notifications-updated"));
+
       setIsVisible(false);
     } finally {
       setActionLoading(null);
@@ -128,6 +131,9 @@ export default function NotificationToastProvider() {
 
     try {
       await api.acceptNotification(toast.id);
+
+      window.dispatchEvent(new Event("axon:notifications-updated"));
+
       setIsVisible(false);
     } finally {
       setActionLoading(null);
@@ -141,6 +147,9 @@ export default function NotificationToastProvider() {
 
     try {
       await api.rejectNotification(toast.id);
+
+      window.dispatchEvent(new Event("axon:notifications-updated"));
+
       setIsVisible(false);
     } finally {
       setActionLoading(null);
