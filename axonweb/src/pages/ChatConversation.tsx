@@ -126,6 +126,7 @@ export default function ChatConversation() {
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
   const historyRef = useRef<api.ChatMessage[]>([]);
+  const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   const [conversation, setConversation] = useState<api.ConversationData | null>(
     null
@@ -348,6 +349,29 @@ export default function ChatConversation() {
     );
   }
 
+  function scrollToBottom(behavior: ScrollBehavior = "smooth") {
+    requestAnimationFrame(() => {
+      messagesEndRef.current?.scrollIntoView({
+        behavior,
+        block: "end",
+      });
+    });
+  }
+
+  useEffect(() => {
+    if (!loadingHistory) {
+      scrollToBottom("auto");
+    }
+  }, [loadingHistory, conversationId]);
+
+  useEffect(() => {
+    const timeout = setTimeout(() => {
+      scrollToBottom("smooth");
+    }, 50);
+
+    return () => clearTimeout(timeout);
+  }, [messages]);
+
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
       <Background />
@@ -418,20 +442,31 @@ export default function ChatConversation() {
                 <MessageBubble key={item.id} message={item} />
               ))
             )}
+            <div ref={messagesEndRef} className="h-1" />
           </div>
         </section>
 
         <footer className="shrink-0 pt-3">
           <form
             onSubmit={(e) => handleSend(e)}
-            className="flex items-end gap-2 rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/86 p-2 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            className="flex min-h-[58px] items-center gap-2 rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/86 p-2 shadow-2xl shadow-black/30 backdrop-blur-2xl"
           >
             <textarea
               value={message}
               onChange={(event) => setMessage(event.target.value)}
+              onKeyDown={(event) => {
+                if (
+                  event.key === "Enter" &&
+                  !event.shiftKey &&
+                  window.innerWidth >= 768
+                ) {
+                  event.preventDefault();
+                  handleSend();
+                }
+              }}
               placeholder="Mensagem para o Axon..."
               rows={1}
-              className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-sm leading-5 text-white outline-none placeholder:text-white/28"
+              className="max-h-28 min-h-[42px] flex-1 resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm leading-6 text-white outline-none placeholder:text-white/30"
             />
 
             <button

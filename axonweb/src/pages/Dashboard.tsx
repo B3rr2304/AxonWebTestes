@@ -60,6 +60,24 @@ export default function Dashboard() {
       .catch(() => null);
   }, []);
 
+  useEffect(() => {
+    const handleNotificationsUpdated = () => {
+      refreshUnreadCount();
+    };
+
+    window.addEventListener(
+      "axon:notifications-updated",
+      handleNotificationsUpdated
+    );
+
+    return () => {
+      window.removeEventListener(
+        "axon:notifications-updated",
+        handleNotificationsUpdated
+      );
+    };
+  }, [refreshUnreadCount]);
+
   // ---------------------------------------------------------------------------
   // CARREGAMENTO PRINCIPAL DO DASHBOARD
   // - Valida login
@@ -1066,9 +1084,7 @@ function NotificationsSheet({
     onUnreadCountChange(unreadCount);
   }, [unreadCount, onUnreadCountChange]);
 
-  useEffect(() => {
-    if (!isOpen) return;
-
+  function loadNotifications() {
     setLoading(true);
 
     api
@@ -1078,11 +1094,32 @@ function NotificationsSheet({
 
         setNotifications(visibleNotifications);
         setHasMore(data.length > NOTIFICATIONS_PAGE_SIZE);
-
       })
       .catch(() => null)
       .finally(() => setLoading(false));
-  }, [isOpen, onUnreadCountChange]);
+  }
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    loadNotifications();
+
+    const handleNotificationsUpdated = () => {
+      loadNotifications();
+    };
+
+    window.addEventListener(
+      "axon:notifications-updated",
+      handleNotificationsUpdated
+    );
+
+    return () => {
+      window.removeEventListener(
+        "axon:notifications-updated",
+        handleNotificationsUpdated
+      );
+    };
+  }, [isOpen]);
 
   async function loadMore() {
     try {
@@ -1124,7 +1161,9 @@ function NotificationsSheet({
       );
 
       return next;
-    });
+    }
+      );
+    window.dispatchEvent(new Event("axon:notifications-updated"));
   }
 
   async function handleAccept(id: string) {
@@ -1140,6 +1179,8 @@ function NotificationsSheet({
       return next;
     });
 
+    window.dispatchEvent(new Event("axon:notifications-updated"));
+    loadNotifications();
     setNotificationView("read");
   }
 
@@ -1156,6 +1197,8 @@ function NotificationsSheet({
       return next;
     });
 
+    window.dispatchEvent(new Event("axon:notifications-updated"));
+    loadNotifications();
     setNotificationView("read");
   }
 
