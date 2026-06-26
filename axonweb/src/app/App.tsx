@@ -24,9 +24,8 @@ import NotificationToastProvider from "../components/notifications/NotificationT
 import Dashboard from "../pages/Dashboard";
 import Chat from "../pages/Chat";
 import ChatConversation from "../pages/ChatConversation";
-import Planning from "../pages/Planning";
+import Planejamento from "../pages/Planejamento";
 import Insights from "../pages/Insights";
-import Rotinas from "../pages/Rotinas";
 import RotinaDetalhe from "../pages/RotinaDetalhe";
 import Focus from "../pages/Focus";
 import Profile from "../pages/Profile";
@@ -72,10 +71,11 @@ export default function App() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/chat" element={<Chat />} />
         <Route path="/chat/:chatId" element={<ChatConversation />} />
-        <Route path="/planning" element={<Planning />} />
+        <Route path="/planning" element={<Planejamento initialView="agenda" />} />
         <Route path="/insights" element={<Insights />} />
-        <Route path="/rotinas" element={<Rotinas />} />
+        <Route path="/rotinas" element={<Planejamento initialView="rotinas" />} />
         <Route path="/rotinas/:id" element={<RotinaDetalhe />} />
+        <Route path="/objetivos" element={<Planejamento initialView="objetivos" />} />
         <Route path="/focus" element={<Focus />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/settings" element={<Settings />} />

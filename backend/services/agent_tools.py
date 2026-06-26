@@ -14,6 +14,7 @@ from services import (
     tasks_service,
     memory_service,
     notification_service,
+    objectives_service,
     routines_service,
     user_tz,
 )
@@ -90,6 +91,39 @@ _TYPE_ADJ = {  # (criada, atualizada, removida) — concordância de gênero
 _VERB = ("criou", "atualizou", "removeu")  # invariável
 
 
+def _notify_routine_change(user_id: str, action: str, routine: dict) -> None:
+    """
+    Envia notificação após o agente criar/pausar/retomar/deletar uma rotina.
+    action: 'criar' | 'pausar' | 'retomar' | 'deletar'
+    Nunca quebra a operação principal.
+    """
+    try:
+        name = routine.get("name") or "rotina"
+        item_count = routine.get("item_count", 0)
+
+        if action == "criar":
+            title = "Rotina criada"
+            body = f'O Axon criou a rotina "{name}"'
+            if item_count:
+                body += f" com {item_count} {'item' if item_count == 1 else 'itens'}"
+            body += "."
+        elif action == "pausar":
+            title = "Rotina pausada"
+            paused_until = routine.get("paused_until")
+            body = f'O Axon pausou a rotina "{name}"'
+            body += f" até {paused_until}." if paused_until else "."
+        elif action == "retomar":
+            title = "Rotina retomada"
+            body = f'O Axon retomou a rotina "{name}".'
+        else:  # deletar
+            title = "Rotina removida"
+            body = f'O Axon removeu a rotina "{name}".'
+
+        notification_service.create_notification(user_id, "change", title, body)
+    except Exception:
+        pass  # notificação é secundária — nunca falha a ação do agente
+
+
 def _notify_task_change(user_id: str, idx: int, task: dict) -> None:
     """
     Cria uma notificação de alteração (template) após o agente mexer numa tarefa.
@@ -118,6 +152,7 @@ def _notify_task_change(user_id: str, idx: int, task: dict) -> None:
 MUTATING_TOOLS = {
     "criar_tarefa", "atualizar_tarefa", "deletar_tarefa",
     "criar_rotina", "pausar_rotina", "retomar_rotina", "deletar_rotina",
+    "criar_objetivo", "atualizar_objetivo", "deletar_objetivo",
 }
 
 # Rótulos legíveis em PT-BR para o indicador de ação no chat.
@@ -134,6 +169,11 @@ TOOL_LABELS = {
     "pausar_rotina": "Pausando rotina",
     "retomar_rotina": "Retomando rotina",
     "deletar_rotina": "Removendo rotina",
+    "criar_objetivo": "Criando objetivo",
+    "listar_objetivos": "Consultando objetivos",
+    "atualizar_objetivo": "Atualizando objetivo",
+    "listar_etapas": "Consultando etapas",
+    "deletar_objetivo": "Removendo objetivo",
 }
 
 _TASK_TYPE = {"type": "string", "enum": ["task", "event", "routine"]}
@@ -171,6 +211,14 @@ TOOLS = [
                         "se feita, torna o dia bem-sucedido. Só pode existir uma por dia; "
                         "marcar uma nova desmarca a anterior automaticamente. Use quando o "
                         "usuário indicar claramente qual é a prioridade máxima do dia."
+                    ),
+                },
+                "objective_id": {
+                    "type": "string",
+                    "description": (
+                        "UUID do objetivo ao qual esta tarefa pertence. Use quando o usuário "
+                        "estiver adicionando uma etapa a um objetivo existente. "
+                        "Descubra o id correto com listar_objetivos antes."
                     ),
                 },
             },
@@ -221,6 +269,10 @@ TOOLS = [
                         "True para marcar como tarefa chave do dia; false para desmarcar. "
                         "Marcar uma nova desmarca a anterior do mesmo dia automaticamente."
                     ),
+                },
+                "objective_id": {
+                    "type": "string",
+                    "description": "UUID do objetivo ao qual esta tarefa pertence (para mover entre objetivos ou desvincular).",
                 },
             },
             "required": ["task_id"],
@@ -411,6 +463,88 @@ TOOLS = [
             "required": ["routine_id"],
         },
     },
+
+    # --- Objetivos -----------------------------------------------------------
+    {
+        "name": "criar_objetivo",
+        "description": (
+            "Cria um objetivo: uma meta maior composta por etapas (subtarefas) que "
+            "serão distribuídas ao longo do tempo. Use quando o usuário falar de algo "
+            "que levará dias, semanas ou meses e tem um resultado final claro "
+            "(ex.: 'fazer o TCC', 'lançar o app', 'aprender inglês'). "
+            "Após criar o objetivo, use criar_tarefa com objective_id para adicionar etapas."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "title": {"type": "string", "description": "Nome do objetivo"},
+                "description": {"type": "string", "description": "Contexto ou meta detalhada (opcional)"},
+                "deadline": {**_DATE, "description": "Prazo final do objetivo (opcional, mas recomendado para distribuir etapas)"},
+                "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high"],
+                    "description": "Prioridade do objetivo (low/medium/high). Objetivos de prioridade alta aparecem no topo da lista. Padrão: medium.",
+                },
+            },
+            "required": ["title"],
+        },
+    },
+    {
+        "name": "listar_objetivos",
+        "description": (
+            "Lista todos os objetivos do usuário com progresso, prazo e contagem de etapas. "
+            "Use antes de atualizar, deletar ou adicionar etapas a um objetivo específico "
+            "para descobrir o id correto."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
+    {
+        "name": "atualizar_objetivo",
+        "description": "Atualiza título, descrição, prazo ou prioridade de um objetivo existente.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "objective_id": {"type": "string", "description": "id (UUID) do objetivo"},
+                "title": {"type": "string"},
+                "description": {"type": "string"},
+                "deadline": _DATE,
+                "priority": {
+                    "type": "string",
+                    "enum": ["low", "medium", "high"],
+                    "description": "Prioridade do objetivo (low/medium/high).",
+                },
+            },
+            "required": ["objective_id"],
+        },
+    },
+    {
+        "name": "listar_etapas",
+        "description": (
+            "Lista as etapas (subtarefas) de um objetivo específico com status e data agendada. "
+            "Use para dar um overview do progresso ou antes de atualizar/deletar uma etapa."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "objective_id": {"type": "string", "description": "id (UUID) do objetivo"},
+            },
+            "required": ["objective_id"],
+        },
+    },
+    {
+        "name": "deletar_objetivo",
+        "description": (
+            "Remove permanentemente um objetivo E todas as suas etapas (cascade). "
+            "Use listar_objetivos antes para identificar o id. Exige confirmação do usuário."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "objective_id": {"type": "string", "description": "id (UUID) do objetivo"},
+            },
+            "required": ["objective_id"],
+        },
+    },
 ]
 
 
@@ -480,6 +614,7 @@ def execute_tool(name: str, tool_input: dict, user_id: str, tz_name: str | None 
                     "end_date": _resolve_to_date(tool_input.get("end_date"), today),
                 }
                 routine = routines_service.create_routine(user_id, data, today)
+                _notify_routine_change(user_id, "criar", routine)
                 return {"ok": True, "routine": routine}
 
             if name == "listar_rotinas":
@@ -493,17 +628,49 @@ def execute_tool(name: str, tool_input: dict, user_id: str, tz_name: str | None 
                     _resolve_to_date(tool_input.get("paused_until"), today),
                     today,
                 )
+                _notify_routine_change(user_id, "pausar", routine)
                 return {"ok": True, "routine": routine}
 
             if name == "retomar_rotina":
                 routine = routines_service.resume_routine(
                     user_id, tool_input["routine_id"], today
                 )
+                _notify_routine_change(user_id, "retomar", routine)
                 return {"ok": True, "routine": routine}
 
             if name == "deletar_rotina":
+                # Busca o nome antes de remover, para a notificação
+                rotinas = routines_service.list_routines(user_id, today)
+                rotina_alvo = next(
+                    (r for r in rotinas if r["id"] == tool_input["routine_id"]), {}
+                )
                 routines_service.delete_routine(user_id, tool_input["routine_id"], today)
+                _notify_routine_change(user_id, "deletar", rotina_alvo)
                 return {"ok": True, "deleted": tool_input["routine_id"]}
+
+        # --- Objetivos --------------------------------------------------------
+        if name == "criar_objetivo":
+            obj = objectives_service.create_objective(user_id, tool_input)
+            return {"ok": True, "objective": obj}
+
+        if name == "listar_objetivos":
+            objs = objectives_service.list_objectives(user_id)
+            return {"ok": True, "count": len(objs), "objectives": objs}
+
+        if name == "atualizar_objetivo":
+            data = {k: v for k, v in tool_input.items() if k != "objective_id"}
+            obj = objectives_service.update_objective(user_id, tool_input["objective_id"], data)
+            return {"ok": True, "objective": obj}
+
+        if name == "listar_etapas":
+            obj = objectives_service.get_objective(user_id, tool_input["objective_id"])
+            return {"ok": True, "objective": obj["title"], "subtasks": obj.get("subtasks", [])}
+
+        if name == "deletar_objetivo":
+            objs = objectives_service.list_objectives(user_id)
+            alvo = next((o for o in objs if o["id"] == tool_input["objective_id"]), {})
+            objectives_service.delete_objective(user_id, tool_input["objective_id"])
+            return {"ok": True, "deleted": alvo.get("title", tool_input["objective_id"])}
 
         return {"ok": False, "error": f"Ferramenta desconhecida: {name}"}
     except ValueError as e:

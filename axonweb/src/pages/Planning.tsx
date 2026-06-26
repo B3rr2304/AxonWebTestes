@@ -15,6 +15,7 @@ import {
   Repeat,
   Sparkles,
   Star,
+  Target,
   Trash2,
   X,
 } from "lucide-react";
@@ -195,7 +196,7 @@ function weekDaysOf(selected: Date): Date[] {
   });
 }
 
-export default function Planning() {
+export default function Planning({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -415,36 +416,9 @@ export default function Planning() {
     setCalendarConnectError(null);
   }
 
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
-      <Background />
-
-      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-5 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-white">Planejamento</p>
-              <p className="text-xs text-white/40">Rotina e tarefas</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-            aria-label="Abrir menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </header>
-
-        {carriedCount > 0 && (
+  const inner = (
+    <>
+      {carriedCount > 0 && (
           <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3">
             <p className="text-xs leading-5 text-amber-100">
               <span className="font-semibold">{carriedCount} {carriedCount === 1 ? "tarefa pendente" : "tarefas pendentes"}</span> de ontem {carriedCount === 1 ? "foi movida" : "foram movidas"} para hoje.
@@ -655,15 +629,11 @@ export default function Planning() {
             </p>
           </section>
         )}
-      </div>
+    </>
+  );
 
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setIsSidebarOpen(false)}
-        chronotypeLabel={result.label}
-        energyPeak={result.energyPeak}
-      />
-
+  const modals = (
+    <>
       <CreatePlanningItemModal
         isOpen={isCreateModalOpen}
         defaultDate={selectedIso}
@@ -698,6 +668,59 @@ export default function Planning() {
           </div>
         </div>
       )}
+    </>
+  );
+
+  // No hub (embedded), a moldura — main, header, Sidebar — vem do Planejamento.
+  if (embedded) {
+    return (
+      <>
+        {inner}
+        {modals}
+      </>
+    );
+  }
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+      <Background />
+
+      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
+        <header className="mb-5 flex items-center justify-between">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-3 text-left active:scale-[0.98]"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
+              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-white">Planejamento</p>
+              <p className="text-xs text-white/40">Rotina e tarefas</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </header>
+
+        {inner}
+      </div>
+
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        chronotypeLabel={result.label}
+        energyPeak={result.energyPeak}
+      />
+
+      {modals}
     </main>
   );
 }
@@ -1324,6 +1347,12 @@ const isDisplayScheduled = displayStatus === "scheduled";
               {task.title}
             </p>
             <p className="mt-1 truncate text-xs text-white/42">{subtitle}</p>
+            {task.objective_title && (
+              <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-purple-300/20 bg-purple-500/10 px-2.5 py-0.5 text-[0.65rem] font-medium text-purple-200/80">
+                <Target className="h-2.5 w-2.5" />
+                {task.objective_title}
+              </div>
+            )}
           </div>
         </div>
 

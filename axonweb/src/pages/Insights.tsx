@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   Activity,
   CalendarDays,
+  CheckCircle2,
   Focus,
   Menu,
   Moon,
@@ -24,6 +25,7 @@ import {
 
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
+import DayReview from "./DayReview";
 import * as api from "../lib/api";
 import type { TaskInsights } from "../lib/api";
 
@@ -87,6 +89,15 @@ export default function Insights() {
     null
   );
   const [loadingPatterns, setLoadingPatterns] = useState(true);
+  const [todayLog, setTodayLog] = useState<api.DailyLog | null>(null);
+  const [reviewOpen, setReviewOpen] = useState(false);
+
+  useEffect(() => {
+    api
+      .getDailyLogToday()
+      .then(setTodayLog)
+      .catch(() => setTodayLog(null));
+  }, []);
 
   useEffect(() => {
     api
@@ -258,6 +269,52 @@ export default function Insights() {
               </div>
             </div>
           </div>
+        </section>
+
+        {/* Registro diário — alimenta toda a análise abaixo */}
+        <section className="mb-5">
+          <button
+            type="button"
+            onClick={() => setReviewOpen(true)}
+            className={`group w-full overflow-hidden rounded-[2rem] border p-4 text-left shadow-xl backdrop-blur-2xl active:scale-[0.98] ${
+              todayLog
+                ? "border-emerald-300/20 bg-emerald-400/[0.07] shadow-emerald-950/10"
+                : "border-purple-300/20 bg-purple-500/10 shadow-purple-950/20"
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
+                  todayLog
+                    ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-200"
+                    : "border-purple-300/20 bg-purple-500/15 text-purple-200"
+                }`}
+              >
+                {todayLog ? <CheckCircle2 className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white">
+                  {todayLog ? "Dia registrado" : "Como foi o seu dia?"}
+                </p>
+                <p className="mt-0.5 text-xs text-white/45">
+                  {todayLog
+                    ? "Toque para revisar ou ajustar o registro de hoje."
+                    : "Leva menos de 1 minuto · Alimenta os insights abaixo."}
+                </p>
+              </div>
+
+              <span
+                className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
+                  todayLog
+                    ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+                    : "border-purple-300/20 bg-purple-500/20 text-purple-100"
+                }`}
+              >
+                {todayLog ? "Editar" : "Registrar"}
+              </span>
+            </div>
+          </button>
         </section>
 
         <section className="mb-5 rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-5 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
@@ -769,6 +826,13 @@ export default function Insights() {
         onClose={() => setIsSidebarOpen(false)}
         chronotypeLabel={result.label}
         energyPeak={result.energyPeak}
+      />
+
+      <DayReview
+        isOpen={reviewOpen}
+        onClose={() => setReviewOpen(false)}
+        existing={todayLog}
+        onSaved={(log) => setTodayLog(log)}
       />
     </main>
   );

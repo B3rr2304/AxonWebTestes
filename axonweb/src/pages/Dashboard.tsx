@@ -496,8 +496,11 @@ export default function Dashboard() {
                         <p className={`truncate text-sm font-semibold ${isKey ? "text-amber-100" : "text-white"}`}>
                           {task.title}
                         </p>
-                        <p className="mt-1 text-xs text-white/38">
-                          {typeLabel[task.task_type] ?? "Tarefa"}
+                        <p className="mt-0.5 text-xs text-white/38">
+                          {task.objective_title
+                            ? <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-purple-300/60" />{task.objective_title}</span>
+                            : typeLabel[task.task_type] ?? "Tarefa"
+                          }
                         </p>
                       </div>
 

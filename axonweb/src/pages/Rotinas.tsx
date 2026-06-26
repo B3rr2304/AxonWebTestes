@@ -14,7 +14,7 @@ import NewRoutineSheet from "../components/rotinas/NewRoutineSheet";
 import * as api from "../lib/api";
 import type { Routine } from "../lib/api";
 
-export default function Rotinas() {
+export default function Rotinas({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -70,40 +70,9 @@ export default function Rotinas() {
 
   const isEmpty = !loading && routines !== null && routines.length === 0;
 
-  return (
-    <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
-      <Background />
-
-      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-6 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img
-                src="/axon-logo.svg"
-                alt="Axon"
-                className="h-8 w-8 object-contain"
-              />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-white">Rotinas</p>
-              <p className="text-xs text-white/40">Hábitos recorrentes</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 backdrop-blur-2xl active:scale-[0.96]"
-            aria-label="Abrir menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </header>
-
-        <section className="mb-5 flex items-end justify-between gap-3">
+  const inner = (
+    <>
+      <section className="mb-5 flex items-end justify-between gap-3">
           <div>
             <h1 className="text-[1.7rem] font-semibold leading-tight tracking-[-0.04em] text-white">
               Minhas Rotinas
@@ -146,15 +115,65 @@ export default function Rotinas() {
             ))}
           </div>
         )}
+    </>
+  );
+
+  const modals = (
+    <NewRoutineSheet
+      isOpen={isCreateOpen}
+      onClose={() => setIsCreateOpen(false)}
+      onCreated={load}
+    />
+  );
+
+  if (embedded) {
+    return (
+      <>
+        {inner}
+        {modals}
+      </>
+    );
+  }
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
+      <Background />
+
+      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
+        <header className="mb-6 flex items-center justify-between">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-3 text-left active:scale-[0.98]"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
+              <img
+                src="/axon-logo.svg"
+                alt="Axon"
+                className="h-8 w-8 object-contain"
+              />
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-white">Rotinas</p>
+              <p className="text-xs text-white/40">Hábitos recorrentes</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 backdrop-blur-2xl active:scale-[0.96]"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </header>
+
+        {inner}
       </div>
 
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
-      <NewRoutineSheet
-        isOpen={isCreateOpen}
-        onClose={() => setIsCreateOpen(false)}
-        onCreated={load}
-      />
+      {modals}
     </main>
   );
 }

@@ -12,6 +12,7 @@ def list_tasks(
     scheduled_date: Optional[str] = Query(None, description="YYYY-MM-DD"),
     status: Optional[str] = Query(None),
     task_type: Optional[str] = Query(None),
+    objective_id: Optional[str] = Query(None),
     current_user: dict = Depends(get_current_user),
 ):
     return tasks_service.list_tasks(
@@ -19,6 +20,7 @@ def list_tasks(
         scheduled_date=scheduled_date,
         status=status,
         task_type=task_type,
+        objective_id=objective_id,
     )
 
 
