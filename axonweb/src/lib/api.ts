@@ -247,11 +247,23 @@ export interface NextFocusBlock {
   hours_until: number;
 }
 
-export interface DayBlock {
-  time: string;
+export interface BlockTask {
+  id: string;
   title: string;
-  type: string;
-  active: boolean;
+  status: string;
+  task_type: string;
+  start_time?: string | null;
+  end_time?: string | null;
+  is_key_task: boolean;
+  priority?: string | null;
+}
+
+export interface DayBlock {
+  start: string;
+  end: string;
+  level: string;
+  level_label: string;
+  tasks: BlockTask[];
 }
 
 export interface FocusBlock {
@@ -267,6 +279,7 @@ export interface FocusBlock {
     | "pico";
   level_label: string;
   description: string;
+  tasks: BlockTask[];
 }
 
 export interface DashboardData {
@@ -329,6 +342,8 @@ export interface TaskCreateInput {
   recurrence?: "daily" | "weekly" | "monthly";
   location?: string;
   deadline?: string;
+  axon_pick_time?: boolean;
+  duration_minutes?: number;
 }
 
 export type TaskUpdateInput = Partial<TaskCreateInput> & {

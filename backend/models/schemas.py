@@ -73,6 +73,8 @@ class TaskCreate(BaseModel):
     deadline: Optional[date] = None
     created_by: str = "user"           # 'user' | 'agent'
     is_key_task: bool = False
+    axon_pick_time: bool = False        # true = Axon escolhe o melhor horário pelo cronotipo
+    duration_minutes: Optional[int] = None  # necessário quando axon_pick_time=True
 
 
 class TaskUpdate(BaseModel):

@@ -6,6 +6,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Circle,
+  Clock,
   Edit3,
   ListTodo,
   Loader2,
@@ -1465,6 +1466,9 @@ function CreatePlanningItemModal({
   const [recurrence, setRecurrence] = useState<"daily" | "weekly" | "monthly">(
     "daily"
   );
+  const [axonPickTime, setAxonPickTime] = useState(false);
+  const [duration, setDuration] = useState("");
+  const [isKeyTask, setIsKeyTask] = useState(false);
 
   const [description, setDescription] = useState("");
   const [submitting, setSubmitting] = useState(false);
@@ -1483,6 +1487,9 @@ function CreatePlanningItemModal({
       setDescription("");
       setFormError(null);
       setEndDate(defaultDate);
+      setAxonPickTime(false);
+      setDuration("");
+      setIsKeyTask(false);
     }
   }, [isOpen, defaultDate]);
 
@@ -1511,30 +1518,36 @@ function CreatePlanningItemModal({
       setFormError("A data final do evento não pode ser anterior à data inicial.");
       return;
     }
-
-    if (startTime && endTime && endTime <= startTime) {
+    if (!axonPickTime && startTime && endTime && endTime <= startTime) {
       setFormError("O horário de término precisa ser depois do horário de início.");
       return;
+    }
+    if (axonPickTime && selectedType !== "routine") {
+      const d = Number(duration);
+      if (!duration || !Number.isFinite(d) || d <= 0) {
+        setFormError("Informe a duração em minutos para o Axon escolher o horário.");
+        return;
+      }
     }
 
     setSubmitting(true);
     setFormError(null);
     try {
+      const useAxon = axonPickTime && selectedType !== "routine";
       await api.createTask({
         title: title.trim(),
         task_type: selectedType,
         scheduled_date: date || undefined,
-
-        // Campo novo para evento de vários dias.
-        // Vai funcionar corretamente depois que o Bernardo atualizar o api.ts.
         end_date: selectedType === "event" ? endDate || date : undefined,
-
-        start_time: startTime || undefined,
-        end_time: endTime || undefined,
+        start_time: useAxon ? undefined : startTime || undefined,
+        end_time: useAxon ? undefined : endTime || undefined,
         priority: selectedType === "task" ? priority : undefined,
         location: selectedType === "event" ? location || undefined : undefined,
         recurrence: selectedType === "routine" ? recurrence : undefined,
         description: description || undefined,
+        axon_pick_time: useAxon || undefined,
+        duration_minutes: useAxon ? Number(duration) : undefined,
+        is_key_task: selectedType === "task" && isKeyTask ? true : undefined,
       } as any);
       await onCreated();
     } catch (e) {
@@ -1667,46 +1680,145 @@ function CreatePlanningItemModal({
               </label>
             )}
 
-            <div className="grid grid-cols-2 gap-3">
-              <label className="block">
+            {selectedType !== "routine" && (
+              <div>
                 <span className="mb-2 block text-xs font-medium text-white/42">
-                  Início
+                  Horário
                 </span>
+                <div className="mb-3 grid grid-cols-2 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAxonPickTime(false)}
+                    className={`flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition active:scale-[0.97] ${
+                      !axonPickTime
+                        ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
+                        : "border-white/10 bg-white/[0.045] text-white/42"
+                    }`}
+                  >
+                    <Clock className="h-3.5 w-3.5" />
+                    Horário fixo
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAxonPickTime(true)}
+                    className={`flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition active:scale-[0.97] ${
+                      axonPickTime
+                        ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
+                        : "border-white/10 bg-white/[0.045] text-white/42"
+                    }`}
+                  >
+                    <Sparkles className="h-3.5 w-3.5" />
+                    Axon decide
+                  </button>
+                </div>
 
-                <input
-                  type="time"
-                  value={startTime}
-                  onChange={(e) => setStartTime(e.target.value)}
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
-                />
-              </label>
+                {axonPickTime ? (
+                  <div>
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-medium text-white/42">
+                        Duração (minutos)
+                      </span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={duration}
+                        onChange={(e) => setDuration(e.target.value)}
+                        placeholder="Ex: 45"
+                        className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                      />
+                    </label>
+                    <p className="mt-2 text-[0.7rem] leading-4 text-white/38">
+                      O Axon escolhe o melhor horário com base no seu cronotipo e no que já está agendado no dia.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 gap-3">
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-medium text-white/42">
+                        Início
+                      </span>
+                      <input
+                        type="time"
+                        value={startTime}
+                        onChange={(e) => setStartTime(e.target.value)}
+                        className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="mb-2 block text-xs font-medium text-white/42">
+                        Fim
+                      </span>
+                      <input
+                        type="time"
+                        value={endTime}
+                        onChange={(e) => setEndTime(e.target.value)}
+                        className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                      />
+                    </label>
+                  </div>
+                )}
+              </div>
+            )}
 
-              <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
-                  Fim
-                </span>
-
-                <input
-                  type="time"
-                  value={endTime}
-                  onChange={(e) => setEndTime(e.target.value)}
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
-                />
-              </label>
-            </div>
+            {selectedType === "task" && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isKeyTask;
+                  setIsKeyTask(next);
+                  if (next) setPriority("high");
+                }}
+                className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition active:scale-[0.98] ${
+                  isKeyTask
+                    ? "border-amber-300/30 bg-amber-400/[0.08]"
+                    : "border-white/10 bg-white/[0.045]"
+                }`}
+              >
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                  isKeyTask
+                    ? "border-amber-300/30 bg-amber-400/15 text-amber-200"
+                    : "border-white/10 bg-white/[0.06] text-white/35"
+                }`}>
+                  <Star className={`h-4.5 w-4.5 ${isKeyTask ? "fill-amber-300 text-amber-300" : ""}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm font-semibold ${isKeyTask ? "text-amber-100" : "text-white/70"}`}>
+                    Tarefa chave do dia
+                  </p>
+                  <p className="mt-0.5 text-xs leading-4 text-white/38">
+                    A única que, se feita, torna o dia bem-sucedido.
+                  </p>
+                </div>
+                <div className={`h-5 w-5 shrink-0 rounded-full border-2 transition ${
+                  isKeyTask ? "border-amber-400 bg-amber-400" : "border-white/20 bg-transparent"
+                }`} />
+              </button>
+            )}
 
             {selectedType === "task" && (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
-                  Prioridade
-                </span>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-white/42">
+                    Prioridade
+                  </span>
+                  {isKeyTask && (
+                    <span className="text-[0.68rem] font-semibold text-amber-300/80">
+                      Travada em Alta pela tarefa chave
+                    </span>
+                  )}
+                </div>
 
                 <select
                   value={priority}
+                  disabled={isKeyTask}
                   onChange={(e) =>
                     setPriority(e.target.value as "low" | "medium" | "high")
                   }
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  className={`min-h-[52px] w-full rounded-2xl border px-4 text-sm text-white outline-none transition ${
+                    isKeyTask
+                      ? "cursor-not-allowed border-amber-300/20 bg-amber-400/[0.06] opacity-70"
+                      : "border-white/10 bg-[#222230] focus:border-purple-300/35"
+                  }`}
                 >
                   <option value="low">Baixa</option>
                   <option value="medium">Média</option>
@@ -1932,6 +2044,7 @@ function EditPlanningItemModal({
     "daily"
   );
   const [description, setDescription] = useState("");
+  const [isKeyTask, setIsKeyTask] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -1947,6 +2060,7 @@ function EditPlanningItemModal({
     setLocation(task.location ?? "");
     setRecurrence((task.recurrence as "daily" | "weekly" | "monthly") ?? "daily");
     setDescription(task.description ?? "");
+    setIsKeyTask(!!task.is_key_task);
     setFormError(null);
   }, [task]);
 
@@ -1989,17 +2103,14 @@ function EditPlanningItemModal({
         {
           title: title.trim(),
           scheduled_date: date || undefined,
-
-          // Campo preparado para eventos de vários dias.
-          // Se o api.ts ainda não tipar end_date, o "as any" evita erro temporário.
           end_date: isEvent ? endDate || date : undefined,
-
           start_time: startTime || undefined,
           end_time: endTime || undefined,
           priority: isTask ? priority : undefined,
           location: isEvent ? location || undefined : undefined,
           recurrence: isRoutine ? recurrence : undefined,
           description: description || undefined,
+          is_key_task: isTask ? isKeyTask : undefined,
         } as any
       );
 
@@ -2155,17 +2266,64 @@ function EditPlanningItemModal({
             </div>
 
             {isTask && (
+              <button
+                type="button"
+                onClick={() => {
+                  const next = !isKeyTask;
+                  setIsKeyTask(next);
+                  if (next) setPriority("high");
+                }}
+                className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition active:scale-[0.98] ${
+                  isKeyTask
+                    ? "border-amber-300/30 bg-amber-400/[0.08]"
+                    : "border-white/10 bg-white/[0.045]"
+                }`}
+              >
+                <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                  isKeyTask
+                    ? "border-amber-300/30 bg-amber-400/15 text-amber-200"
+                    : "border-white/10 bg-white/[0.06] text-white/35"
+                }`}>
+                  <Star className={`h-4.5 w-4.5 ${isKeyTask ? "fill-amber-300 text-amber-300" : ""}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className={`text-sm font-semibold ${isKeyTask ? "text-amber-100" : "text-white/70"}`}>
+                    Tarefa chave do dia
+                  </p>
+                  <p className="mt-0.5 text-xs leading-4 text-white/38">
+                    A única que, se feita, torna o dia bem-sucedido.
+                  </p>
+                </div>
+                <div className={`h-5 w-5 shrink-0 rounded-full border-2 transition ${
+                  isKeyTask ? "border-amber-400 bg-amber-400" : "border-white/20 bg-transparent"
+                }`} />
+              </button>
+            )}
+
+            {isTask && (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
-                  Prioridade
-                </span>
+                <div className="mb-2 flex items-center justify-between">
+                  <span className="text-xs font-medium text-white/42">
+                    Prioridade
+                  </span>
+                  {isKeyTask && (
+                    <span className="text-[0.68rem] font-semibold text-amber-300/80">
+                      Travada em Alta pela tarefa chave
+                    </span>
+                  )}
+                </div>
 
                 <select
                   value={priority}
+                  disabled={isKeyTask}
                   onChange={(e) =>
                     setPriority(e.target.value as "low" | "medium" | "high")
                   }
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  className={`min-h-[52px] w-full rounded-2xl border px-4 text-sm text-white outline-none transition ${
+                    isKeyTask
+                      ? "cursor-not-allowed border-amber-300/20 bg-amber-400/[0.06] opacity-70"
+                      : "border-white/10 bg-[#222230] focus:border-purple-300/35"
+                  }`}
                 >
                   <option value="low">Baixa</option>
                   <option value="medium">Média</option>

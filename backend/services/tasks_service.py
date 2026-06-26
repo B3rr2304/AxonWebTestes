@@ -79,8 +79,26 @@ def create_task(user_id: str, data: dict) -> dict:
     payload = _stringify_dates({**data})
     payload["user_id"] = user_id
 
-    if payload.get("is_key_task") and payload.get("scheduled_date"):
-        _unset_key_task(user_id, payload["scheduled_date"])
+    # "Axon decide": escolhe o melhor slot de energia para o dia, baseado no cronotipo.
+    if payload.pop("axon_pick_time", False):
+        duration = payload.pop("duration_minutes", None)
+        if duration and payload.get("scheduled_date"):
+            from services.routines_service import pick_best_slot
+            from datetime import date as _date
+            day = _date.fromisoformat(str(payload["scheduled_date"]))
+            slot = pick_best_slot(user_id, day, int(duration))
+            if slot:
+                payload["start_time"], payload["end_time"] = slot
+        else:
+            payload.pop("duration_minutes", None)
+    else:
+        payload.pop("duration_minutes", None)
+
+    # Tarefa chave implica prioridade Alta — garante consistência independente do frontend.
+    if payload.get("is_key_task"):
+        payload["priority"] = "high"
+        if payload.get("scheduled_date"):
+            _unset_key_task(user_id, payload["scheduled_date"])
 
     result = supabase.table("tasks").insert(payload).execute()
     if not result.data:
@@ -123,6 +141,7 @@ def update_task(user_id: str, task_id: str, data: dict) -> dict:
     current_scheduled_date = existing.data[0].get("scheduled_date")
 
     if payload.get("is_key_task"):
+        payload["priority"] = "high"
         effective_date = str(payload.get("scheduled_date") or current_scheduled_date or "")
         if effective_date:
             _unset_key_task(user_id, effective_date, exclude_id=task_id)
