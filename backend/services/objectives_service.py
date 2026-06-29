@@ -90,11 +90,7 @@ def list_objectives(user_id: str) -> list[dict]:
         .order("created_at", desc=True)
         .execute()
     )
-    rows = res.data or []
-    # Ordena por prioridade (alta → média → baixa); como o sort é estável,
-    # objetivos de mesma prioridade mantêm a ordem por mais recente primeiro.
-    rows.sort(key=lambda r: _PRIORITY_WEIGHT.get(r.get("priority") or "medium", 1))
-    return [_to_response(r) for r in rows]
+    return [_to_response(r) for r in (res.data or [])]
 
 
 def get_objective(user_id: str, objective_id: str) -> dict:
@@ -106,10 +102,11 @@ def get_objective(user_id: str, objective_id: str) -> dict:
         .select("id, title, status, priority, scheduled_date, start_time, end_time, is_key_task")
         .eq("objective_id", objective_id)
         .eq("user_id", user_id)
-        .order("scheduled_date", desc=False)
         .execute()
     )
-    result["subtasks"] = subtasks_res.data or []
+    subtasks = subtasks_res.data or []
+    subtasks.sort(key=lambda t: _PRIORITY_WEIGHT.get(t.get("priority") or "medium", 1))
+    result["subtasks"] = subtasks
     return result
 
 
