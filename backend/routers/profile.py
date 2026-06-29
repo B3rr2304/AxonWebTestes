@@ -165,22 +165,30 @@ def delete_avatar(current_user: dict = Depends(get_current_user)):
 
 # --- Planning preferences ---
 
+def _bool_default(val, default: bool) -> bool:
+    return val if val is not None else default
+
+
 @router.get("/planning", response_model=PlanningPreferences)
 def get_planning_preferences(current_user: dict = Depends(get_current_user)):
     res = (
         supabase.table("profiles")
-        .select("daily_planning_enabled, daily_planning_time, weekly_planning_enabled, weekly_planning_day, planning_use_chronotype")
+        .select(
+            "daily_planning_enabled, daily_planning_time, daily_use_chronotype, "
+            "weekly_planning_enabled, weekly_planning_day, weekly_use_chronotype"
+        )
         .eq("id", current_user["id"])
         .single()
         .execute()
     )
     d = res.data or {}
     return PlanningPreferences(
-        daily_planning_enabled=d["daily_planning_enabled"]  if d.get("daily_planning_enabled")  is not None else True,
+        daily_planning_enabled=_bool_default(d.get("daily_planning_enabled"),  True),
         daily_planning_time=d.get("daily_planning_time"),
-        weekly_planning_enabled=d["weekly_planning_enabled"] if d.get("weekly_planning_enabled") is not None else True,
+        daily_use_chronotype=_bool_default(d.get("daily_use_chronotype"),      True),
+        weekly_planning_enabled=_bool_default(d.get("weekly_planning_enabled"),True),
         weekly_planning_day=d.get("weekly_planning_day"),
-        planning_use_chronotype=d["planning_use_chronotype"] if d.get("planning_use_chronotype") is not None else True,
+        weekly_use_chronotype=_bool_default(d.get("weekly_use_chronotype"),    True),
     )
 
 
@@ -189,9 +197,10 @@ def update_planning_preferences(body: PlanningPreferences, current_user: dict = 
     supabase.table("profiles").update({
         "daily_planning_enabled":  body.daily_planning_enabled,
         "daily_planning_time":     body.daily_planning_time,
+        "daily_use_chronotype":    body.daily_use_chronotype,
         "weekly_planning_enabled": body.weekly_planning_enabled,
         "weekly_planning_day":     body.weekly_planning_day,
-        "planning_use_chronotype": body.planning_use_chronotype,
+        "weekly_use_chronotype":   body.weekly_use_chronotype,
     }).eq("id", current_user["id"]).execute()
     return body
 

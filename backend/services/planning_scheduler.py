@@ -61,15 +61,19 @@ _WEEKLY_BODY = {
 _WEEKDAY_NAMES = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"]
 
 
-def _effective_time(prefs: dict) -> str:
-    if prefs.get("planning_use_chronotype", True):
+def _daily_fire_time(prefs: dict) -> str:
+    if _bool(prefs.get("daily_use_chronotype"), True):
+        return _CHRONOTYPE_TIME.get(prefs.get("chronotype", "intermediate"), "08:30")
+    return prefs.get("daily_planning_time") or "08:30"
+
+
+def _weekly_fire_time(prefs: dict) -> str:
+    if _bool(prefs.get("weekly_use_chronotype"), True):
         return _CHRONOTYPE_TIME.get(prefs.get("chronotype", "intermediate"), "08:30")
     return prefs.get("daily_planning_time") or "08:30"
 
 
 def _effective_weekly_day(prefs: dict) -> int:
-    if prefs.get("planning_use_chronotype", True):
-        return _DEFAULT_WEEKLY_DAY
     day = prefs.get("weekly_planning_day")
     return day if day is not None else _DEFAULT_WEEKLY_DAY
 
@@ -87,9 +91,8 @@ def run() -> None:
             supabase.table("profiles")
             .select(
                 "id, name, chronotype, timezone, "
-                "daily_planning_enabled, daily_planning_time, "
-                "weekly_planning_enabled, weekly_planning_day, "
-                "planning_use_chronotype"
+                "daily_planning_enabled, daily_planning_time, daily_use_chronotype, "
+                "weekly_planning_enabled, weekly_planning_day, weekly_use_chronotype"
             )
             .not_.is_("chronotype", "null")
             .execute()
@@ -119,17 +122,15 @@ def _process_user(user: dict, now_utc: datetime) -> None:
     current_hhmm    = now_local.strftime("%H:%M")
     current_weekday = now_local.weekday()
 
-    fire_time   = _effective_time(user)
-    weekly_day  = _effective_weekly_day(user)
-
-    if current_hhmm != fire_time:
-        return  # Não é o minuto de disparo deste usuário
-
     curve_key  = _CURVE_KEY.get(user.get("chronotype", "intermediate"), "intermediate")
     first_name = (user.get("name") or "você").split()[0]
 
-    # Semanal tem prioridade no dia configurado
-    if weekly_enabled and current_weekday == weekly_day:
+    weekly_day       = _effective_weekly_day(user)
+    weekly_fire_time = _weekly_fire_time(user)
+    daily_fire_time  = _daily_fire_time(user)
+
+    # Semanal: dispara no dia + horário específico para semanal
+    if weekly_enabled and current_weekday == weekly_day and current_hhmm == weekly_fire_time:
         if not notification_service.has_planning_reminder_this_week(user_id):
             body = _WEEKLY_BODY.get(curve_key, _WEEKLY_BODY["intermediate"])
             notification_service.create_notification(
@@ -139,10 +140,9 @@ def _process_user(user: dict, now_utc: datetime) -> None:
                 body=body,
             )
             print(f"[planning_scheduler] planning_weekly → user={user_id}", flush=True)
-            return
 
-    # Diário nos demais dias (ou no mesmo dia se semanal já foi enviado)
-    if daily_enabled:
+    # Diário: dispara todo dia no horário específico para diário
+    if daily_enabled and current_hhmm == daily_fire_time:
         if not notification_service.has_planning_reminder_today(user_id):
             body = _DAILY_BODY.get(curve_key, _DAILY_BODY["intermediate"])
             notification_service.create_notification(

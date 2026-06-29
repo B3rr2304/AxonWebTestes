@@ -611,11 +611,12 @@ export function rejectNotification(id: string) {
 // --- Planning Preferences ---
 
 export interface PlanningPreferences {
-  daily_planning_enabled: boolean;
-  daily_planning_time: string | null;   // "HH:MM"
+  daily_planning_enabled:  boolean;
+  daily_planning_time:     string | null;  // "HH:MM"
+  daily_use_chronotype:    boolean;
   weekly_planning_enabled: boolean;
-  weekly_planning_day: number | null;   // 0=Seg…6=Dom
-  planning_use_chronotype: boolean;
+  weekly_planning_day:     number | null;  // 0=Seg…6=Dom
+  weekly_use_chronotype:   boolean;
 }
 
 export function getPlanningPreferences() {

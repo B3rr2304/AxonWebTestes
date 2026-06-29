@@ -1,11 +1,9 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bell,
-  CalendarDays,
   ChevronRight,
-  Clock,
   Download,
   Link2,
   LogOut,
@@ -16,12 +14,12 @@ import {
   Shield,
   Sparkles,
   Tag,
-  Zap,
 } from "lucide-react";
 
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
 import TagEditorSheet from "../components/settings/TagEditorSheet";
+import NotificationSettingsSheet from "../components/settings/NotificationSettingsSheet";
 import * as api from "../lib/api";
 
 type SettingItemProps = {
@@ -58,43 +56,15 @@ export default function Settings() {
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
 
-  const [smartNotifications, setSmartNotifications] = useState(true);
-  const [focusReminders, setFocusReminders] = useState(true);
-  const [weeklyInsights, setWeeklyInsights] = useState(false);
   const [silentMode, setSilentMode] = useState(true);
-
-  const [planning, setPlanning] = useState<api.PlanningPreferences>({
-    daily_planning_enabled: true,
-    daily_planning_time: null,
-    weekly_planning_enabled: true,
-    weekly_planning_day: null,
-    planning_use_chronotype: true,
-  });
-  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
 
   useEffect(() => {
     api.getProfile().then((p) => {
       setUserName(p.name || "Usuário");
       setUserEmail(p.email);
     }).catch(() => {});
-
-    api.getPlanningPreferences().then(setPlanning).catch(() => {});
   }, []);
-
-  const savePlanning = useCallback((updated: api.PlanningPreferences) => {
-    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      api.updatePlanningPreferences(updated).catch(() => {});
-    }, 600);
-  }, []);
-
-  const updatePlanning = useCallback((patch: Partial<api.PlanningPreferences>) => {
-    setPlanning((prev) => {
-      const next = { ...prev, ...patch };
-      savePlanning(next);
-      return next;
-    });
-  }, [savePlanning]);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -185,43 +155,13 @@ export default function Settings() {
           />
         </Section>
 
-        <Section title="Planejamento">
-          <ToggleItem
-            icon={Bell}
-            title="Lembrete diário"
-            description="Receba um lembrete para planejar seu dia."
-            enabled={planning.daily_planning_enabled}
-            onToggle={() => updatePlanning({ daily_planning_enabled: !planning.daily_planning_enabled })}
-          />
-
-          <ToggleItem
-            icon={CalendarDays}
-            title="Lembrete semanal"
-            description="Receba um lembrete para planejar sua semana."
-            enabled={planning.weekly_planning_enabled}
-            onToggle={() => updatePlanning({ weekly_planning_enabled: !planning.weekly_planning_enabled })}
-          />
-
-          <ToggleItem
-            icon={Zap}
-            title="Usar meu cronótipo"
-            description="O Axon define o melhor horário com base no seu perfil."
-            enabled={planning.planning_use_chronotype}
-            onToggle={() => updatePlanning({ planning_use_chronotype: !planning.planning_use_chronotype })}
-          />
-
-          {!planning.planning_use_chronotype && (
-            <PlanningTimeConfig planning={planning} onUpdate={updatePlanning} />
-          )}
-        </Section>
-
         <Section title="Notificações">
-          <ToggleItem
+          <SettingItem
             icon={Bell}
-            title="Notificações inteligentes"
-            description="Lembretes com base na sua rotina."
-            enabled={smartNotifications}
-            onToggle={() => setSmartNotifications((prev) => !prev)}
+            title="Notificações"
+            description="Configure lembretes de planejamento diário e semanal."
+            value="Configurar"
+            onClick={() => setNotifSettingsOpen(true)}
           />
 
           <ToggleItem
@@ -230,22 +170,6 @@ export default function Settings() {
             description="Diminui alertas durante foco ou descanso."
             enabled={silentMode}
             onToggle={() => setSilentMode((prev) => !prev)}
-          />
-
-          <ToggleItem
-            icon={Sparkles}
-            title="Resumo semanal"
-            description="Receba um panorama dos seus padrões."
-            enabled={weeklyInsights}
-            onToggle={() => setWeeklyInsights((prev) => !prev)}
-          />
-
-          <ToggleItem
-            icon={Bell}
-            title="Lembretes de foco"
-            description="Avisos antes dos blocos importantes."
-            enabled={focusReminders}
-            onToggle={() => setFocusReminders((prev) => !prev)}
           />
         </Section>
 
@@ -317,76 +241,12 @@ export default function Settings() {
         isOpen={tagEditorOpen}
         onClose={() => setTagEditorOpen(false)}
       />
+
+      <NotificationSettingsSheet
+        isOpen={notifSettingsOpen}
+        onClose={() => setNotifSettingsOpen(false)}
+      />
     </main>
-  );
-}
-
-const WEEK_DAYS = [
-  { value: 0, label: "Segunda-feira" },
-  { value: 1, label: "Terça-feira" },
-  { value: 2, label: "Quarta-feira" },
-  { value: 3, label: "Quinta-feira" },
-  { value: 4, label: "Sexta-feira" },
-  { value: 5, label: "Sábado" },
-  { value: 6, label: "Domingo" },
-];
-
-function PlanningTimeConfig({
-  planning,
-  onUpdate,
-}: {
-  planning: api.PlanningPreferences;
-  onUpdate: (patch: Partial<api.PlanningPreferences>) => void;
-}) {
-  return (
-    <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/76 shadow-xl shadow-black/20 backdrop-blur-2xl">
-      {planning.daily_planning_enabled && (
-        <div className="flex items-center gap-3 px-4 py-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
-            <Clock className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white">Horário diário</p>
-            <p className="mt-1 text-xs text-white/38">Quando o lembrete do dia deve chegar.</p>
-          </div>
-          <input
-            type="time"
-            value={planning.daily_planning_time ?? "08:30"}
-            onChange={(e) => onUpdate({ daily_planning_time: e.target.value })}
-            className="rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2 text-sm font-medium text-white outline-none focus:border-purple-400/40 focus:ring-0"
-            style={{ colorScheme: "dark" }}
-          />
-        </div>
-      )}
-
-      {planning.daily_planning_enabled && planning.weekly_planning_enabled && (
-        <div className="mx-4 border-t border-white/[0.06]" />
-      )}
-
-      {planning.weekly_planning_enabled && (
-        <div className="flex items-center gap-3 px-4 py-4">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
-            <CalendarDays className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-white">Dia da semana</p>
-            <p className="mt-1 text-xs text-white/38">Quando o lembrete semanal deve chegar.</p>
-          </div>
-          <select
-            value={planning.weekly_planning_day ?? 0}
-            onChange={(e) => onUpdate({ weekly_planning_day: Number(e.target.value) })}
-            className="max-w-[140px] rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2 text-sm font-medium text-white outline-none focus:border-purple-400/40"
-            style={{ colorScheme: "dark" }}
-          >
-            {WEEK_DAYS.map((d) => (
-              <option key={d.value} value={d.value} className="bg-[#1b1b27]">
-                {d.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-    </div>
   );
 }
 
