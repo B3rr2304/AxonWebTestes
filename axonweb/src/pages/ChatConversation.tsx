@@ -110,6 +110,10 @@ const systemNotifications: NotificationItem[] = [
 ];
 
 
+// ============================================================
+// Página principal da conversa
+// ============================================================
+
 export default function ChatConversation() {
   const navigate = useNavigate();
   const { chatId: conversationId } = useParams();
@@ -125,6 +129,12 @@ export default function ChatConversation() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
+
+  // Controla qual resposta do Axon deve ter efeito de digitação.
+  // Mensagens antigas carregadas do histórico ficam estáticas.
+  const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
+
+  // Histórico enviado ao backend e ponto invisível usado para rolar até o fim.
   const historyRef = useRef<api.ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
@@ -211,6 +221,9 @@ export default function ChatConversation() {
     );
   }
 
+  // ------------------------------------------------------------
+  // Envio de mensagem e streaming da resposta do Axon
+  // ------------------------------------------------------------
   function handleSend(e?: React.FormEvent) {
     e?.preventDefault();
     const text = message.trim();
@@ -224,6 +237,7 @@ export default function ChatConversation() {
     const history = historyRef.current;
     const axonId = Date.now() + 1;
 
+    setStreamingMessageId(axonId);
     setMessages((prev) => [...prev, { id: axonId, sender: "axon", text: "" }]);
 
     api.streamChat(
@@ -247,6 +261,10 @@ export default function ChatConversation() {
           }
           return prev;
         });
+
+        window.setTimeout(() => {
+          setStreamingMessageId(null);
+        }, 3500);
       },
       () => {
         setIsSending(false);
@@ -257,6 +275,10 @@ export default function ChatConversation() {
               : m
           )
         );
+
+        window.setTimeout(() => {
+          setStreamingMessageId(null);
+        }, 1200);
       },
       conversationId,
       (event) => {
@@ -290,6 +312,9 @@ export default function ChatConversation() {
     );
   }
 
+  // ------------------------------------------------------------
+  // Ações do menu da conversa: renomear, limpar, arquivar, excluir
+  // ------------------------------------------------------------
   async function handleRename() {
     const newTitle = draftTitle.trim();
     if (!newTitle) return;
@@ -349,6 +374,9 @@ export default function ChatConversation() {
     );
   }
 
+  // ------------------------------------------------------------
+  // Controle de scroll: entrar no final e acompanhar novas mensagens
+  // ------------------------------------------------------------
   function scrollToBottom(behavior: ScrollBehavior = "smooth") {
     requestAnimationFrame(() => {
       messagesEndRef.current?.scrollIntoView({
@@ -370,7 +398,7 @@ export default function ChatConversation() {
     }, 50);
 
     return () => clearTimeout(timeout);
-  }, [messages]);
+  }, [messages, isSending]);
 
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
@@ -438,10 +466,21 @@ export default function ChatConversation() {
                 </div>
               </div>
             ) : (
-              messages.map((item) => (
-                <MessageBubble key={item.id} message={item} />
-              ))
+              <>
+                {messages
+                  .filter((item) => item.text?.trim())
+                  .map((item) => (
+                    <MessageBubble
+                      key={item.id}
+                      message={item}
+                      animateText={item.id === streamingMessageId}
+                    />
+                  ))}
+
+                {isSending && <TypingIndicator />}
+              </>
             )}
+
             <div ref={messagesEndRef} className="h-1" />
           </div>
         </section>
@@ -898,11 +937,98 @@ function ConfirmActionModal({
   );
 }
 
-function MessageBubble({ message }: { message: Message }) {
+// ============================================================
+// Componentes visuais da conversa
+// ============================================================
+
+function TypingIndicator() {
+  return (
+    <div className="flex justify-start">
+      <div className="animate-[messageIn_0.25s_ease-out] max-w-[86%] rounded-[1.6rem] border border-white/10 bg-[#1b1b27]/76 px-4 py-3 shadow-xl shadow-black/20 backdrop-blur-2xl">
+        <div className="flex items-center gap-3">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-purple-300/20 bg-purple-500/10 text-purple-100">
+            <Brain className="h-4 w-4" />
+          </div>
+
+          <div>
+            <p className="text-xs font-semibold text-white/55">
+              Axon está organizando...
+            </p>
+
+            <div className="mt-2 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-purple-200/70 [animation-delay:-0.2s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-purple-200/70 [animation-delay:-0.1s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-purple-200/70" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnimatedMessageText({
+  text,
+  animate,
+}: {
+  text: string;
+  animate: boolean;
+}) {
+  const [visibleText, setVisibleText] = useState(animate ? "" : text);
+  const visibleLengthRef = useRef(animate ? 0 : text.length);
+
+  useEffect(() => {
+    if (!animate) {
+      visibleLengthRef.current = text.length;
+      setVisibleText(text);
+      return;
+    }
+
+    let cancelled = false;
+
+    function revealNextFrame() {
+      if (cancelled) return;
+
+      const targetLength = text.length;
+      const currentLength = visibleLengthRef.current;
+
+      if (currentLength >= targetLength) {
+        setVisibleText(text);
+        return;
+      }
+
+      // Quanto maior o texto, mais caracteres revelamos por frame para não ficar lento.
+      const remaining = targetLength - currentLength;
+      const step = remaining > 220 ? 10 : remaining > 90 ? 6 : 3;
+      const nextLength = Math.min(currentLength + step, targetLength);
+
+      visibleLengthRef.current = nextLength;
+      setVisibleText(text.slice(0, nextLength));
+
+      window.setTimeout(revealNextFrame, 18);
+    }
+
+    revealNextFrame();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [text, animate]);
+
+  return <AxonMarkdown text={visibleText} />;
+}
+
+function MessageBubble({
+  message,
+  animateText = false,
+}: {
+  message: Message;
+  animateText?: boolean;
+}) {
   const isUser = message.sender === "user";
 
   return (
-    <div className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+    <div className={`animate-[messageIn_0.25s_ease-out] flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
         className={`max-w-[82%] rounded-[1.35rem] px-4 py-3 text-sm leading-6 shadow-xl ${
           isUser
@@ -960,7 +1086,7 @@ function MessageBubble({ message }: { message: Message }) {
         {isUser ? (
           message.text
         ) : (
-          <AxonMarkdown text={message.text} />
+          <AnimatedMessageText text={message.text} animate={animateText} />
         )}
       </div>
     </div>
