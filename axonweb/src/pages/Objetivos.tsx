@@ -27,15 +27,6 @@ const STATUS_TASK: Record<string, string> = {
 
 const INPUT_CLS = "min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35";
 
-const SELECT_CLS = "min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none focus:border-purple-300/35";
-
-type Priority = "low" | "medium" | "high";
-
-const PRIORITY_META: Record<Priority, { label: string; badge: string }> = {
-  high: { label: "Alta", badge: "border-rose-300/25 bg-rose-500/12 text-rose-200" },
-  medium: { label: "Média", badge: "border-amber-300/25 bg-amber-500/12 text-amber-200" },
-  low: { label: "Baixa", badge: "border-sky-300/25 bg-sky-500/12 text-sky-200" },
-};
 
 // ──────────────────────────────────────────────────────────────────────────────
 // PÁGINA PRINCIPAL
@@ -346,9 +337,6 @@ function ObjectiveCard({
               <p className={`truncate text-sm font-semibold ${isDone ? "text-emerald-100 line-through opacity-70" : "text-white"}`}>
                 {objective.title}
               </p>
-              <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[0.6rem] font-semibold ${PRIORITY_META[(objective.priority as Priority) ?? "medium"].badge}`}>
-                {PRIORITY_META[(objective.priority as Priority) ?? "medium"].label}
-              </span>
             </div>
             {objective.deadline && (
               <div className="flex items-center gap-1.5 text-[0.68rem] text-white/38">
@@ -497,7 +485,6 @@ function CreateObjectiveModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [deadline, setDeadline] = useState("");
-  const [priority, setPriority] = useState<Priority>("medium");
   const [step1Error, setStep1Error] = useState<string | null>(null);
 
   // Passo 2
@@ -529,7 +516,6 @@ function CreateObjectiveModal({
         title: title.trim(),
         description: description.trim() || undefined,
         deadline: deadline || undefined,
-        priority,
       });
 
       const validSteps = steps.filter((s) => s.title.trim());
@@ -629,22 +615,6 @@ function CreateObjectiveModal({
                 />
               </label>
 
-              <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">Prioridade</span>
-                <select
-                  value={priority}
-                  onChange={(e) => setPriority(e.target.value as Priority)}
-                  className={SELECT_CLS}
-                >
-                  <option value="high">Alta</option>
-                  <option value="medium">Média</option>
-                  <option value="low">Baixa</option>
-                </select>
-                <span className="mt-1.5 block text-[0.68rem] text-white/30">
-                  Objetivos de prioridade alta aparecem no topo da lista.
-                </span>
-              </label>
-
               {step1Error && <p className="text-xs font-medium text-rose-300">{step1Error}</p>}
             </div>
           ) : (
@@ -734,8 +704,6 @@ function EditObjectiveModal({
   const [title, setTitle] = useState(objective.title);
   const [description, setDescription] = useState(objective.description ?? "");
   const [deadline, setDeadline] = useState(objective.deadline ?? "");
-  const [priority, setPriority] = useState<Priority>((objective.priority as Priority) ?? "medium");
-
   // Etapas existentes (carregadas da API)
   const [existingSteps, setExistingSteps] = useState<api.Task[]>([]);
   const [loadingSteps, setLoadingSteps] = useState(true);
@@ -774,7 +742,6 @@ function EditObjectiveModal({
         title: title.trim(),
         description: description.trim() || undefined,
         deadline: deadline || null,
-        priority,
       });
 
       // Cria as novas etapas
@@ -849,19 +816,6 @@ function EditObjectiveModal({
                 onChange={(e) => setDeadline(e.target.value)}
                 className={INPUT_CLS}
               />
-            </label>
-
-            <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">Prioridade</span>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as Priority)}
-                className={SELECT_CLS}
-              >
-                <option value="high">Alta</option>
-                <option value="medium">Média</option>
-                <option value="low">Baixa</option>
-              </select>
             </label>
 
             {/* Divisor */}
