@@ -25,23 +25,14 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
-
-# Detecta Codespaces tanto pela URL quanto pela variável de ambiente nativa do GitHub
-_is_codespace = "app.github.dev" in FRONTEND_URL or bool(os.getenv("CODESPACE_NAME"))
-
-if _is_codespace:
-    # Regex cobre qualquer subdomínio app.github.dev sem precisar de origins=["*"],
-    # o que permite usar allow_credentials=True normalmente.
-    _origins = []
-    _origin_regex = r"https://[^.]+\.app\.github\.dev"
-else:
-    _origins = list({FRONTEND_URL, "http://localhost:5173"})
-    _origin_regex = None
+_extra_origins = [u.strip() for u in os.getenv("CORS_ORIGINS", "").split(",") if u.strip()]
+_origins = list({FRONTEND_URL, "http://localhost:5173"} | set(_extra_origins))
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=_origins,
-    allow_origin_regex=_origin_regex,
+    # Cobre todos os subdomínios do GitHub Codespaces sem depender de env vars do processo
+    allow_origin_regex=r"https://[^.]+\.app\.github\.dev",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=["Content-Type", "Authorization", "X-Timezone"],

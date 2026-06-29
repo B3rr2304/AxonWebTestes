@@ -76,11 +76,12 @@ class TagPreferences(BaseModel):
 # --- Planning Preferences ---
 
 class PlanningPreferences(BaseModel):
-    daily_planning_enabled:  bool           = True
-    daily_planning_time:     Optional[str]  = None   # "HH:MM" — None = usar cronótipo
-    weekly_planning_enabled: bool           = True
-    weekly_planning_day:     Optional[int]  = None   # 0=Seg…6=Dom — None = usar cronótipo (Seg)
-    planning_use_chronotype: bool           = True
+    daily_planning_enabled:  bool          = True
+    daily_planning_time:     Optional[str] = None   # "HH:MM"
+    daily_use_chronotype:    bool          = True
+    weekly_planning_enabled: bool          = True
+    weekly_planning_day:     Optional[int] = None   # 0=Seg…6=Dom
+    weekly_use_chronotype:   bool          = True
 
 
 # --- Tasks ---
