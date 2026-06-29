@@ -4,13 +4,17 @@ import { AnimatePresence, motion } from "framer-motion";
 import { Dumbbell, Moon, Smile, Target, X, Zap } from "lucide-react";
 
 import * as api from "../lib/api";
-import type { DailyLog } from "../lib/api";
+import type { DailyLog, TagItem } from "../lib/api";
 import {
   MOOD_TAGS,
   PRODUCTIVITY_TAGS,
   SLEEP_TAGS,
   TIME_OPTIONS,
 } from "../data/dayReviewTags";
+
+const DEFAULT_SLEEP_TAGS: TagItem[]        = SLEEP_TAGS.map((t) => ({ slug: t.slug, label: t.label }));
+const DEFAULT_MOOD_TAGS: TagItem[]         = MOOD_TAGS.map((t) => ({ slug: t.slug, label: t.label }));
+const DEFAULT_PRODUCTIVITY_TAGS: TagItem[] = PRODUCTIVITY_TAGS.map((t) => ({ slug: t.slug, label: t.label }));
 
 type Props = {
   isOpen: boolean;
@@ -33,6 +37,10 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const [availableSleepTags, setAvailableSleepTags]    = useState<TagItem[]>(DEFAULT_SLEEP_TAGS);
+  const [availableMoodTags, setAvailableMoodTags]      = useState<TagItem[]>(DEFAULT_MOOD_TAGS);
+  const [availableProdTags, setAvailableProdTags]      = useState<TagItem[]>(DEFAULT_PRODUCTIVITY_TAGS);
+
   // O sheet fica sempre montado, então o estado inicial é lido antes de
   // `existing` carregar. Re-sincroniza os campos toda vez que o sheet abre.
   useEffect(() => {
@@ -48,6 +56,13 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
     setExercised(existing?.exercised ?? false);
     setNotes(existing?.notes ?? "");
     setError(null);
+
+    // Carrega as tags personalizadas do usuário (sem bloquear o sheet)
+    api.getTagPreferences().then((prefs) => {
+      setAvailableSleepTags(prefs.sleep);
+      setAvailableMoodTags(prefs.mood);
+      setAvailableProdTags(prefs.productivity);
+    }).catch(() => {});
   }, [isOpen, existing]);
 
   // Data do registro: do dia já registrado (edição) ou de hoje (novo).
@@ -140,7 +155,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
               </div>
               <RatingDots value={sleepRating} onChange={setSleepRating} />
               <TagRow
-                tags={SLEEP_TAGS}
+                tags={availableSleepTags}
                 selected={sleepTags}
                 onToggle={(s) => toggleTag(sleepTags, setSleepTags, s)}
               />
@@ -149,7 +164,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
             <Section icon={Smile} title="Como você se sentiu?">
               <RatingDots value={moodRating} onChange={setMoodRating} />
               <TagRow
-                tags={MOOD_TAGS}
+                tags={availableMoodTags}
                 selected={moodTags}
                 onToggle={(s) => toggleTag(moodTags, setMoodTags, s)}
               />
@@ -158,7 +173,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
             <Section icon={Target} title="Como avalia sua produtividade?">
               <RatingDots value={prodRating} onChange={setProdRating} />
               <TagRow
-                tags={PRODUCTIVITY_TAGS}
+                tags={availableProdTags}
                 selected={prodTags}
                 onToggle={(s) => toggleTag(prodTags, setProdTags, s)}
               />
@@ -300,7 +315,7 @@ function TagRow({
   selected,
   onToggle,
 }: {
-  tags: readonly { slug: string; label: string }[];
+  tags: { slug: string; label: string }[];
   selected: string[];
   onToggle: (slug: string) => void;
 }) {

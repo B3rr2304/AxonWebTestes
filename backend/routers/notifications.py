@@ -46,6 +46,9 @@ def trigger_analysis(
     responder imediatamente — evita timeout do proxy/navegador (ERR_FAILED).
     A notificação, se criada, aparece no banco; o frontend a pega no próximo
     fetch de unread-count / lista.
+
+    Os lembretes de planejamento (planning_daily / planning_weekly) são
+    gerenciados pelo APScheduler e não dependem desta chamada.
     """
     background_tasks.add_task(
         _run_analysis_safe, current_user["id"], request.headers.get("X-Timezone")

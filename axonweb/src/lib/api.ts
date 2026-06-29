@@ -176,11 +176,69 @@ export interface ProfileData {
   chronotype_label?: string;
   energy_peak?: string;
   focus_window?: string;
+  schedule_type?: string;
+  avatar_url?: string;
   has_chronotype: boolean;
 }
 
 export function getProfile() {
   return request<ProfileData>("/profile");
+}
+
+export function updateProfile(payload: { name?: string }) {
+  return request<ProfileData>("/profile", {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function uploadAvatar(file: File): Promise<ProfileData> {
+  const token = getToken();
+  const form = new FormData();
+  form.append("file", file);
+
+  const res = await fetch(`${BASE_URL}/profile/avatar`, {
+    method: "POST",
+    headers: {
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: form,
+  });
+
+  if (!res.ok) {
+    const error = await res.json().catch(() => ({ detail: "Erro ao enviar imagem" }));
+    throw new Error(error.detail ?? "Erro ao enviar imagem");
+  }
+
+  return res.json();
+}
+
+export function deleteAvatar(): Promise<ProfileData> {
+  return request<ProfileData>("/profile/avatar", { method: "DELETE" });
+}
+
+// --- Tag preferences ---
+
+export interface TagItem {
+  slug: string;
+  label: string;
+}
+
+export interface TagPreferences {
+  sleep: TagItem[];
+  mood: TagItem[];
+  productivity: TagItem[];
+}
+
+export function getTagPreferences(): Promise<TagPreferences> {
+  return request<TagPreferences>("/profile/tags");
+}
+
+export function updateTagPreferences(prefs: TagPreferences): Promise<TagPreferences> {
+  return request<TagPreferences>("/profile/tags", {
+    method: "PUT",
+    body: JSON.stringify(prefs),
+  });
 }
 
 // --- Users ---
@@ -547,6 +605,27 @@ export function acceptNotification(id: string) {
 export function rejectNotification(id: string) {
   return request<NotificationData>(`/notifications/${id}/reject`, {
     method: "POST",
+  });
+}
+
+// --- Planning Preferences ---
+
+export interface PlanningPreferences {
+  daily_planning_enabled: boolean;
+  daily_planning_time: string | null;   // "HH:MM"
+  weekly_planning_enabled: boolean;
+  weekly_planning_day: number | null;   // 0=Seg…6=Dom
+  planning_use_chronotype: boolean;
+}
+
+export function getPlanningPreferences() {
+  return request<PlanningPreferences>("/profile/planning");
+}
+
+export function updatePlanningPreferences(prefs: PlanningPreferences) {
+  return request<PlanningPreferences>("/profile/planning", {
+    method: "PUT",
+    body: JSON.stringify(prefs),
   });
 }
 

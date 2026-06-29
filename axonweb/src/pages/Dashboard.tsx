@@ -141,6 +141,10 @@ export default function Dashboard() {
       loadKeyTask();
     }, 30 * 60 * 1000);
 
+    // Polling periódico para capturar notificações geradas pelo scheduler
+    // enquanto o usuário já está com o app aberto
+    const notifInterval = window.setInterval(refreshUnreadCount, 2 * 60 * 1000);
+
     const handleVisibility = () => {
       if (document.hidden) return;
 
@@ -153,6 +157,7 @@ export default function Dashboard() {
 
     return () => {
       window.clearInterval(interval);
+      window.clearInterval(notifInterval);
       document.removeEventListener("visibilitychange", handleVisibility);
 
       if (delayedNotificationRefresh) {

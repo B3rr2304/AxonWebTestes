@@ -213,6 +213,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
   const toastTimer = useRef<number | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date>(() => new Date());
   const [carriedCount, setCarriedCount] = useState(0);
+  const [isQueueOpen, setIsQueueOpen] = useState(false);
   const [calendarSetupChoice, setCalendarSetupChoice] =
     useState<CalendarSetupChoice | null>(() => {
       const stored = localStorage.getItem(CALENDAR_SETUP_STORAGE_KEY);
@@ -296,10 +297,12 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
         }),
     [tasks, selectedIso]
   );
-  const undatedTasks = useMemo(
-    () => tasks.filter((t) => !t.scheduled_date),
-    [tasks]
-  );
+  const undatedTasks = useMemo(() => {
+    const W: Record<string, number> = { high: 0, medium: 1, low: 2 };
+    return tasks
+      .filter((t) => !t.scheduled_date)
+      .sort((a, b) => (W[a.priority ?? "medium"] ?? 1) - (W[b.priority ?? "medium"] ?? 1));
+  }, [tasks]);
 
   const now = new Date();
   // base = itens do dia selecionado (dayTasks já filtra por isTaskOnDate); agora inclui eventos
@@ -561,6 +564,28 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
                   />
 
                   <div className="mt-5">
+                    {/* Chip da fila — sempre visível quando há tarefas sem data */}
+                    {undatedTasks.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => setIsQueueOpen(true)}
+                        className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-indigo-300/20 bg-indigo-500/10 px-4 py-3 text-left transition active:scale-[0.98]"
+                      >
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-200">
+                          <ListTodo className="h-4 w-4" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-semibold text-indigo-100">Fila de tarefas</p>
+                          <p className="text-xs text-indigo-200/55">
+                            {undatedTasks.length} {undatedTasks.length === 1 ? "tarefa sem data definida" : "tarefas sem data definida"}
+                          </p>
+                        </div>
+                        <span className="flex h-6 min-w-[1.5rem] items-center justify-center rounded-full bg-indigo-500 px-1.5 text-xs font-bold text-white">
+                          {undatedTasks.length}
+                        </span>
+                      </button>
+                    )}
+
                     {loading ? (
                       <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/45">
                         <Loader2 className="h-4 w-4 animate-spin" />
@@ -572,6 +597,10 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
                       </div>
                     ) : dayTasks.length === 0 && undatedTasks.length === 0 ? (
                       <EmptyState onCreate={() => setIsCreateModalOpen(true)} />
+                    ) : dayTasks.length === 0 ? (
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center">
+                        <p className="text-sm text-white/38">Nenhuma tarefa neste dia.</p>
+                      </div>
                     ) : (
                       <div className="space-y-5">
                         {dayTasks.map((task) => (
@@ -585,26 +614,6 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
                             onDelete={handleDelete}
                           />
                         ))}
-
-                        {undatedTasks.length > 0 && (
-                          <div className="pt-2">
-                            <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-white/35">
-                              Sem data definida
-                            </p>
-                            <div className="space-y-5">
-                              {undatedTasks.map((task) => (
-                                <TimelineItem
-                                  key={task.id}
-                                  task={task}
-                                  selectedIso={selectedIso}
-                                  onEdit={handleEdit}
-                                  onToggle={handleToggleDone}
-                                  onDelete={handleDelete}
-                                />
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
                     )}
                   </div>
@@ -659,6 +668,16 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
         onClose={cancelDeleteTask}
         onConfirm={confirmDeleteTask}
       />
+
+      {isQueueOpen && (
+        <UndatedTasksSheet
+          tasks={undatedTasks}
+          onClose={() => setIsQueueOpen(false)}
+          onEdit={(t) => { setIsQueueOpen(false); handleEdit(t); }}
+          onDelete={(t) => { setIsQueueOpen(false); handleDelete(t); }}
+          onToggle={handleToggleDone}
+        />
+      )}
 
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[120] flex justify-center px-4">
@@ -2445,6 +2464,161 @@ function EditPlanningItemModal({
           >
             Cancelar
           </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+const PRIORITY_META_QUEUE = {
+  high: { label: "Alta", dot: "bg-rose-400", badge: "border-rose-300/25 bg-rose-500/10 text-rose-200" },
+  medium: { label: "Média", dot: "bg-amber-400", badge: "border-amber-300/25 bg-amber-500/10 text-amber-200" },
+  low: { label: "Baixa", dot: "bg-sky-400", badge: "border-sky-300/25 bg-sky-500/10 text-sky-200" },
+};
+
+const QUEUE_PAGE_SIZE = 10;
+
+function UndatedTasksSheet({
+  tasks,
+  onClose,
+  onEdit,
+  onDelete,
+  onToggle,
+}: {
+  tasks: Task[];
+  onClose: () => void;
+  onEdit: (t: Task) => void;
+  onDelete: (t: Task) => void;
+  onToggle: (t: Task) => void;
+}) {
+  const [showAll, setShowAll] = useState(false);
+  const visible = showAll ? tasks : tasks.slice(0, QUEUE_PAGE_SIZE);
+  const hidden = tasks.length - QUEUE_PAGE_SIZE;
+
+  return (
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
+      {/* Backdrop clicável */}
+      <button
+        type="button"
+        aria-label="Fechar fila"
+        onClick={onClose}
+        className="absolute inset-0"
+      />
+
+      <div className="relative flex max-h-[82vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        {/* Handle */}
+        <div className="shrink-0 pt-4 px-5">
+          <div className="mx-auto h-1.5 w-11 rounded-full bg-white/18" />
+        </div>
+
+        {/* Cabeçalho */}
+        <div className="shrink-0 border-b border-white/10 px-5 pb-4 pt-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-indigo-300/20 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-100">
+                <ListTodo className="h-3.5 w-3.5" />
+                Fila · {tasks.length} {tasks.length === 1 ? "tarefa" : "tarefas"}
+              </div>
+              <h2 className="text-[1.35rem] font-semibold leading-tight tracking-[-0.04em] text-white">
+                Tarefas sem data
+              </h2>
+              <p className="mt-1 text-xs text-white/38">
+                Ordenadas por prioridade. Toque no lápis para atribuir uma data.
+              </p>
+            </div>
+            <button
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
+              aria-label="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
+        </div>
+
+        {/* Lista */}
+        <div className="flex-1 overflow-y-auto px-5 py-4">
+          {tasks.length === 0 ? (
+            <p className="py-8 text-center text-sm text-white/38">Fila vazia.</p>
+          ) : (
+            <div className="space-y-2">
+              {visible.map((task) => {
+                const priority = (task.priority as "low" | "medium" | "high") ?? "medium";
+                const meta = PRIORITY_META_QUEUE[priority];
+                const isDone = task.status === "done";
+                const Icon =
+                  task.task_type === "task"
+                    ? ListTodo
+                    : task.task_type === "event"
+                    ? CalendarDays
+                    : Repeat;
+
+                return (
+                  <div
+                    key={task.id}
+                    className={`flex items-center gap-3 rounded-2xl border p-3 ${
+                      isDone
+                        ? "border-emerald-300/15 bg-emerald-400/[0.05]"
+                        : "border-white/10 bg-white/[0.04]"
+                    }`}
+                  >
+                    <span className={`h-2 w-2 shrink-0 rounded-full ${meta.dot}`} />
+
+                    <div className="min-w-0 flex-1">
+                      <p className={`truncate text-sm font-semibold ${isDone ? "text-white/38 line-through" : "text-white/85"}`}>
+                        {task.title}
+                      </p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <span className={`rounded-full border px-2 py-0.5 text-[0.6rem] font-semibold ${meta.badge}`}>
+                          {meta.label}
+                        </span>
+                        <span className="flex items-center gap-1 text-[0.6rem] text-white/28">
+                          <Icon className="h-2.5 w-2.5" />
+                          {typeLabels[task.task_type]}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="flex shrink-0 items-center gap-1.5">
+                      <button
+                        onClick={() => onToggle(task)}
+                        className={`flex h-7 w-7 items-center justify-center rounded-xl active:scale-[0.94] ${
+                          isDone ? "bg-emerald-400/15 text-emerald-300" : "bg-white/[0.055] text-white/40"
+                        }`}
+                        aria-label={isDone ? "Desmarcar" : "Marcar como feita"}
+                      >
+                        {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
+                      </button>
+                      <button
+                        onClick={() => onEdit(task)}
+                        className="flex h-7 w-7 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94]"
+                        aria-label="Editar"
+                      >
+                        <Edit3 className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(task)}
+                        className="flex h-7 w-7 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94]"
+                        aria-label="Excluir"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+
+              {!showAll && hidden > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setShowAll(true)}
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] py-3 text-xs font-semibold text-white/50 active:scale-[0.98]"
+                >
+                  Mostrar mais {hidden} {hidden === 1 ? "tarefa" : "tarefas"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

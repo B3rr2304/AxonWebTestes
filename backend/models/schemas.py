@@ -52,7 +52,35 @@ class ProfileResponse(BaseModel):
     energy_peak: Optional[str] = None
     focus_window: Optional[str] = None
     schedule_type: Optional[str] = None
+    avatar_url: Optional[str] = None
     has_chronotype: bool = False
+
+
+class ProfileUpdate(BaseModel):
+    name: Optional[str] = None
+
+
+# --- Tag preferences ---
+
+class TagItem(BaseModel):
+    slug: str
+    label: str
+
+
+class TagPreferences(BaseModel):
+    sleep: list[TagItem]
+    mood: list[TagItem]
+    productivity: list[TagItem]
+
+
+# --- Planning Preferences ---
+
+class PlanningPreferences(BaseModel):
+    daily_planning_enabled:  bool           = True
+    daily_planning_time:     Optional[str]  = None   # "HH:MM" — None = usar cronótipo
+    weekly_planning_enabled: bool           = True
+    weekly_planning_day:     Optional[int]  = None   # 0=Seg…6=Dom — None = usar cronótipo (Seg)
+    planning_use_chronotype: bool           = True
 
 
 # --- Tasks ---

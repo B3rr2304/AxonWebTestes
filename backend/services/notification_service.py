@@ -140,6 +140,35 @@ def create_notification(
     return res.data[0] if res.data else {}
 
 
+def has_planning_reminder_today(user_id: str) -> bool:
+    """Verifica se já foi enviado lembrete de planejamento diário hoje (UTC)."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    res = (
+        supabase.table("notifications")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .eq("type", "planning_daily")
+        .gte("created_at", f"{today}T00:00:00+00:00")
+        .execute()
+    )
+    return (res.count or 0) > 0
+
+
+def has_planning_reminder_this_week(user_id: str) -> bool:
+    """Verifica se já foi enviado lembrete de planejamento semanal esta semana (segunda-feira UTC)."""
+    today = datetime.now(timezone.utc).date()
+    week_start = today - timedelta(days=today.weekday())
+    res = (
+        supabase.table("notifications")
+        .select("id", count="exact")
+        .eq("user_id", user_id)
+        .eq("type", "planning_weekly")
+        .gte("created_at", f"{week_start.isoformat()}T00:00:00+00:00")
+        .execute()
+    )
+    return (res.count or 0) > 0
+
+
 def mark_read(user_id: str, notif_id: str) -> dict:
     res = (
         supabase.table("notifications")

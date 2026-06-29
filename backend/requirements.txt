@@ -9,3 +9,4 @@ anthropic
 python-jose[cryptography]
 python-multipart
 slowapi
+apscheduler

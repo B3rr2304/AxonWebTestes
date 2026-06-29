@@ -158,3 +158,11 @@ alter table public.conversations
   references public.chat_projects(id) on delete set null;
 
 create index if not exists conversations_project_id_idx on public.conversations(project_id);
+
+-- =============================================
+-- MIGRAÇÃO: adicionar tipos de lembrete de planejamento
+-- Execute se a tabela notifications já existir com constraint antiga
+-- =============================================
+-- alter table public.notifications drop constraint notifications_type_check;
+-- alter table public.notifications add constraint notifications_type_check
+--   check (type in ('simple', 'improvement', 'change', 'planning_daily', 'planning_weekly'));

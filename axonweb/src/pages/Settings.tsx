@@ -1,26 +1,28 @@
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Bell,
   CalendarDays,
   ChevronRight,
+  Clock,
   Download,
   Link2,
-  Lock,
   LogOut,
-  Mail,
   Menu,
   Moon,
   Palette,
   Settings as SettingsIcon,
   Shield,
   Sparkles,
-  User,
+  Tag,
+  Zap,
 } from "lucide-react";
 
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
+import TagEditorSheet from "../components/settings/TagEditorSheet";
+import * as api from "../lib/api";
 
 type SettingItemProps = {
   icon: React.ElementType;
@@ -52,11 +54,47 @@ export default function Settings() {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
+  const [tagEditorOpen, setTagEditorOpen] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
 
   const [smartNotifications, setSmartNotifications] = useState(true);
   const [focusReminders, setFocusReminders] = useState(true);
   const [weeklyInsights, setWeeklyInsights] = useState(false);
   const [silentMode, setSilentMode] = useState(true);
+
+  const [planning, setPlanning] = useState<api.PlanningPreferences>({
+    daily_planning_enabled: true,
+    daily_planning_time: null,
+    weekly_planning_enabled: true,
+    weekly_planning_day: null,
+    planning_use_chronotype: true,
+  });
+  const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    api.getProfile().then((p) => {
+      setUserName(p.name || "Usuário");
+      setUserEmail(p.email);
+    }).catch(() => {});
+
+    api.getPlanningPreferences().then(setPlanning).catch(() => {});
+  }, []);
+
+  const savePlanning = useCallback((updated: api.PlanningPreferences) => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = setTimeout(() => {
+      api.updatePlanningPreferences(updated).catch(() => {});
+    }, 600);
+  }, []);
+
+  const updatePlanning = useCallback((patch: Partial<api.PlanningPreferences>) => {
+    setPlanning((prev) => {
+      const next = { ...prev, ...patch };
+      savePlanning(next);
+      return next;
+    });
+  }, [savePlanning]);
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -69,9 +107,6 @@ export default function Settings() {
   }, []);
 
   const result = results[resultKey];
-
-  const userName = "Bernardo";
-  const userEmail = "bernardo@axon.app";
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
@@ -125,45 +160,7 @@ export default function Settings() {
           </div>
         </section>
 
-        <Section title="Conta">
-          <SettingItem
-            icon={User}
-            title="Perfil"
-            description="Nome, foto, e-mail e perfil produtivo."
-            value={userName}
-            onClick={() => navigate("/profile")}
-          />
-
-          <SettingItem
-            icon={Mail}
-            title="E-mail"
-            description="E-mail usado para acessar sua conta."
-            value={userEmail}
-          />
-
-          <SettingItem
-            icon={Lock}
-            title="Senha e segurança"
-            description="Altere sua senha e proteja o acesso."
-            value="Protegido"
-          />
-        </Section>
-
         <Section title="Experiência">
-          <SettingItem
-            icon={Sparkles}
-            title="Tom do Axon"
-            description="Como o assistente deve conversar com você."
-            value="Direto e estratégico"
-          />
-
-          <SettingItem
-            icon={CalendarDays}
-            title="Planejamento"
-            description="Forma como o Axon organiza sua rotina."
-            value="Flexível"
-          />
-
           <SettingItem
             icon={Moon}
             title="Modo Focus"
@@ -177,6 +174,45 @@ export default function Settings() {
             description="Tema visual da interface."
             value="Escuro premium"
           />
+        </Section>
+
+        <Section title="Análise diária">
+          <SettingItem
+            icon={Tag}
+            title="Tags personalizadas"
+            description="Edite as tags que aparecem ao registrar seu dia."
+            onClick={() => setTagEditorOpen(true)}
+          />
+        </Section>
+
+        <Section title="Planejamento">
+          <ToggleItem
+            icon={Bell}
+            title="Lembrete diário"
+            description="Receba um lembrete para planejar seu dia."
+            enabled={planning.daily_planning_enabled}
+            onToggle={() => updatePlanning({ daily_planning_enabled: !planning.daily_planning_enabled })}
+          />
+
+          <ToggleItem
+            icon={CalendarDays}
+            title="Lembrete semanal"
+            description="Receba um lembrete para planejar sua semana."
+            enabled={planning.weekly_planning_enabled}
+            onToggle={() => updatePlanning({ weekly_planning_enabled: !planning.weekly_planning_enabled })}
+          />
+
+          <ToggleItem
+            icon={Zap}
+            title="Usar meu cronótipo"
+            description="O Axon define o melhor horário com base no seu perfil."
+            enabled={planning.planning_use_chronotype}
+            onToggle={() => updatePlanning({ planning_use_chronotype: !planning.planning_use_chronotype })}
+          />
+
+          {!planning.planning_use_chronotype && (
+            <PlanningTimeConfig planning={planning} onUpdate={updatePlanning} />
+          )}
         </Section>
 
         <Section title="Notificações">
@@ -271,11 +307,86 @@ export default function Settings() {
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
         onConfirm={() => {
+          api.logout();
           setShowLogoutModal(false);
           navigate("/");
         }}
       />
+
+      <TagEditorSheet
+        isOpen={tagEditorOpen}
+        onClose={() => setTagEditorOpen(false)}
+      />
     </main>
+  );
+}
+
+const WEEK_DAYS = [
+  { value: 0, label: "Segunda-feira" },
+  { value: 1, label: "Terça-feira" },
+  { value: 2, label: "Quarta-feira" },
+  { value: 3, label: "Quinta-feira" },
+  { value: 4, label: "Sexta-feira" },
+  { value: 5, label: "Sábado" },
+  { value: 6, label: "Domingo" },
+];
+
+function PlanningTimeConfig({
+  planning,
+  onUpdate,
+}: {
+  planning: api.PlanningPreferences;
+  onUpdate: (patch: Partial<api.PlanningPreferences>) => void;
+}) {
+  return (
+    <div className="overflow-hidden rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/76 shadow-xl shadow-black/20 backdrop-blur-2xl">
+      {planning.daily_planning_enabled && (
+        <div className="flex items-center gap-3 px-4 py-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+            <Clock className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white">Horário diário</p>
+            <p className="mt-1 text-xs text-white/38">Quando o lembrete do dia deve chegar.</p>
+          </div>
+          <input
+            type="time"
+            value={planning.daily_planning_time ?? "08:30"}
+            onChange={(e) => onUpdate({ daily_planning_time: e.target.value })}
+            className="rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2 text-sm font-medium text-white outline-none focus:border-purple-400/40 focus:ring-0"
+            style={{ colorScheme: "dark" }}
+          />
+        </div>
+      )}
+
+      {planning.daily_planning_enabled && planning.weekly_planning_enabled && (
+        <div className="mx-4 border-t border-white/[0.06]" />
+      )}
+
+      {planning.weekly_planning_enabled && (
+        <div className="flex items-center gap-3 px-4 py-4">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+            <CalendarDays className="h-5 w-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white">Dia da semana</p>
+            <p className="mt-1 text-xs text-white/38">Quando o lembrete semanal deve chegar.</p>
+          </div>
+          <select
+            value={planning.weekly_planning_day ?? 0}
+            onChange={(e) => onUpdate({ weekly_planning_day: Number(e.target.value) })}
+            className="max-w-[140px] rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2 text-sm font-medium text-white outline-none focus:border-purple-400/40"
+            style={{ colorScheme: "dark" }}
+          >
+            {WEEK_DAYS.map((d) => (
+              <option key={d.value} value={d.value} className="bg-[#1b1b27]">
+                {d.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
+    </div>
   );
 }
 
