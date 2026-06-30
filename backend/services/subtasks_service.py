@@ -6,6 +6,8 @@ status da tarefa mãe são recalculados automaticamente.
 Cascade de exclusão via FK: deletar a tarefa mãe apaga as subtarefas.
 """
 
+from datetime import datetime, timezone
+
 from database import supabase
 
 
@@ -32,9 +34,30 @@ def _recalculate_task_progress(user_id: str, task_id: str) -> None:
         done_count = sum(1 for r in rows if r.get("done"))
         progress = round((done_count / total) * 100)
         status = "done" if done_count == total else ("progress" if done_count > 0 else "todo")
-        supabase.table("tasks").update(
-            {"progress": progress, "status": status}
-        ).eq("id", task_id).eq("user_id", user_id).execute()
+
+        # Lê o status atual para detectar a transição e manter completed_at
+        # coerente com o caminho de tasks_service.update_task — sem isso a
+        # tarefa concluída via subtarefas some das métricas de Insights, que
+        # filtram por completed_at.
+        current = (
+            supabase.table("tasks")
+            .select("status")
+            .eq("id", task_id)
+            .eq("user_id", user_id)
+            .single()
+            .execute()
+        )
+        current_status = (current.data or {}).get("status")
+
+        payload: dict = {"progress": progress, "status": status}
+        if status == "done" and current_status != "done":
+            payload["completed_at"] = datetime.now(timezone.utc).isoformat()
+        elif status != "done" and current_status == "done":
+            payload["completed_at"] = None  # reabriu a tarefa
+
+        supabase.table("tasks").update(payload).eq("id", task_id).eq(
+            "user_id", user_id
+        ).execute()
     except Exception:
         pass
 
