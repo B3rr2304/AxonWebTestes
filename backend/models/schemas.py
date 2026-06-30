@@ -431,6 +431,26 @@ class RoutineListItem(BaseModel):
     item_count:      int = 0
 
 
+# --- Subtasks ---
+
+class SubtaskCreate(BaseModel):
+    title: str
+
+
+class SubtaskUpdate(BaseModel):
+    title: Optional[str] = None
+    done: Optional[bool] = None
+
+
+class SubtaskResponse(BaseModel):
+    id: str
+    task_id: str
+    title: str
+    done: bool
+    position: int
+    created_at: str
+
+
 # --- Objectives ---
 
 class ObjectiveCreate(BaseModel):

@@ -1,0 +1,148 @@
+"""
+Checklist de subtarefas vinculado a uma tarefa mãe.
+
+Cada subtarefa tem título + done. Ao marcar/desmarcar, o progresso e o
+status da tarefa mãe são recalculados automaticamente.
+Cascade de exclusão via FK: deletar a tarefa mãe apaga as subtarefas.
+"""
+
+from database import supabase
+
+
+def _serialize(row: dict) -> dict:
+    if row.get("created_at") is not None:
+        row["created_at"] = str(row["created_at"])
+    return row
+
+
+def _recalculate_task_progress(user_id: str, task_id: str) -> None:
+    """Recalcula progress + status da tarefa mãe com base nas subtarefas."""
+    try:
+        res = (
+            supabase.table("subtasks")
+            .select("done")
+            .eq("task_id", task_id)
+            .eq("user_id", user_id)
+            .execute()
+        )
+        rows = res.data or []
+        total = len(rows)
+        if total == 0:
+            return
+        done_count = sum(1 for r in rows if r.get("done"))
+        progress = round((done_count / total) * 100)
+        status = "done" if done_count == total else ("progress" if done_count > 0 else "todo")
+        supabase.table("tasks").update(
+            {"progress": progress, "status": status}
+        ).eq("id", task_id).eq("user_id", user_id).execute()
+    except Exception:
+        pass
+
+
+def list_all(user_id: str) -> list[dict]:
+    """Retorna todas as subtarefas do usuário (para carga em bulk no frontend)."""
+    res = (
+        supabase.table("subtasks")
+        .select("*")
+        .eq("user_id", user_id)
+        .order("position", desc=False)
+        .order("created_at", desc=False)
+        .execute()
+    )
+    return [_serialize(r) for r in (res.data or [])]
+
+
+def list_for_task(user_id: str, task_id: str) -> list[dict]:
+    res = (
+        supabase.table("subtasks")
+        .select("*")
+        .eq("user_id", user_id)
+        .eq("task_id", task_id)
+        .order("position", desc=False)
+        .order("created_at", desc=False)
+        .execute()
+    )
+    return [_serialize(r) for r in (res.data or [])]
+
+
+def create_subtask(user_id: str, task_id: str, data: dict) -> dict:
+    title = (data.get("title") or "").strip()
+    if not title:
+        raise ValueError("O título da subtarefa é obrigatório")
+
+    existing = (
+        supabase.table("subtasks")
+        .select("position")
+        .eq("task_id", task_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    max_pos = max((r.get("position", 0) for r in (existing.data or [])), default=-1)
+
+    payload = {
+        "task_id": task_id,
+        "user_id": user_id,
+        "title": title,
+        "done": False,
+        "position": max_pos + 1,
+    }
+    res = supabase.table("subtasks").insert(payload).execute()
+    if not res.data:
+        raise ValueError("Erro ao criar subtarefa")
+
+    _recalculate_task_progress(user_id, task_id)
+    return _serialize(res.data[0])
+
+
+def update_subtask(user_id: str, subtask_id: str, data: dict) -> dict:
+    fetch = (
+        supabase.table("subtasks")
+        .select("task_id")
+        .eq("id", subtask_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not fetch.data:
+        raise ValueError("Subtarefa não encontrada")
+    task_id = fetch.data[0]["task_id"]
+
+    payload: dict = {}
+    if "title" in data:
+        t = (data["title"] or "").strip()
+        if not t:
+            raise ValueError("O título não pode ser vazio")
+        payload["title"] = t
+    if "done" in data:
+        payload["done"] = bool(data["done"])
+
+    if not payload:
+        raise ValueError("Nenhum campo para atualizar")
+
+    upd = (
+        supabase.table("subtasks")
+        .update(payload)
+        .eq("id", subtask_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not upd.data:
+        raise ValueError("Erro ao atualizar subtarefa")
+
+    _recalculate_task_progress(user_id, task_id)
+    return _serialize(upd.data[0])
+
+
+def delete_subtask(user_id: str, subtask_id: str) -> None:
+    fetch = (
+        supabase.table("subtasks")
+        .select("task_id")
+        .eq("id", subtask_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not fetch.data:
+        raise ValueError("Subtarefa não encontrada")
+    task_id = fetch.data[0]["task_id"]
+
+    supabase.table("subtasks").delete().eq("id", subtask_id).eq("user_id", user_id).execute()
+    _recalculate_task_progress(user_id, task_id)

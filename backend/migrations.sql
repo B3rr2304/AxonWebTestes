@@ -247,3 +247,31 @@ create index if not exists tasks_objective_id_idx on public.tasks(objective_id);
 alter table public.objectives
   add column if not exists priority text
   check (priority in ('low', 'medium', 'high')) default 'medium';
+
+-- =============================================
+-- Migration 9: subtarefas (checklist dentro de uma tarefa)
+-- ---------------------------------------------
+-- Cada tarefa pode ter N subtarefas simples (título + feita/não feita).
+-- Ao marcar/desmarcar uma subtarefa o progresso da tarefa mãe é recalculado.
+-- Cascade: ao deletar a tarefa mãe, todas as subtarefas somem junto.
+-- =============================================
+
+create table if not exists public.subtasks (
+  id         uuid default gen_random_uuid() primary key,
+  task_id    uuid references public.tasks(id) on delete cascade not null,
+  user_id    uuid references auth.users(id) on delete cascade not null,
+  title      text not null,
+  done       boolean default false not null,
+  position   integer default 0 not null,
+  created_at timestamp with time zone default now()
+);
+
+create index if not exists subtasks_task_id_idx on public.subtasks(task_id);
+create index if not exists subtasks_user_id_idx on public.subtasks(user_id);
+
+alter table public.subtasks enable row level security;
+
+create policy "subtasks_select" on public.subtasks for select using (auth.uid() = user_id);
+create policy "subtasks_insert" on public.subtasks for insert with check (auth.uid() = user_id);
+create policy "subtasks_update" on public.subtasks for update using (auth.uid() = user_id);
+create policy "subtasks_delete" on public.subtasks for delete using (auth.uid() = user_id);

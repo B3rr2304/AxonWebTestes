@@ -16,6 +16,7 @@ from services import (
     notification_service,
     objectives_service,
     routines_service,
+    subtasks_service,
     user_tz,
 )
 
@@ -153,6 +154,7 @@ MUTATING_TOOLS = {
     "criar_tarefa", "atualizar_tarefa", "deletar_tarefa",
     "criar_rotina", "pausar_rotina", "retomar_rotina", "deletar_rotina",
     "criar_objetivo", "atualizar_objetivo", "deletar_objetivo",
+    "criar_subtarefa", "atualizar_subtarefa", "deletar_subtarefa",
 }
 
 # Rótulos legíveis em PT-BR para o indicador de ação no chat.
@@ -174,6 +176,10 @@ TOOL_LABELS = {
     "atualizar_objetivo": "Atualizando objetivo",
     "listar_etapas": "Consultando etapas",
     "deletar_objetivo": "Removendo objetivo",
+    "criar_subtarefa": "Adicionando subtarefa",
+    "listar_subtarefas": "Consultando subtarefas",
+    "atualizar_subtarefa": "Atualizando subtarefa",
+    "deletar_subtarefa": "Removendo subtarefa",
 }
 
 _TASK_TYPE = {"type": "string", "enum": ["task", "event", "routine"]}
@@ -545,6 +551,59 @@ TOOLS = [
             "required": ["objective_id"],
         },
     },
+
+    # --- Subtarefas (checklist dentro de uma tarefa) -------------------------
+    {
+        "name": "criar_subtarefa",
+        "description": (
+            "Adiciona uma subtarefa (item de checklist) a uma tarefa existente. "
+            "Use quando o usuário quiser detalhar os passos de uma tarefa específica. "
+            "Descubra o task_id correto com listar_tarefas antes."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "id (UUID) da tarefa mãe"},
+                "title": {"type": "string", "description": "Título da subtarefa"},
+            },
+            "required": ["task_id", "title"],
+        },
+    },
+    {
+        "name": "listar_subtarefas",
+        "description": "Lista as subtarefas de uma tarefa específica com status done/pendente.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "task_id": {"type": "string", "description": "id (UUID) da tarefa mãe"},
+            },
+            "required": ["task_id"],
+        },
+    },
+    {
+        "name": "atualizar_subtarefa",
+        "description": "Atualiza o título ou marca uma subtarefa como feita/não feita.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "subtask_id": {"type": "string", "description": "id (UUID) da subtarefa"},
+                "title": {"type": "string", "description": "Novo título (opcional)"},
+                "done": {"type": "boolean", "description": "true = concluída, false = pendente"},
+            },
+            "required": ["subtask_id"],
+        },
+    },
+    {
+        "name": "deletar_subtarefa",
+        "description": "Remove uma subtarefa do checklist de uma tarefa.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "subtask_id": {"type": "string", "description": "id (UUID) da subtarefa"},
+            },
+            "required": ["subtask_id"],
+        },
+    },
 ]
 
 
@@ -671,6 +730,26 @@ def execute_tool(name: str, tool_input: dict, user_id: str, tz_name: str | None 
             alvo = next((o for o in objs if o["id"] == tool_input["objective_id"]), {})
             objectives_service.delete_objective(user_id, tool_input["objective_id"])
             return {"ok": True, "deleted": alvo.get("title", tool_input["objective_id"])}
+
+        # --- Subtarefas -------------------------------------------------------
+        if name == "criar_subtarefa":
+            sub = subtasks_service.create_subtask(
+                user_id, tool_input["task_id"], {"title": tool_input["title"]}
+            )
+            return {"ok": True, "subtask": sub}
+
+        if name == "listar_subtarefas":
+            subs = subtasks_service.list_for_task(user_id, tool_input["task_id"])
+            return {"ok": True, "count": len(subs), "subtasks": subs}
+
+        if name == "atualizar_subtarefa":
+            data = {k: v for k, v in tool_input.items() if k != "subtask_id"}
+            sub = subtasks_service.update_subtask(user_id, tool_input["subtask_id"], data)
+            return {"ok": True, "subtask": sub}
+
+        if name == "deletar_subtarefa":
+            subtasks_service.delete_subtask(user_id, tool_input["subtask_id"])
+            return {"ok": True, "deleted": tool_input["subtask_id"]}
 
         return {"ok": False, "error": f"Ferramenta desconhecida: {name}"}
     except ValueError as e:
