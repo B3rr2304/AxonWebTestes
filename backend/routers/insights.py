@@ -4,6 +4,8 @@ from fastapi import APIRouter, Depends, Header, Query
 from auth_helper import get_current_user
 from database import supabase
 from services import user_tz, insights_service
+from services.chronotype import CHRONOTYPE_BLOCKS, BLOCK_LEVELS
+from services import calibration_service
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -256,4 +258,67 @@ def get_pattern_insights(
         "generated_at": generated_at,
         "data_points": data_points,
         "cached": False,
+    }
+
+
+_CURVE_MAP = {
+    "Matutino": "morning",
+    "Vespertino": "evening",
+    "Noturno": "night",
+    "Misto": "intermediate",
+    "Bimodal": "bimodal",
+}
+
+
+@router.get("/blocks")
+def get_focus_blocks(current_user: dict = Depends(get_current_user)):
+    """
+    Retorna os 16 blocos de foco (90 min cada) com scores de energia.
+    Quando o usuário tem 14+ registros diários, usa o perfil personalizado;
+    caso contrário usa o cronotipo base.
+
+    Campos extras de calibração:
+      calibrated       — True quando usando perfil pessoal
+      data_points      — registros processados até agora
+      min_data_points  — mínimo para ativar personalização (14)
+    """
+    user_id = current_user["id"]
+    profile_res = (
+        supabase.table("profiles")
+        .select("chronotype")
+        .eq("id", user_id)
+        .single()
+        .execute()
+    )
+    chronotype = (profile_res.data or {}).get("chronotype") or "Misto"
+    curve_key  = _CURVE_MAP.get(chronotype, "intermediate")
+    raw_blocks = CHRONOTYPE_BLOCKS.get(curve_key, CHRONOTYPE_BLOCKS["intermediate"])
+
+    # Scores personalizados (ou base se ainda sem dados suficientes)
+    personal_scores, calibrated, data_points = calibration_service.get_block_scores(
+        user_id, chronotype
+    )
+
+    blocks = []
+    for idx, (level, description) in enumerate(raw_blocks):
+        start_min = idx * 90
+        end_min   = start_min + 90
+        energy    = round(personal_scores[idx]) if calibrated else BLOCK_LEVELS[level]["energy"]
+        blocks.append({
+            "idx":        idx,
+            "level":      level,
+            "label":      BLOCK_LEVELS[level]["label"],
+            "energy":     energy,
+            "focus":      BLOCK_LEVELS[level]["focus"],
+            "description": description,
+            "start_time": f"{start_min // 60:02d}:{start_min % 60:02d}",
+            "end_time":   f"{(end_min // 60) % 24:02d}:{end_min % 60:02d}",
+        })
+
+    return {
+        "chronotype":      chronotype,
+        "calibrated":      calibrated,
+        "data_points":     data_points,
+        "min_data_points": calibration_service.MIN_DATA_POINTS,
+        "blocks":          blocks,
     }

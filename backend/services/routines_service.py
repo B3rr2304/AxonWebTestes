@@ -18,7 +18,7 @@ from collections import defaultdict
 from datetime import date, timedelta
 
 from database import supabase
-from services import calendar_sync, chronotype
+from services import calendar_sync, chronotype, calibration_service
 
 # Quantos dias para trás olhamos ao calcular o streak.
 _STREAK_LOOKBACK_DAYS = 90
@@ -197,8 +197,12 @@ def _block_energy(level: str) -> int:
     return chronotype.BLOCK_LEVELS.get(level, {}).get("energy", 0)
 
 
-def _user_curve(user_id: str) -> str:
-    """Chave da curva de energia do cronotipo do usuário (fallback: misto)."""
+def _user_curve(user_id: str) -> tuple[str, str]:
+    """
+    Retorna (curve_key, chronotype) do usuário.
+    curve_key: chave interna das curvas ("morning", "evening", …)
+    chronotype: label do cronotipo ("Matutino", "Vespertino", …)
+    """
     try:
         res = (
             supabase.table("profiles")
@@ -207,10 +211,10 @@ def _user_curve(user_id: str) -> str:
             .single()
             .execute()
         )
-        ct = (res.data or {}).get("chronotype")
+        ct = (res.data or {}).get("chronotype") or "Misto"
     except Exception:
-        ct = None
-    return _CURVE_KEY.get(ct or "intermediate", "intermediate")
+        ct = "Misto"
+    return _CURVE_KEY.get(ct, "intermediate"), ct
 
 
 def _free_slot(
@@ -219,23 +223,27 @@ def _free_slot(
     busy: list[tuple[int, int]],
     not_before_min: int | None = None,
     not_after_min: int | None = None,
+    personal_scores: list[float] | None = None,
 ) -> tuple[str, str] | None:
     """
     Melhor slot livre de `duration_minutes` no dia, respeitando opcionalmente
     uma janela [not_before_min, not_after_min).
 
-    Estratégia em dois passos:
-      1. Tenta encaixar o slot inteiro dentro da janela, priorizando o bloco de
-         maior energia disponível nessa janela.
-      2. Se nenhum bloco de 90 min couber inteiro, aceita qualquer slot livre
-         dentro da janela (sem filtro de energia — só evita conflitos).
-      3. Se a janela for impossível (sem espaço), ignora a restrição e cai no
-         comportamento padrão (melhor energia no dia todo).
+    Quando `personal_scores` é fornecido (perfil calibrado do usuário), ordena
+    os blocos pelo score pessoal em vez do nível fixo do cronotipo.
+
+    Estratégia em três passos:
+      1. Melhor bloco de energia dentro da janela.
+      2. Qualquer slot livre dentro da janela (sem filtro de energia).
+      3. Fallback sem restrição de janela.
     """
     blocks = chronotype.CHRONOTYPE_BLOCKS.get(
         curve_key, chronotype.CHRONOTYPE_BLOCKS["intermediate"]
     )
-    ranked = sorted(range(len(blocks)), key=lambda i: (-_block_energy(blocks[i][0]), i))
+    if personal_scores and len(personal_scores) == 16:
+        ranked = sorted(range(16), key=lambda i: (-personal_scores[i], i))
+    else:
+        ranked = sorted(range(len(blocks)), key=lambda i: (-_block_energy(blocks[i][0]), i))
 
     def _fits(start: int, end: int) -> bool:
         if end > _DAY_MINUTES:
@@ -292,11 +300,18 @@ def _busy_intervals(user_id: str, day: date) -> list[tuple[int, int]]:
 
 def pick_best_slot(user_id: str, day: date, duration_minutes: int) -> tuple[str, str] | None:
     """
-    Melhor horário para uma tarefa flexível de `duration_minutes` em `day`,
-    segundo o cronotipo do usuário e o que já está agendado naquele dia.
-    Retorna ('HH:MM', 'HH:MM') ou None se não houver janela livre.
+    Melhor horário para uma tarefa flexível de `duration_minutes` em `day`.
+    Usa o perfil personalizado quando calibrado (14+ dias); caso contrário,
+    usa o cronotipo base.
     """
-    return _free_slot(_user_curve(user_id), duration_minutes, _busy_intervals(user_id, day))
+    curve_key, chronotype_label = _user_curve(user_id)
+    personal, calibrated, _ = calibration_service.get_block_scores(user_id, chronotype_label)
+    return _free_slot(
+        curve_key,
+        duration_minutes,
+        _busy_intervals(user_id, day),
+        personal_scores=personal if calibrated else None,
+    )
 
 
 def _materialize(
@@ -306,6 +321,7 @@ def _materialize(
     until_date: date,
     *,
     curve_key: str,
+    personal_scores: list[float] | None = None,
 ) -> list[dict]:
     """
     Cria as tarefas concretas dos `items` no intervalo [from_date, until_date]
@@ -353,6 +369,7 @@ def _materialize(
                 slot = _free_slot(
                     curve_key, it["duration_minutes"], busy_by_date[dstr],
                     not_before_min=nb_min, not_after_min=na_min,
+                    personal_scores=personal_scores,
                 )
                 if slot is None:
                     continue  # dia sem janela livre para esse item — pula
@@ -389,8 +406,13 @@ def generate_tasks_for_routine(
     _get_owned_routine(user_id, routine_id)
     items = _get_items(routine_id)
 
+    curve_key, chronotype_label = _user_curve(user_id)
+    personal, calibrated, _ = calibration_service.get_block_scores(user_id, chronotype_label)
+
     created = _materialize(
-        user_id, items, from_date, until_date, curve_key=_user_curve(user_id)
+        user_id, items, from_date, until_date,
+        curve_key=curve_key,
+        personal_scores=personal if calibrated else None,
     )
 
     supabase.table("routines").update(
@@ -618,7 +640,10 @@ def add_item(user_id: str, routine_id: str, data: dict, today: date) -> dict:
     # Gera as tarefas do novo item de hoje até onde a rotina já está gerada.
     gen_until = date.fromisoformat(str(routine["generated_until"]))
     if gen_until >= today:
-        _materialize(user_id, [item], today, gen_until, curve_key=_user_curve(user_id))
+        ck, ct = _user_curve(user_id)
+        ps, cal, _ = calibration_service.get_block_scores(user_id, ct)
+        _materialize(user_id, [item], today, gen_until, curve_key=ck,
+                     personal_scores=ps if cal else None)
 
     return _serialize_item(item)
 
@@ -669,7 +694,10 @@ def update_item(user_id: str, routine_id: str, item_id: str, data: dict, today: 
     _delete_future_tasks(user_id, [item_id], today)
     gen_until = date.fromisoformat(str(routine["generated_until"]))
     if gen_until >= today:
-        _materialize(user_id, [item], today, gen_until, curve_key=_user_curve(user_id))
+        ck, ct = _user_curve(user_id)
+        ps, cal, _ = calibration_service.get_block_scores(user_id, ct)
+        _materialize(user_id, [item], today, gen_until, curve_key=ck,
+                     personal_scores=ps if cal else None)
 
     return _serialize_item(item)
 

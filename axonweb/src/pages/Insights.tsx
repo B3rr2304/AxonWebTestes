@@ -27,7 +27,7 @@ import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
 import DayReview from "./DayReview";
 import * as api from "../lib/api";
-import type { TaskInsights } from "../lib/api";
+import type { TaskInsights, FocusBlockItem } from "../lib/api";
 
 type SeriesKey = "tarefas" | "sono" | "qualidade" | "humor" | "prod";
 
@@ -56,6 +56,24 @@ type PatternCardProps = {
   value: string;
   icon: React.ElementType;
 };
+
+const LEVEL_COLOR: Record<string, { bar: string; text: string }> = {
+  sono:          { bar: "#1e293b", text: "#475569" },
+  recuperacao:   { bar: "#1e3a5f", text: "#60a5fa" },
+  foco_leve:     { bar: "#713f12", text: "#fde68a" },
+  foco_moderado: { bar: "#4c1d95", text: "#c084fc" },
+  foco_profundo: { bar: "#6d28d9", text: "#a78bfa" },
+  pico:          { bar: "#7c3aed", text: "#f0abfc" },
+};
+
+const LEVEL_ORDER: { level: string; label: string }[] = [
+  { level: "pico", label: "Pico" },
+  { level: "foco_profundo", label: "Foco profundo" },
+  { level: "foco_moderado", label: "Foco moderado" },
+  { level: "foco_leve", label: "Foco leve" },
+  { level: "recuperacao", label: "Recuperação" },
+  { level: "sono", label: "Sono" },
+];
 
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
@@ -91,12 +109,26 @@ export default function Insights() {
   const [loadingPatterns, setLoadingPatterns] = useState(true);
   const [todayLog, setTodayLog] = useState<api.DailyLog | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  const [focusBlocks, setFocusBlocks] = useState<FocusBlockItem[]>([]);
+  const [blocksCalibrated, setBlocksCalibrated] = useState(false);
+  const [blocksDataPoints, setBlocksDataPoints] = useState(0);
+  const [blocksMinPoints, setBlocksMinPoints] = useState(14);
+  const [expandedBlockIdx, setExpandedBlockIdx] = useState<number | null>(null);
+  const [blocksListExpanded, setBlocksListExpanded] = useState(false);
 
   useEffect(() => {
-    api
-      .getDailyLogToday()
-      .then(setTodayLog)
-      .catch(() => setTodayLog(null));
+    api.getDailyLogToday().then(setTodayLog).catch(() => setTodayLog(null));
+  }, []);
+
+  useEffect(() => {
+    api.getFocusBlocks()
+      .then((res) => {
+        setFocusBlocks(res.blocks);
+        setBlocksCalibrated(res.calibrated);
+        setBlocksDataPoints(res.data_points);
+        setBlocksMinPoints(res.min_data_points);
+      })
+      .catch(() => setFocusBlocks([]));
   }, []);
 
   useEffect(() => {
@@ -434,6 +466,160 @@ export default function Insights() {
             </button>
           )}
         </section>
+
+        {/* Blocos de foco — sempre visível: barra + legenda; lista expandível */}
+        {focusBlocks.length > 0 && (
+          <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+            {/* Cabeçalho com toggle */}
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-white">Blocos de foco</p>
+                <p className="mt-1 text-xs text-white/38">
+                  Seu mapa de energia nas 24h
+                </p>
+
+                {/* Status de calibração */}
+                {blocksCalibrated ? (
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    <span className="text-[0.65rem] font-medium text-emerald-300/80">
+                      Perfil personalizado · {blocksDataPoints} dias de dados
+                    </span>
+                  </div>
+                ) : (
+                  <div className="mt-2">
+                    <div className="mb-1 flex items-center gap-1.5">
+                      <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
+                      <span className="text-[0.65rem] font-medium text-white/40">
+                        Perfil base · {blocksDataPoints}/{blocksMinPoints} dias para personalização
+                      </span>
+                    </div>
+                    <div className="h-1 w-28 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-amber-400 to-purple-400 transition-all"
+                        style={{ width: `${Math.min(100, (blocksDataPoints / blocksMinPoints) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
+              <Focus className="h-5 w-5 shrink-0 text-purple-200" />
+            </div>
+
+            {/* Barra visual 24h — sempre visível */}
+            <div className="mb-2 flex h-8 w-full overflow-hidden rounded-2xl border border-white/10">
+              {focusBlocks.map((block) => (
+                <div
+                  key={block.idx}
+                  className="h-full flex-1"
+                  style={{ backgroundColor: LEVEL_COLOR[block.level].bar }}
+                  title={`${block.start_time} ${block.label}`}
+                />
+              ))}
+            </div>
+
+            {/* Labels de hora — sempre visível */}
+            <div className="mb-4 flex justify-between px-0.5 text-[0.6rem] text-white/30">
+              <span>00h</span>
+              <span>06h</span>
+              <span>12h</span>
+              <span>18h</span>
+              <span>24h</span>
+            </div>
+
+            {/* Legenda — sempre visível */}
+            <div className="mb-4 flex flex-wrap gap-2">
+              {LEVEL_ORDER.map(({ level, label }) => (
+                <span
+                  key={level}
+                  className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/55"
+                >
+                  <span
+                    className="h-2 w-2 rounded-full"
+                    style={{ backgroundColor: LEVEL_COLOR[level].bar }}
+                  />
+                  {label}
+                </span>
+              ))}
+            </div>
+
+            {/* Botão expandir/recolher */}
+            <button
+              type="button"
+              onClick={() => {
+                setBlocksListExpanded((v) => !v);
+                if (blocksListExpanded) setExpandedBlockIdx(null);
+              }}
+              className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/14 px-4 py-2.5 text-xs font-semibold text-white/45 active:scale-[0.98]"
+            >
+              <span>{blocksListExpanded ? "Recolher blocos" : "Ver todos os blocos"}</span>
+              <span>{blocksListExpanded ? "▲" : "▼"}</span>
+            </button>
+
+            {/* Lista detalhada — apenas quando expandido */}
+            {blocksListExpanded && (
+              <div className="mt-3 space-y-1.5">
+                {focusBlocks.map((block) => {
+                  const color = LEVEL_COLOR[block.level];
+                  const isExpanded = expandedBlockIdx === block.idx;
+                  const now = new Date();
+                  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+                  const blockStart = block.idx * 90;
+                  const blockEnd = blockStart + 90;
+                  const isCurrent = currentMinutes >= blockStart && currentMinutes < blockEnd;
+
+                  return (
+                    <div key={block.idx}>
+                      <button
+                        type="button"
+                        onClick={() => setExpandedBlockIdx(isExpanded ? null : block.idx)}
+                        className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition active:scale-[0.98] ${
+                          isCurrent
+                            ? "border-purple-300/30 bg-purple-500/12"
+                            : "border-white/8 bg-white/[0.03]"
+                        }`}
+                      >
+                        <span
+                          className="h-2.5 w-2.5 shrink-0 rounded-full"
+                          style={{ backgroundColor: color.bar }}
+                        />
+                        <span className="w-[4.5rem] shrink-0 text-xs font-semibold text-white/45">
+                          {block.start_time}
+                        </span>
+                        <span
+                          className="flex-1 truncate text-xs font-semibold"
+                          style={{ color: color.text }}
+                        >
+                          {block.label}
+                          {isCurrent && (
+                            <span className="ml-2 text-[0.6rem] font-medium text-purple-300/70">
+                              agora
+                            </span>
+                          )}
+                        </span>
+                        <span className="text-[0.6rem] text-white/25">
+                          {isExpanded ? "▲" : "▼"}
+                        </span>
+                      </button>
+
+                      {isExpanded && (
+                        <div className="mx-1 rounded-b-2xl border border-t-0 border-white/8 bg-white/[0.02] px-4 py-3">
+                          <p className="text-xs leading-5 text-white/55">
+                            {block.description}
+                          </p>
+                          <div className="mt-2 flex gap-3 text-[0.65rem] text-white/35">
+                            <span>Energia: {block.energy}%</span>
+                            <span>Foco: {block.focus}%</span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </section>
+        )}
 
         <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
           <div className="mb-5 flex items-center justify-between gap-3">

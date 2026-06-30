@@ -5,7 +5,7 @@ from fastapi.responses import StreamingResponse
 from models.schemas import ChatRequest, ChatResponse
 from auth_helper import get_current_user
 from database import supabase
-from services import claude_service, chronotype as chronotype_service, user_tz
+from services import claude_service, chronotype as chronotype_service, user_tz, calibration_service
 from limiter import chat_limiter
 
 _CURVE_KEY = {
@@ -54,6 +54,50 @@ def _stream_and_save(user_id: str, conversation_id: str, user_message: str, hist
         traceback.print_exc()  # aparece no log do servidor para debug
         yield f"data: {json_module.dumps({'text': f'\\n\\n⚠️ Erro interno: {e}'})}\n\n"
         yield "data: [DONE]\n\n"
+
+
+_PERIOD_LABELS = {
+    "madrugada":    "Madrugada (00h–06h)",
+    "cedo_manha":   "Cedo da manhã (06h–09h)",
+    "manha":        "Manhã (09h–12h)",
+    "inicio_tarde": "Começo da tarde (12h–15h)",
+    "fim_tarde":    "Fim da tarde (15h–18h)",
+    "inicio_noite": "Começo da noite (18h–21h)",
+    "noite":        "Noite (21h–00h)",
+}
+
+_PERIOD_TO_BLOCKS = {
+    "madrugada":    [0, 1, 2, 3],
+    "cedo_manha":   [4, 5],
+    "manha":        [6, 7],
+    "inicio_tarde": [8, 9],
+    "fim_tarde":    [10, 11],
+    "inicio_noite": [12, 13],
+    "noite":        [14, 15],
+}
+
+
+def _build_personal_profile_context(scores: list[float], data_points: int) -> dict:
+    """
+    Converte os 16 scores pessoais em descrições legíveis dos períodos de
+    maior e menor energia, para incluir no prompt do AXON.
+    """
+    # Calcula score médio por período
+    period_scores = {}
+    for period, block_idxs in _PERIOD_TO_BLOCKS.items():
+        avg = sum(scores[i] for i in block_idxs) / len(block_idxs)
+        period_scores[period] = round(avg)
+
+    sorted_periods = sorted(period_scores.items(), key=lambda x: -x[1])
+    peak  = [f"{_PERIOD_LABELS[p]}: {s}" for p, s in sorted_periods[:2]]
+    low   = [f"{_PERIOD_LABELS[p]}: {s}" for p, s in sorted_periods[-2:]]
+
+    return {
+        "calibrated": True,
+        "data_points": data_points,
+        "peak_periods": peak,
+        "low_periods": low,
+    }
 
 
 def _load_perfil(user_id: str, tz_header: str | None = None) -> dict:
@@ -110,6 +154,16 @@ def _load_perfil(user_id: str, tz_header: str | None = None) -> dict:
         "description": description,
     }
 
+    # Perfil personalizado de energia (quando calibrado, enriquece o prompt)
+    personal_scores, calibrated, data_points = calibration_service.get_block_scores(
+        user_id, chronotype
+    )
+    personal_profile = None
+    if calibrated:
+        personal_profile = _build_personal_profile_context(
+            personal_scores, data_points
+        )
+
     return {
         "nome": profile_data.get("name"),
         "cronotipo": chronotype,
@@ -119,6 +173,7 @@ def _load_perfil(user_id: str, tz_header: str | None = None) -> dict:
         "memories": memories,
         "current_block": current_block,
         "timezone": tz_name,
+        "personal_profile": personal_profile,
     }
 
 
