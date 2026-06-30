@@ -2,6 +2,7 @@ from fastapi import APIRouter, HTTPException, Request, status
 from models.schemas import RegisterRequest, LoginRequest, RefreshRequest, AuthResponse
 from database import supabase, supabase_auth
 from limiter import limiter
+from services import account_service
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -9,6 +10,17 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 @router.post("/register", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
 @limiter.limit("5/minute")
 def register(request: Request, body: RegisterRequest):
+    blocked = account_service.check_email_blocked(body.email)
+    if blocked:
+        from datetime import datetime, timezone
+        can_reuse = datetime.fromisoformat(blocked["can_reuse_at"])
+        days_left = (can_reuse - datetime.now(timezone.utc)).days + 1
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Este e-mail poderá ser utilizado novamente apenas após {days_left} dias. "
+                   f"Data disponível: {can_reuse.strftime('%d/%m/%Y')}.",
+        )
+
     try:
         res = supabase_auth.auth.sign_up({"email": body.email, "password": body.password})
     except Exception:
