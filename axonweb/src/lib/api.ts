@@ -472,6 +472,25 @@ export function getTaskSubtasks(taskId: string) {
   return request<Subtask[]>(`/subtasks/task/${taskId}`);
 }
 
+export function createSubtask(
+  taskId: string,
+  body: {
+    title: string;
+    position?: number;
+  }
+) {
+  return request<Subtask>(`/subtasks/task/${taskId}`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function deleteSubtask(subtaskId: string) {
+  return request<void>(`/subtasks/${subtaskId}`, {
+    method: "DELETE",
+  });
+}
+
 export function updateSubtask(
   subtaskId: string,
   body: {
