@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from apscheduler.schedulers.background import BackgroundScheduler
-from routers import classify, chat, conversations, projects, auth, profile, google_auth, tasks, dashboard, notifications, daily_log, insights, routines, objectives, subtasks
+from routers import classify, chat, conversations, projects, auth, profile, google_auth, tasks, dashboard, notifications, daily_log, insights, routines, objectives, subtasks, account
 from limiter import limiter
 from database import supabase
 from services import planning_scheduler
@@ -53,6 +53,7 @@ app.include_router(insights.router)
 app.include_router(routines.router)
 app.include_router(objectives.router)
 app.include_router(subtasks.router)
+app.include_router(account.router)
 
 
 _scheduler = BackgroundScheduler(timezone="UTC")

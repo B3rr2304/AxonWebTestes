@@ -275,3 +275,19 @@ create policy "subtasks_select" on public.subtasks for select using (auth.uid() 
 create policy "subtasks_insert" on public.subtasks for insert with check (auth.uid() = user_id);
 create policy "subtasks_update" on public.subtasks for update using (auth.uid() = user_id);
 create policy "subtasks_delete" on public.subtasks for delete using (auth.uid() = user_id);
+
+-- =============================================
+-- Migration 10: exclusão de contas e bloqueio de e-mail por 60 dias
+-- ---------------------------------------------
+-- Quando um usuário exclui a conta, gravamos o e-mail aqui.
+-- O endpoint de registro verifica se o e-mail está dentro do período de bloqueio.
+-- Sem RLS: acessada apenas pelo backend (service_role).
+-- =============================================
+
+create table if not exists public.deleted_accounts (
+  id         uuid default gen_random_uuid() primary key,
+  email      text not null,
+  deleted_at timestamp with time zone default now() not null
+);
+
+create index if not exists deleted_accounts_email_idx on public.deleted_accounts(email);
