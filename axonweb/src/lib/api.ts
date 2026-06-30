@@ -149,6 +149,10 @@ export function logout() {
   localStorage.removeItem("axon_last_active");
 }
 
+export function deleteAccount() {
+  return request<void>("/account", { method: "DELETE" });
+}
+
 export function saveSession(res: AuthResponse) {
   localStorage.setItem("axon_token", res.access_token);
   localStorage.setItem("axon_refresh_token", res.refresh_token);
@@ -447,6 +451,39 @@ export function deleteTask(id: string) {
 
 export function carryForwardTasks() {
   return request<Task[]>("/tasks/carry-forward", { method: "POST" });
+}
+
+// --- Subtasks ---
+
+export interface Subtask {
+  id: string;
+  task_id: string;
+  title: string;
+  done: boolean;
+  position: number;
+  created_at: string;
+}
+
+export function getSubtasks() {
+  return request<Subtask[]>("/subtasks");
+}
+
+export function getTaskSubtasks(taskId: string) {
+  return request<Subtask[]>(`/subtasks/task/${taskId}`);
+}
+
+export function updateSubtask(
+  subtaskId: string,
+  body: {
+    done?: boolean;
+    title?: string;
+    position?: number;
+  }
+) {
+  return request<Subtask>(`/subtasks/${subtaskId}`, {
+    method: "PATCH",
+    body: JSON.stringify(body),
+  });
 }
 
 // --- Conversations ---

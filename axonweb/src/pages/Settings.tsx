@@ -13,6 +13,9 @@ import {
   Settings as SettingsIcon,
   Shield,
   Sparkles,
+  Trash2,
+  AlertTriangle,
+  Mail,
   Tag,
 } from "lucide-react";
 
@@ -55,6 +58,8 @@ export default function Settings() {
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
+  const [showDeleteFirstModal, setShowDeleteFirstModal] = useState(false);
+  const [showDeleteFinalModal, setShowDeleteFinalModal] = useState(false);
 
   const [silentMode, setSilentMode] = useState(true);
   const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
@@ -211,6 +216,14 @@ export default function Settings() {
             danger
             onClick={() => setShowLogoutModal(true)}
           />
+
+          <SettingItem
+            icon={Trash2}
+            title="Excluir conta"
+            description="Excluir permanentemente sua conta e seus dados do Axon."
+            danger
+            onClick={() => setShowDeleteFirstModal(true)}
+          />
         </Section>
 
         <p className="pt-1 text-center text-xs leading-5 text-white/28">
@@ -234,6 +247,31 @@ export default function Settings() {
           api.logout();
           setShowLogoutModal(false);
           navigate("/");
+        }}
+      />
+
+      <DeleteAccountFirstModal
+        isOpen={showDeleteFirstModal}
+        onClose={() => setShowDeleteFirstModal(false)}
+        onConfirm={() => {
+          setShowDeleteFirstModal(false);
+          setShowDeleteFinalModal(true);
+        }}
+      />
+
+      <DeleteAccountFinalModal
+        isOpen={showDeleteFinalModal}
+        email={userEmail}
+        onClose={() => setShowDeleteFinalModal(false)}
+        onConfirm={async () => {
+          try {
+            await api.deleteAccount();
+            api.logout();
+            setShowDeleteFinalModal(false);
+            navigate("/");
+          } catch (error) {
+            console.error("Erro ao excluir conta:", error);
+          }
         }}
       />
 
@@ -421,6 +459,138 @@ function LogoutConfirmModal({
                 className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
               >
                 Sair
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function DeleteAccountFirstModal({
+  isOpen,
+  onClose,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
+          >
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+              <Trash2 className="h-6 w-6" />
+            </div>
+
+            <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
+              Excluir sua conta?
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-white/45">
+              Essa ação é permanente e removerá seu acesso ao Axon.
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
+              >
+                Continuar
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function DeleteAccountFinalModal({
+  isOpen,
+  email,
+  onClose,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  email: string;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="w-full max-w-[380px] overflow-hidden rounded-[2rem] border border-red-300/15 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
+          >
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+
+            <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
+              Confirmação final
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-white/45">
+              O e-mail abaixo não poderá ser usado para criar outra conta no Axon
+              pelos próximos <span className="font-semibold text-white">60 dias</span>.
+            </p>
+
+            <div className="mt-5 flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
+              <Mail className="h-4 w-4 shrink-0 text-red-200" />
+              <p className="min-w-0 truncate text-sm font-semibold text-white/75">
+                {email || "E-mail da conta"}
+              </p>
+            </div>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
+              >
+                Sim, excluir
               </button>
             </div>
           </motion.div>
