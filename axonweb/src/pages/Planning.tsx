@@ -1488,6 +1488,7 @@ const isDisplayScheduled = displayStatus === "scheduled";
             />
           </div>
         )}
+
       </div>
   );
 }
@@ -1519,8 +1520,19 @@ function CreatePlanningItemModal({
   const [isKeyTask, setIsKeyTask] = useState(false);
 
   const [description, setDescription] = useState("");
+  const [draftSubtasks, setDraftSubtasks] = useState<{ key: string; title: string }[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+
+  function addDraftSubtask() {
+    setDraftSubtasks((prev) => [...prev, { key: Math.random().toString(36).slice(2), title: "" }]);
+  }
+  function updateDraftSubtask(key: string, title: string) {
+    setDraftSubtasks((prev) => prev.map((s) => s.key === key ? { ...s, title } : s));
+  }
+  function removeDraftSubtask(key: string) {
+    setDraftSubtasks((prev) => prev.filter((s) => s.key !== key));
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -1533,6 +1545,7 @@ function CreatePlanningItemModal({
       setLocation("");
       setRecurrence("daily");
       setDescription("");
+      setDraftSubtasks([]);
       setFormError(null);
       setEndDate(defaultDate);
       setAxonPickTime(false);
@@ -1582,7 +1595,7 @@ function CreatePlanningItemModal({
     setFormError(null);
     try {
       const useAxon = axonPickTime && selectedType !== "routine";
-      await api.createTask({
+      const task = await api.createTask({
         title: title.trim(),
         task_type: selectedType,
         scheduled_date: date || undefined,
@@ -1597,6 +1610,13 @@ function CreatePlanningItemModal({
         duration_minutes: useAxon ? Number(duration) : undefined,
         is_key_task: selectedType === "task" && isKeyTask ? true : undefined,
       } as any);
+
+      const validDrafts = draftSubtasks.filter((s) => s.title.trim());
+      if (validDrafts.length > 0) {
+        await Promise.all(
+          validDrafts.map((s) => api.createSubtask(task.id, { title: s.title.trim() }))
+        );
+      }
       await onCreated();
     } catch (e) {
       setFormError(e instanceof Error ? e.message : "Erro ao criar item");
@@ -1924,6 +1944,45 @@ function CreatePlanningItemModal({
                 className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
               />
             </label>
+
+            {selectedType === "task" && (
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <p className="mb-3 text-xs font-semibold text-white/42">Subtarefas (opcional)</p>
+                {draftSubtasks.length > 0 && (
+                  <div className="mb-3 space-y-2">
+                    {draftSubtasks.map((s, idx) => (
+                      <div key={s.key} className="flex items-center gap-2">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/20 text-[0.55rem] font-bold text-white/30">
+                          {idx + 1}
+                        </span>
+                        <input
+                          value={s.title}
+                          onChange={(e) => updateDraftSubtask(s.key, e.target.value)}
+                          placeholder={`Subtarefa ${idx + 1}`}
+                          autoFocus={idx === draftSubtasks.length - 1}
+                          className="min-h-[38px] flex-1 rounded-xl border border-white/10 bg-white/[0.055] px-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-purple-300/35"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeDraftSubtask(s.key)}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/35 active:scale-[0.94]"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={addDraftSubtask}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 py-2 text-xs font-semibold text-white/35 active:scale-[0.98]"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  Adicionar subtarefa
+                </button>
+              </div>
+            )}
 
             {formError && (
               <p className="text-xs font-medium text-rose-300">{formError}</p>
@@ -2430,6 +2489,10 @@ function EditPlanningItemModal({
               />
             </label>
 
+            {isTask && (
+              <SubtaskEditor taskId={task.id} />
+            )}
+
             {formError && (
               <p className="text-xs font-medium text-rose-300">{formError}</p>
             )}
@@ -2466,6 +2529,120 @@ function EditPlanningItemModal({
           </button>
         </div>
       </div>
+    </div>
+  );
+}
+
+function SubtaskEditor({ taskId }: { taskId: string }) {
+  const [subtasks, setSubtasks] = useState<api.Subtask[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newTitle, setNewTitle] = useState("");
+  const [adding, setAdding] = useState(false);
+
+  useEffect(() => {
+    api.getTaskSubtasks(taskId)
+      .then(setSubtasks)
+      .catch(() => setSubtasks([]))
+      .finally(() => setLoading(false));
+  }, [taskId]);
+
+  async function handleToggle(s: api.Subtask) {
+    try {
+      const updated = await api.updateSubtask(s.id, { done: !s.done });
+      setSubtasks((prev) => prev.map((x) => x.id === updated.id ? updated : x));
+    } catch { /* silent */ }
+  }
+
+  async function handleDelete(subtaskId: string) {
+    try {
+      await api.deleteSubtask(subtaskId);
+      setSubtasks((prev) => prev.filter((x) => x.id !== subtaskId));
+    } catch { /* silent */ }
+  }
+
+  async function handleAdd() {
+    const t = newTitle.trim();
+    if (!t) return;
+    try {
+      const created = await api.createSubtask(taskId, { title: t });
+      setSubtasks((prev) => [...prev, created]);
+      setNewTitle("");
+      setAdding(false);
+    } catch { /* silent */ }
+  }
+
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+      <p className="mb-3 text-xs font-semibold text-white/42">Subtarefas</p>
+
+      {loading ? (
+        <div className="flex items-center gap-2 py-2 text-xs text-white/35">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando…
+        </div>
+      ) : (
+        <>
+          {subtasks.length > 0 && (
+            <div className="mb-3 space-y-2">
+              {subtasks.map((s) => (
+                <div key={s.id} className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => handleToggle(s)}
+                    className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition active:scale-90 ${
+                      s.done
+                        ? "border-emerald-400 bg-emerald-400 text-[#11111a]"
+                        : "border-white/25 hover:border-purple-300/60"
+                    }`}
+                  >
+                    {s.done && <CheckCircle2 className="h-3 w-3" />}
+                  </button>
+                  <p className={`flex-1 truncate text-sm ${s.done ? "text-white/35 line-through" : "text-white/75"}`}>
+                    {s.title}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => handleDelete(s.id)}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/35 active:scale-[0.94]"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {adding ? (
+            <div className="flex items-center gap-2">
+              <input
+                autoFocus
+                value={newTitle}
+                onChange={(e) => setNewTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") { e.preventDefault(); handleAdd(); }
+                  if (e.key === "Escape") { setAdding(false); setNewTitle(""); }
+                }}
+                placeholder="Nome da subtarefa…"
+                className="min-h-[38px] flex-1 rounded-xl border border-purple-300/30 bg-white/[0.055] px-3 text-sm text-white outline-none placeholder:text-white/25"
+              />
+              <button type="button" onClick={handleAdd} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-purple-500 text-white active:scale-[0.94]">
+                <Plus className="h-3.5 w-3.5" />
+              </button>
+              <button type="button" onClick={() => { setAdding(false); setNewTitle(""); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94]">
+                <X className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setAdding(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 py-2 text-xs font-semibold text-white/35 active:scale-[0.98]"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Adicionar subtarefa
+            </button>
+          )}
+        </>
+      )}
     </div>
   );
 }
