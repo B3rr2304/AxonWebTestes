@@ -291,3 +291,31 @@ create table if not exists public.deleted_accounts (
 );
 
 create index if not exists deleted_accounts_email_idx on public.deleted_accounts(email);
+
+-- =============================================
+-- Migration 11: período de pico de produtividade no registro diário
+-- ---------------------------------------------
+-- Permite que o usuário informe em qual(is) período(s) do dia se sentiu
+-- mais produtivo. Usado pelo serviço de calibração para personalizar os
+-- blocos de foco. Array de até 2 slugs.
+-- =============================================
+
+alter table public.daily_logs
+  add column if not exists peak_periods text[] default '{}';
+
+-- =============================================
+-- Migration 12: perfil de energia personalizado por usuário
+-- ---------------------------------------------
+-- Armazena os 16 scores de foco (blocos de 90 min) calibrados
+-- a partir do comportamento real do usuário. Inicializado com os
+-- valores do cronotipo base e ajustado a cada registro diário.
+-- Sem RLS: acesso exclusivo via service_role no backend.
+-- =============================================
+
+create table if not exists public.user_energy_profiles (
+  user_id         uuid references auth.users(id) on delete cascade primary key,
+  block_scores    jsonb not null,           -- array de 16 floats (0–100)
+  data_points     integer default 0 not null,
+  last_calibrated timestamp with time zone,
+  created_at      timestamp with time zone default now()
+);
