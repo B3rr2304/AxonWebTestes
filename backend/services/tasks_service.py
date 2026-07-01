@@ -51,6 +51,62 @@ def _task_sort_key(t: dict) -> tuple:
     )
 
 
+# Duração assumida quando a tarefa não tem end_time — 45 min reflete melhor a
+# média geral das tarefas do que um bloco cheio de 90.
+_DEFAULT_SLOT_MIN = 45
+
+
+def task_interval(start_time: str | None, end_time: str | None) -> tuple[int, int] | None:
+    """
+    Converte (start_time, end_time) em (início, fim) em minutos desde 00:00.
+    Sem end_time (ou end<=start) assume _DEFAULT_SLOT_MIN. None se sem start.
+    Tolera "HH:MM" e "HH:MM:SS".
+    """
+    if not start_time:
+        return None
+    try:
+        s = int(start_time[:2]) * 60 + int(start_time[3:5])
+    except (ValueError, IndexError):
+        return None
+    e = None
+    if end_time:
+        try:
+            e = int(end_time[:2]) * 60 + int(end_time[3:5])
+        except (ValueError, IndexError):
+            e = None
+    if e is None or e <= s:
+        e = s + _DEFAULT_SLOT_MIN
+    return s, e
+
+
+def find_conflicting_task(
+    user_id: str,
+    scheduled_date: str,
+    start_time: str | None,
+    end_time: str | None = None,
+    exclude_id: str | None = None,
+) -> dict | None:
+    """
+    Primeira tarefa do usuário no dia cujo intervalo sobrepõe [start, end).
+    Ignora `exclude_id` (a própria tarefa que está sendo remarcada). None se
+    o slot está livre. Base da verificação anti-colisão das sugestões do Axon.
+    """
+    cand = task_interval(start_time, end_time)
+    if not cand or not scheduled_date:
+        return None
+    cs, ce = cand
+    for t in list_tasks(user_id, scheduled_date=str(scheduled_date)):
+        if exclude_id and t["id"] == exclude_id:
+            continue
+        iv = task_interval(t.get("start_time"), t.get("end_time"))
+        if not iv:
+            continue
+        ts, te = iv
+        if cs < te and ts < ce:  # sobreposição
+            return t
+    return None
+
+
 def list_tasks(
     user_id: str,
     *,
@@ -218,25 +274,31 @@ def delete_task(user_id: str, task_id: str) -> None:
         recalculate_progress(objective_id)
 
 
-def carry_forward_tasks(user_id: str) -> list[dict]:
+def carry_forward_tasks(user_id: str, today=None) -> list[dict]:
     """
-    Move para hoje as tarefas do tipo 'task' de ontem que ainda estão
-    pendentes (status 'todo' ou 'progress').
+    Move para hoje TODAS as tarefas do tipo 'task' agendadas para dias
+    passados que ainda estão pendentes (status 'todo' ou 'progress').
 
-    Idempotente: se chamada mais de uma vez no mesmo dia, não encontra
-    nada para mover (as datas já foram atualizadas para hoje).
+    `today` (date, opcional): "hoje" no fuso do usuário. Sem ele, cai no
+    date.today() do servidor (UTC) — mantido para compatibilidade.
+
+    Usa `< today` (não apenas ontem) para que nenhuma pendente fique presa
+    num dia passado quando o app/servidor pula uma virada de dia. As
+    pendentes só devem ser movidas DEPOIS de o snapshot do dia ser congelado
+    (ver daily_stats_service.reconcile).
+
+    Idempotente: chamadas repetidas no mesmo dia não encontram nada a mover.
     """
-    from datetime import date, timedelta
+    from datetime import date as _date
 
-    yesterday = str(date.today() - timedelta(days=1))
-    today = str(date.today())
+    today = str(today or _date.today())
 
     result = (
         supabase.table("tasks")
         .select("id, carry_count")
         .eq("user_id", user_id)
         .eq("task_type", "task")
-        .eq("scheduled_date", yesterday)
+        .lt("scheduled_date", today)
         .in_("status", ["todo", "progress"])
         .execute()
     )

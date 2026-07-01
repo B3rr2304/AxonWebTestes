@@ -1,7 +1,9 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from datetime import datetime
+
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from models.schemas import TaskCreate, TaskUpdate, TaskResponse
 from auth_helper import get_current_user
-from services import tasks_service
+from services import tasks_service, daily_stats_service, user_tz
 from typing import Optional
 
 router = APIRouter(prefix="/tasks", tags=["tasks"])
@@ -65,8 +67,34 @@ def delete_task(
 
 
 @router.post("/carry-forward", response_model=list[TaskResponse])
-def carry_forward(current_user: dict = Depends(get_current_user)):
-    return tasks_service.carry_forward_tasks(current_user["id"])
+def carry_forward(
+    x_timezone: str | None = Header(default=None),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Fallback idempotente do gancho de fim de dia: congela snapshots dos dias
+    passados ainda não congelados e carrega as pendentes para hoje (no fuso
+    do usuário). O disparo primário é o scheduler; este endpoint garante o
+    resultado mesmo se o job tiver perdido a virada.
+    """
+    user_id = current_user["id"]
+    tz_name = user_tz.resolve(user_id, x_timezone)
+    local_today = datetime.now(user_tz.zone(tz_name)).date()
+    return daily_stats_service.reconcile(user_id, tz_name, local_today)
+
+
+@router.get("/daily-stats")
+def daily_stats(
+    start: str = Query(..., description="YYYY-MM-DD (inclusivo)"),
+    end: str = Query(..., description="YYYY-MM-DD (inclusivo)"),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    Estatísticas de conclusão CONGELADAS por dia no intervalo. Use para os
+    dias passados; "hoje" continua sendo calculado ao vivo no frontend. Um
+    dia sem linha = nenhuma tarefa naquele dia (tratar como 0/0).
+    """
+    return daily_stats_service.get_range(current_user["id"], start, end)
 
 
 @router.get("/{task_id}/subtasks", response_model=list[TaskResponse])

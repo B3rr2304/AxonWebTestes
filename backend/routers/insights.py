@@ -6,6 +6,7 @@ from database import supabase
 from services import user_tz, insights_service
 from services.chronotype import CHRONOTYPE_BLOCKS, BLOCK_LEVELS
 from services import calibration_service
+from services import daily_stats_service
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -29,16 +30,22 @@ def _local_date(ts: str | None, tz) -> date | None:
         return None
 
 
-def build_task_metrics(tasks: list[dict], tz, today: date, days: int) -> dict:
+def build_task_metrics(
+    tasks: list[dict], tz, today: date, days: int, snapshots: dict | None = None
+) -> dict:
     """
     Agrega tarefas em métricas diárias. Função pura — sem I/O — para testar.
 
-    Para cada dia da janela retorna:
+    Para dias PASSADOS usa o snapshot congelado (daily_task_stats) quando
+    disponível — sem ele a % daria falso 100%, porque o carry-forward tira as
+    pendentes do dia (elas viram scheduled_date de hoje). Só "hoje" e os dias
+    sem snapshot são calculados ao vivo:
       - completed: tarefas concluídas naquele dia (por completed_at, preciso)
       - total:     concluídas + ainda pendentes agendadas para aquele dia
       - completion_rate: completed / total * 100
       - carried_forward: tarefas naquele dia que já foram adiadas (carry_count > 0)
     """
+    snapshots = snapshots or {}
     window = [today - timedelta(days=i) for i in range(days - 1, -1, -1)]
     buckets = {
         d: {"completed": 0, "pending": 0, "carried_forward": 0} for d in window
@@ -75,26 +82,42 @@ def build_task_metrics(tasks: list[dict], tz, today: date, days: int) -> dict:
     rate_count = 0
 
     for d in window:
-        b = buckets[d]
-        total = b["completed"] + b["pending"]
-        rate = round(b["completed"] / total * 100) if total else 0
+        snap = snapshots.get(str(d))
+        if snap is not None and d < today:
+            # Dia passado congelado — fonte da verdade histórica.
+            # completed = tarefas concluídas por esforço (sem eventos auto-
+            # concluídos), igual ao caminho ao vivo (status 'done'). Fallback
+            # para completed_items em snapshots antigos sem a coluna.
+            completed = snap.get("completed_tasks", snap["completed_items"])
+            total     = snap["total"]
+            rate      = snap["completion_rate"]
+            carried   = snap.get("carried_forward", 0)
+        else:
+            # Hoje (ou dia sem snapshot) — ao vivo.
+            b = buckets[d]
+            completed = b["completed"]
+            total     = b["completed"] + b["pending"]
+            rate      = round(completed / total * 100) if total else 0
+            carried   = b["carried_forward"]
+
         days_out.append({
             "date": str(d),
             "weekday": _WEEKDAY_ABBR[d.weekday()],
-            "completed": b["completed"],
+            "completed": completed,
             "total": total,
             "completion_rate": rate,
-            "carried_forward": b["carried_forward"],
+            "carried_forward": carried,
         })
-        weekday_completed[d.weekday()] += b["completed"]
-        total_completed += b["completed"]
-        total_carried += b["carried_forward"]
+        weekday_completed[d.weekday()] += completed
+        total_completed += completed
+        total_carried += carried
         if total:
             rate_sum += rate
             rate_count += 1
 
     best_idx = max(range(7), key=lambda i: weekday_completed[i])
-    best_weekday = _WEEKDAY_FULL[best_idx] if weekday_completed[best_idx] > 0 else None
+    has_best = weekday_completed[best_idx] > 0
+    best_weekday = _WEEKDAY_FULL[best_idx] if has_best else None
 
     return {
         "days": days_out,
@@ -102,6 +125,10 @@ def build_task_metrics(tasks: list[dict], tz, today: date, days: int) -> dict:
             "total_completed": total_completed,
             "avg_completion_rate": round(rate_sum / rate_count) if rate_count else 0,
             "best_weekday": best_weekday,
+            # Conclusões NO dia mais produtivo (soma das ocorrências daquele dia
+            # da semana na janela). É o número correto para a frase do card —
+            # antes ela mostrava total_completed (o total do período todo).
+            "best_weekday_completed": weekday_completed[best_idx] if has_best else 0,
             "carry_forward_total": total_carried,
         },
     }
@@ -143,7 +170,13 @@ def get_task_insights(
     for row in (scheduled.data or []):
         merged.setdefault(row["id"], row)
 
-    result = build_task_metrics(list(merged.values()), tz, today, days)
+    # Dias passados vêm dos snapshots congelados (evita falso 100%).
+    snapshots = {
+        s["date"]: s
+        for s in daily_stats_service.get_range(user_id, since, str(today))
+    }
+
+    result = build_task_metrics(list(merged.values()), tz, today, days, snapshots)
     result["period"] = period
     return result
 

@@ -611,9 +611,12 @@ def execute_tool(name: str, tool_input: dict, user_id: str, tz_name: str | None 
     """Executa a tool e devolve um dict serializável para o tool_result."""
     try:
         # Resolve palavras-chave de data ('hoje', 'amanhã', dia da semana) para
-        # AAAA-MM-DD no fuso do usuário antes de qualquer escrita.
-        if name in ("criar_tarefa", "atualizar_tarefa"):
-            tool_input = _resolve_date_fields(tool_input, tz_name)
+        # AAAA-MM-DD no fuso do usuário para QUALQUER tool com campo de data.
+        # Antes só criar/atualizar resolviam, então listar_tarefas(scheduled_date='hoje')
+        # vazava a palavra crua para o filtro do banco (coluna date) e quebrava com
+        # "invalid input syntax for type date". _resolve_date_fields só mexe nos campos
+        # de data presentes, então é seguro rodar em todas as tools.
+        tool_input = _resolve_date_fields(tool_input, tz_name)
 
         if name == "criar_tarefa":
             task = tasks_service.create_task(

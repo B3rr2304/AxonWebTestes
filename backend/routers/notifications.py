@@ -1,11 +1,11 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks, Request, Header
 from models.schemas import (
     NotificationResponse,
     NotificationCountResponse,
     NotificationAnalyzeResponse,
 )
 from auth_helper import get_current_user
-from services import notification_service, notification_analyzer, tasks_service
+from services import notification_service, notification_analyzer, tasks_service, user_tz
 
 router = APIRouter(prefix="/notifications", tags=["notifications"])
 
@@ -70,6 +70,7 @@ def mark_read(
 @router.post("/{notification_id}/accept", response_model=NotificationAnalyzeResponse)
 def accept_notification(
     notification_id: str,
+    x_timezone: str | None = Header(default=None),
     current_user: dict = Depends(get_current_user),
 ):
     """
@@ -79,6 +80,7 @@ def accept_notification(
     3. Gera change notification explicando o que mudou
     """
     user_id = current_user["id"]
+    tz_name = user_tz.resolve(user_id, x_timezone)
 
     notif = notification_service.get_notification(user_id, notification_id)
     if not notif:
@@ -87,6 +89,11 @@ def accept_notification(
         raise HTTPException(status_code=400, detail="Apenas notificações de melhoria podem ser aceitas")
     if notif["status"] not in ("unread", "read"):
         raise HTTPException(status_code=400, detail="Notificação já foi respondida")
+    # Checagem em tempo real: se o horário sugerido já passou, não movemos a
+    # tarefa para o passado. Marca como expirada para liberar o slot também.
+    if notification_service.is_improvement_stale(notif, tz_name):
+        notification_service.mark_expired(user_id, notification_id)
+        raise HTTPException(status_code=400, detail="Esta sugestão expirou — o horário sugerido já passou")
 
     action = notif.get("action") or {}
     task_id = action.get("task_id")
@@ -111,6 +118,23 @@ def accept_notification(
         update_data["start_time"] = action["new_start_time"]
     if action.get("new_end_time"):
         update_data["end_time"] = action["new_end_time"]
+
+    # Rede de segurança: revalida no aceite (o estado pode ter mudado desde a
+    # sugestão). Se o horário ficou ocupado, não sobrepõe tarefas — expira a
+    # sugestão e o Axon proporá um novo horário no próximo ciclo.
+    new_start = update_data.get("start_time")
+    if new_start:
+        target_date = update_data.get("scheduled_date") or (task or {}).get("scheduled_date")
+        if target_date:
+            conflict = tasks_service.find_conflicting_task(
+                user_id, target_date, new_start, update_data.get("end_time"), exclude_id=task_id
+            )
+            if conflict:
+                notification_service.mark_expired(user_id, notification_id)
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"O horário sugerido conflita com '{conflict.get('title', 'outra tarefa')}'. O Axon vai sugerir um novo horário.",
+                )
 
     if update_data:
         try:

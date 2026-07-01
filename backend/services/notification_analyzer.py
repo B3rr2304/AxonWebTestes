@@ -125,6 +125,81 @@ def _has_tasks_in_bad_blocks(tasks: list, blocks: list) -> list[dict]:
     return bad
 
 
+def _duration_min(task: dict | None) -> int:
+    """Duração da tarefa em minutos (default 45 via task_interval quando sem fim)."""
+    iv = tasks_service.task_interval(
+        (task or {}).get("start_time"), (task or {}).get("end_time")
+    )
+    return iv[1] - iv[0] if iv else 45
+
+
+def _pick_free_good_slot(
+    user_id: str, target_date: str, blocks: list, duration: int, exclude_id: str | None
+) -> tuple[str, str] | None:
+    """
+    Primeiro bloco de foco BOM cujo intervalo (duração da tarefa) não sobrepõe
+    nenhuma tarefa existente no dia. Determinístico — usado quando o horário
+    que o Claude sugeriu está ocupado. None se não há bloco livre.
+    """
+    intervals = []
+    for t in tasks_service.list_tasks(user_id, scheduled_date=str(target_date)):
+        if exclude_id and t["id"] == exclude_id:
+            continue
+        iv = tasks_service.task_interval(t.get("start_time"), t.get("end_time"))
+        if iv:
+            intervals.append(iv)
+
+    for i, (level, _) in enumerate(blocks):
+        if level not in _GOOD_BLOCKS:
+            continue
+        s = i * 90
+        e = s + duration
+        if e > 1440:  # não cabe antes da meia-noite
+            continue
+        if all(not (s < te and ts < e) for ts, te in intervals):
+            return f"{s // 60:02d}:{s % 60:02d}", f"{e // 60:02d}:{e % 60:02d}"
+    return None
+
+
+def _ensure_free_slot(user_id: str, ctx: dict, action: dict) -> dict | None:
+    """
+    Garante que o horário sugerido não colide com outra tarefa. O horário vem
+    do Claude (o good_slot do prompt é só uma dica), então validamos de forma
+    dura: se colidir, trocamos pelo próximo bloco de foco livre; se não houver
+    nenhum, devolvemos None (não sugere) em vez de propor um horário ocupado.
+    """
+    new_start = action.get("new_start_time")
+    if not new_start:
+        return action  # sugestão sem horário (ex.: só muda a data) — nada a checar
+
+    task_id = action.get("task_id")
+    moved = next(
+        (t for t in (ctx["tasks_today"] + ctx["tasks_tomorrow"]) if t["id"] == task_id),
+        None,
+    )
+    target_date = action.get("new_date") or (moved or {}).get("scheduled_date")
+    if not target_date:
+        return action
+
+    conflict = tasks_service.find_conflicting_task(
+        user_id, target_date, new_start, action.get("new_end_time"), exclude_id=task_id
+    )
+    if not conflict:
+        return action
+
+    slot = _pick_free_good_slot(
+        user_id, target_date, ctx["blocks"], _duration_min(moved), task_id
+    )
+    if not slot:
+        return None
+    return {
+        **action,
+        "new_start_time": slot[0],
+        "new_end_time": slot[1],
+        "new_date": target_date,
+    }
+
+
 def _apply_rule_filter(ctx: dict) -> dict:
     """
     Aplica regras baratas para identificar candidatos de notificação.
@@ -243,6 +318,9 @@ def analyze_and_notify(user_id: str, tz_header: str | None = None) -> dict | Non
     """
     tz_name = user_tz.resolve(user_id, tz_header)
 
+    # Libera melhorias cujo horário sugerido já passou antes de checar o slot.
+    notification_service.expire_stale_improvements(user_id, tz_name)
+
     cooldown_elapsed = notification_service.should_analyze(user_id)
 
     # Reivindica o slot de cooldown IMEDIATAMENTE para evitar race condition:
@@ -257,11 +335,10 @@ def analyze_and_notify(user_id: str, tz_header: str | None = None) -> dict | Non
 
     simple_today = notification_service.count_today(user_id, "simple")
 
-    # Já existe uma melhoria pendente (não resolvida)? Não cria outra.
-    has_pending_improvement = any(
-        n["type"] == "improvement" and n["status"] in ("unread", "read")
-        for n in ctx["recent_notifications"]
-    )
+    # Já existe uma melhoria ABERTA (não resolvida e não expirada)? Não cria
+    # outra. Atalho barato que evita a chamada ao Claude; a garantia real
+    # contra corrida é o índice único parcial no banco (ver create_improvement_guarded).
+    has_pending_improvement = notification_service.has_open_improvement(user_id)
 
     improvement_eligible = flags["has_improvement_candidate"] and not has_pending_improvement
     simple_candidate = flags["all_done"] or flags["none_started"] or flags["no_tasks_today"]
@@ -303,14 +380,28 @@ def analyze_and_notify(user_id: str, tz_header: str | None = None) -> dict | Non
     if notif_type == "improvement" and not action:
         return None
 
-    notif = notification_service.create_notification(
+    if notif_type == "improvement":
+        # Anti-colisão: nunca sugerir um horário já ocupado por outra tarefa.
+        action = _ensure_free_slot(user_id, ctx, action)
+        if action is None:
+            return None
+
+        # Via protegida pelo índice único: se outra análise concorrente já criou
+        # a melhoria aberta, o banco recusa e devolvemos None (sem duplicar).
+        return notification_service.create_improvement_guarded(
+            user_id=user_id,
+            title=result.get("title", "Axon"),
+            body=result.get("body", ""),
+            action=action,
+        )
+
+    return notification_service.create_notification(
         user_id=user_id,
         notif_type=notif_type,
         title=result.get("title", "Axon"),
         body=result.get("body", ""),
         action=action,
     )
-    return notif
 
 
 def generate_change_notification(

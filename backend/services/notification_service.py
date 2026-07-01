@@ -5,7 +5,7 @@ Gerencia a tabela `notifications` e a coluna `last_notif_analyzed_at`
 em `profiles`. Aplica os cooldowns por tipo antes de criar notificações.
 """
 
-from datetime import datetime, timezone, timedelta
+from datetime import datetime, timezone, timedelta, date, time
 from database import supabase
 
 
@@ -27,11 +27,15 @@ def get_notifications(user_id: str, limit: int = 10, offset: int = 0) -> list[di
 
 
 def get_unread_count(user_id: str) -> int:
+    # expired_at is null cobre todos os tipos (só melhorias expiram; nas demais
+    # a coluna é sempre null) — evita que uma melhoria expirada e nunca lida
+    # deixe o badge de não-lidas aceso para sempre.
     res = (
         supabase.table("notifications")
         .select("id", count="exact")
         .eq("user_id", user_id)
         .eq("status", "unread")
+        .is_("expired_at", "null")
         .execute()
     )
     return res.count or 0
@@ -137,6 +141,132 @@ def create_notification(
         payload["action"] = action
 
     res = supabase.table("notifications").insert(payload).execute()
+    return res.data[0] if res.data else {}
+
+
+def create_improvement_guarded(
+    user_id: str, title: str, body: str, action: dict
+) -> dict | None:
+    """
+    Cria uma notificação de melhoria respeitando a invariante "no máximo uma
+    melhoria aberta por usuário", garantida por índice único parcial no banco
+    (notifications_one_open_improvement). Se já houver uma aberta, o INSERT
+    viola o índice → devolvemos None em vez de estourar.
+
+    É a defesa à prova de corrida: duas análises concorrentes tentam criar,
+    o banco deixa só uma passar.
+    """
+    try:
+        return create_notification(user_id, "improvement", title, body, action)
+    except Exception as e:
+        msg = str(e).lower()
+        if "23505" in msg or "duplicate" in msg or "unique" in msg:
+            return None
+        raise
+
+
+def has_open_improvement(user_id: str) -> bool:
+    """True se existe uma melhoria ainda ABERTA (unread/read e não expirada)."""
+    res = (
+        supabase.table("notifications")
+        .select("id")
+        .eq("user_id", user_id)
+        .eq("type", "improvement")
+        .in_("status", ["unread", "read"])
+        .is_("expired_at", "null")
+        .limit(1)
+        .execute()
+    )
+    return bool(res.data)
+
+
+def _improvement_target_dt(action: dict | None, created_at: str | None, tz) -> datetime | None:
+    """
+    Momento em que a sugestão perde o sentido = horário sugerido (new_start_time
+    na new_date), no fuso do usuário. Sem horário explícito, cai no fim do dia
+    alvo; sem data, usa a data de criação. É o marco para expirar a melhoria.
+    """
+    action = action or {}
+    nd = action.get("new_date")
+    if nd:
+        try:
+            base_date = date.fromisoformat(nd)
+        except (ValueError, TypeError):
+            base_date = None
+    else:
+        base_date = None
+
+    if base_date is None:
+        if not created_at:
+            return None
+        try:
+            base_date = datetime.fromisoformat(
+                created_at.replace("Z", "+00:00")
+            ).astimezone(tz).date()
+        except (ValueError, TypeError):
+            return None
+
+    hhmm = (action.get("new_start_time") or "23:59")[:5]
+    try:
+        h, m = map(int, hhmm.split(":"))
+    except (ValueError, TypeError):
+        h, m = 23, 59
+    return datetime.combine(base_date, time(h, m), tzinfo=tz)
+
+
+def expire_stale_improvements(user_id: str, tz_name: str) -> None:
+    """
+    Marca como expiradas (expired_at) as melhorias abertas cujo horário sugerido
+    já passou — liberando o slot para o Axon voltar a sugerir. Decisão do
+    produto: bloquear até o usuário decidir OU até o horário da sugestão passar.
+    """
+    from services import user_tz  # import local evita ciclo na carga do módulo
+
+    tz = user_tz.zone(tz_name)
+    now_local = datetime.now(tz)
+
+    res = (
+        supabase.table("notifications")
+        .select("id, action, created_at")
+        .eq("user_id", user_id)
+        .eq("type", "improvement")
+        .in_("status", ["unread", "read"])
+        .is_("expired_at", "null")
+        .execute()
+    )
+    now_utc = datetime.now(timezone.utc).isoformat()
+    for row in res.data or []:
+        target = _improvement_target_dt(row.get("action"), row.get("created_at"), tz)
+        if target and now_local > target:
+            supabase.table("notifications").update({"expired_at": now_utc}).eq(
+                "id", row["id"]
+            ).eq("user_id", user_id).execute()
+
+
+def is_improvement_stale(notif: dict, tz_name: str) -> bool:
+    """
+    True se a melhoria já não faz sentido aceitar: expirada (expired_at) OU o
+    horário sugerido já passou AGORA. A checagem em tempo real é o que impede
+    aceitar uma sugestão de horário passado quando a expiração preguiçosa do
+    analyze ainda não rodou — sem ela, a tarefa seria movida para o passado.
+    """
+    if notif.get("expired_at"):
+        return True
+    from services import user_tz
+
+    tz = user_tz.zone(tz_name)
+    target = _improvement_target_dt(notif.get("action"), notif.get("created_at"), tz)
+    return target is not None and datetime.now(tz) > target
+
+
+def mark_expired(user_id: str, notif_id: str) -> dict:
+    res = (
+        supabase.table("notifications")
+        .update({"expired_at": datetime.now(timezone.utc).isoformat()})
+        .eq("id", notif_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
     return res.data[0] if res.data else {}
 
 
