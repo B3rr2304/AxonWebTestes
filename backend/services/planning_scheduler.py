@@ -16,7 +16,13 @@ from zoneinfo import ZoneInfo
 
 from database import supabase
 from services import notification_service
+from services import daily_stats_service
 from services import user_tz as user_tz_service
+
+# Horário local (após a meia-noite) em que congelamos o snapshot do dia que
+# acabou e carregamos as pendentes. Uma folga de alguns minutos evita a borda
+# exata da virada.
+_SNAPSHOT_FIRE_TIME = "00:10"
 
 # Horários de disparo por cronótipo quando planning_use_chronotype = true
 _CHRONOTYPE_TIME = {
@@ -111,16 +117,26 @@ def run() -> None:
 
 def _process_user(user: dict, now_utc: datetime) -> None:
     user_id = user["id"]
+
+    # timezone já vem no select de run() — evita uma query por usuário/minuto.
+    tz_name   = user_tz_service.normalize(user.get("timezone")) or user_tz_service.DEFAULT_TZ
+    now_local = now_utc.astimezone(ZoneInfo(tz_name))
+    current_hhmm    = now_local.strftime("%H:%M")
+    current_weekday = now_local.weekday()
+
+    # Fim do dia local: congela o snapshot de conclusão do dia que acabou e
+    # carrega as pendentes. Roda independente das preferências de notificação.
+    if current_hhmm == _SNAPSHOT_FIRE_TIME:
+        try:
+            daily_stats_service.reconcile(user_id, tz_name, now_local.date())
+        except Exception as e:
+            print(f"[planning_scheduler] reconcile falhou user={user_id}: {e}", flush=True)
+
     daily_enabled  = _bool(user.get("daily_planning_enabled"),  True)
     weekly_enabled = _bool(user.get("weekly_planning_enabled"), True)
 
     if not daily_enabled and not weekly_enabled:
         return
-
-    tz_name   = user_tz_service.stored_tz(user_id)
-    now_local = now_utc.astimezone(ZoneInfo(tz_name))
-    current_hhmm    = now_local.strftime("%H:%M")
-    current_weekday = now_local.weekday()
 
     curve_key  = _CURVE_KEY.get(user.get("chronotype", "intermediate"), "intermediate")
     first_name = (user.get("name") or "você").split()[0]

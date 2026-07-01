@@ -1,0 +1,6 @@
+- [Axon agent: estado completo](axon-agent-tool-use-next.md) — tool use, memória, blocos de foco, dashboard, planning — tudo implementado; próximos passos anotados
+- [Axon arquitetura/debug](axon-arquitetura-debug.md) — fonte da verdade é o backend; armadilhas de localStorage/rota/token/servidor fantasma já resolvidas
+- [Axon fuso horário multi](axon-fuso-horario-multi.md) — suporte a usuários do mundo todo via header X-Timezone + coluna profiles.timezone; módulo services/user_tz.py
+- [Workflow backend/frontend](feedback_workflow.md) — Bernardo faz backend; frontend vai como prompt para a colega implementar na branch dela
+- [Planning: porcentagem de conclusão](planning-porcentagem-conclusao.md) — % por dia selecionado (frontend), eventos contam e concluem ao passar o horário
+- [Rotinas: plano e estado](axon-rotinas-planejamento.md) — fases 1+schemas ✅; service/router/main.py pendentes; testes e regras de produto documentados

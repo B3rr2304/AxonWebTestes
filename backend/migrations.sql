@@ -319,3 +319,60 @@ create table if not exists public.user_energy_profiles (
   last_calibrated timestamp with time zone,
   created_at      timestamp with time zone default now()
 );
+
+-- =============================================
+-- Migration 13: snapshot diário congelado de conclusão de tarefas
+-- ---------------------------------------------
+-- Congela, no fim de cada dia local do usuário, os números REAIS daquele dia
+-- (incluindo as pendentes que estão prestes a ser carregadas). Sem isso, o
+-- carry-forward reescrevia o scheduled_date das pendentes e todo dia passado
+-- exibia falso 100% de conclusão no Planning e no Insights.
+-- Escrita/leitura exclusivamente pelo backend (service_role) — sem RLS.
+--   completed_score  = pontuação proporcional (subtarefas contam fração)
+--   completed_items  = itens 100% concluídos, INCLUI eventos (texto "X de Y" + anel)
+--   completed_tasks  = tarefas concluídas por esforço (status 'done'), SEM eventos
+--                      auto-concluídos → métrica de produtividade do Insights
+--   completion_rate  = round(completed_score / total * 100)
+-- =============================================
+
+create table if not exists public.daily_task_stats (
+  user_id         uuid references auth.users(id) on delete cascade not null,
+  date            date not null,
+  total           integer default 0 not null,
+  completed_items integer default 0 not null,
+  completed_tasks integer default 0 not null,
+  completed_score numeric default 0 not null,
+  completion_rate integer default 0 not null,
+  carried_forward integer default 0 not null,
+  created_at      timestamp with time zone default now(),
+  primary key (user_id, date)
+);
+
+create index if not exists daily_task_stats_user_date_idx
+  on public.daily_task_stats(user_id, date desc);
+
+-- Para quem já rodou a versão anterior desta migration (sem completed_tasks):
+-- o create table if not exists acima não altera a tabela existente, então
+-- garantimos a coluna à parte. Idempotente.
+alter table public.daily_task_stats
+  add column if not exists completed_tasks integer default 0 not null;
+
+-- =============================================
+-- Migration 14: no máximo uma melhoria (improvement) ABERTA por usuário
+-- ---------------------------------------------
+-- Bug: duas análises concorrentes (POST /notifications/analyze é disparado
+-- pelo frontend ao abrir/voltar à tela) passavam ambas pela checagem "há
+-- melhoria pendente?" antes de qualquer uma inserir → o Axon criava 2
+-- sugestões, ambas apontando para o MESMO horário livre.
+-- "Aberta" = status unread/read E não expirada. A melhoria expira quando o
+-- horário sugerido passa (expired_at preenchido pelo backend), para uma
+-- sugestão esquecida não silenciar o Axon para sempre. O índice único parcial
+-- impõe a invariante de forma ATÔMICA no banco, fechando a corrida.
+-- =============================================
+
+alter table public.notifications
+  add column if not exists expired_at timestamp with time zone;
+
+create unique index if not exists notifications_one_open_improvement
+  on public.notifications(user_id)
+  where type = 'improvement' and status in ('unread', 'read') and expired_at is null;
