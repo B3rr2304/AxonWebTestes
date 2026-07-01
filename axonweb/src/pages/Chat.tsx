@@ -27,6 +27,24 @@ import type { ConversationData } from "../lib/api";
 type ConversationType = "general" | "planning" | "focus" | "project";
 type ProjectFolder = api.ChatProjectData;
 type ProjectConversation = ConversationData & { project_id?: string | null };
+type ConversationWithSortDates = ConversationData & {
+  updated_at?: string | null;
+  last_message_at?: string | null;
+};
+
+function getConversationSortDate(conversation: ConversationData) {
+  const item = conversation as ConversationWithSortDates;
+
+  return new Date(
+    item.last_message_at ?? item.updated_at ?? item.created_at
+  ).getTime();
+}
+
+function sortConversationsByRecent<T extends ConversationData>(items: T[]) {
+  return [...items].sort(
+    (a, b) => getConversationSortDate(b) - getConversationSortDate(a)
+  );
+}
 
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
@@ -105,13 +123,15 @@ export default function Chat() {
   const filteredConversations = useMemo(() => {
     const query = search.toLowerCase();
 
-    return looseConversations.filter((conversation) => {
+    const filtered = looseConversations.filter((conversation) => {
       const matchesSearch =
         conversation.title.toLowerCase().includes(query) ||
         (conversation.last_message ?? "").toLowerCase().includes(query);
 
       return matchesSearch;
     });
+
+    return sortConversationsByRecent(filtered);
   }, [looseConversations, search]);
 
   const selectedProject = useMemo(
@@ -122,7 +142,7 @@ export default function Chat() {
   const filteredProjectConversations = useMemo(() => {
     const query = search.toLowerCase();
 
-    return projectConversations.filter((conversation) => {
+    const filtered = projectConversations.filter((conversation) => {
       const belongsToSelectedProject =
         getConversationProjectId(conversation) === selectedProjectId;
 
@@ -132,6 +152,8 @@ export default function Chat() {
 
       return belongsToSelectedProject && matchesSearch;
     });
+
+    return sortConversationsByRecent(filtered);
   }, [projectConversations, search, selectedProjectId]);
 
   const filteredProjects = useMemo(() => {
@@ -1340,8 +1362,6 @@ function DeleteProjectModal({
 function getConversationProjectId(conversation: ConversationData) {
   return (conversation as ProjectConversation).project_id ?? null;
 }
-
-
 
 function Background() {
   return (

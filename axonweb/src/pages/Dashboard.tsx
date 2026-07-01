@@ -23,7 +23,7 @@ import {
 import DayReview from "./DayReview";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
-import type { DashboardData, FocusBlock, BlockTask, Task } from "../lib/api";
+import type { DashboardData, FocusBlock, BlockTask, Task, Subtask } from "../lib/api";
 
 type MetricCardProps = {
   icon: ElementType;
@@ -43,6 +43,7 @@ export default function Dashboard() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
   const [keyTask, setKeyTask] = useState<Task | null>(null);
+  const [subtasksMap, setSubtasksMap] = useState<Record<string, Subtask[]>>({});
   const [showNextBlock, setShowNextBlock] = useState(false);
   const [todayLog, setTodayLog] = useState<api.DailyLog | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
@@ -77,6 +78,35 @@ export default function Dashboard() {
       );
     };
   }, [refreshUnreadCount]);
+
+  // ---------------------------------------------------------------------------
+  // SUBTAREFAS
+  // Carrega todas as subtarefas uma vez e organiza por task_id.
+  // No dashboard usamos apenas um indicador compacto no plano do dia.
+  // ---------------------------------------------------------------------------
+  const loadSubtasks = useCallback(async () => {
+    try {
+      const all = await api.getSubtasks();
+
+      const map: Record<string, Subtask[]> = {};
+
+      for (const subtask of all) {
+        if (!map[subtask.task_id]) {
+          map[subtask.task_id] = [];
+        }
+
+        map[subtask.task_id].push(subtask);
+      }
+
+      Object.values(map).forEach((items) => {
+        items.sort((a, b) => a.position - b.position);
+      });
+
+      setSubtasksMap(map);
+    } catch {
+      setSubtasksMap({});
+    }
+  }, []);
 
   // ---------------------------------------------------------------------------
   // CARREGAMENTO PRINCIPAL DO DASHBOARD
@@ -133,12 +163,14 @@ export default function Dashboard() {
     loadDashboard();
     loadDailyLog();
     loadKeyTask();
+    loadSubtasks();
     refreshUnreadCount();
     analyzeNotificationsAndRefreshLater();
 
     const interval = window.setInterval(() => {
       loadDashboard();
       loadKeyTask();
+      loadSubtasks();
     }, 30 * 60 * 1000);
 
     // Polling periódico para capturar notificações geradas pelo scheduler
@@ -149,6 +181,7 @@ export default function Dashboard() {
       if (document.hidden) return;
 
       loadDashboard();
+      loadSubtasks();
       refreshUnreadCount();
       analyzeNotificationsAndRefreshLater();
     };
@@ -164,7 +197,7 @@ export default function Dashboard() {
         window.clearTimeout(delayedNotificationRefresh);
       }
     };
-  }, [navigate, refreshUnreadCount]);
+  }, [navigate, refreshUnreadCount, loadSubtasks]);
 
   // ---------------------------------------------------------------------------
   // ABERTURA AUTOMÁTICA DA REVISÃO DIÁRIA
@@ -492,6 +525,13 @@ export default function Dashboard() {
                 {flatTasks.slice(0, 5).map((task) => {
                   const isActive = task.status === "progress";
                   const isKey = task.is_key_task;
+
+                  const subtasks = subtasksMap[task.id] ?? [];
+                  const completedSubtasks = subtasks.filter(
+                    (subtask) => subtask.done
+                  ).length;
+                  const hasSubtasks = subtasks.length > 0;
+
                   return (
                     <div
                       key={task.id}
@@ -516,19 +556,40 @@ export default function Dashboard() {
                       </div>
 
                       <div className="min-w-0 flex-1">
-                        <p className={`truncate text-sm font-semibold ${isKey ? "text-amber-100" : "text-white"}`}>
+                        <p
+                          className={`truncate text-sm font-semibold ${
+                            isKey ? "text-amber-100" : "text-white"
+                          }`}
+                        >
                           {task.title}
                         </p>
+
                         <p className="mt-0.5 text-xs text-white/38">
-                          {task.objective_title
-                            ? <span className="inline-flex items-center gap-1"><Star className="h-3 w-3 text-purple-300/60" />{task.objective_title}</span>
-                            : typeLabel[task.task_type] ?? "Tarefa"
-                          }
+                          {task.objective_title ? (
+                            <span className="inline-flex items-center gap-1">
+                              <Star className="h-3 w-3 text-purple-300/60" />
+                              {task.objective_title}
+                            </span>
+                          ) : (
+                            typeLabel[task.task_type] ?? "Tarefa"
+                          )}
                         </p>
+
+                        {hasSubtasks && (
+                          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-purple-300/15 bg-purple-500/10 px-2.5 py-1 text-[0.65rem] font-semibold text-purple-100/70">
+                            <CheckCircle2 className="h-3 w-3" />
+                            {completedSubtasks}/{subtasks.length} subtarefas
+                          </div>
+                        )}
                       </div>
 
-                      {isKey && <Star className="h-4 w-4 shrink-0 fill-amber-300 text-amber-300" />}
-                      {!isKey && isActive && <CheckCircle2 className="h-5 w-5 shrink-0 text-purple-200" />}
+                      {isKey && (
+                        <Star className="h-4 w-4 shrink-0 fill-amber-300 text-amber-300" />
+                      )}
+
+                      {!isKey && isActive && (
+                        <CheckCircle2 className="h-5 w-5 shrink-0 text-purple-200" />
+                      )}
                     </div>
                   );
                 })}

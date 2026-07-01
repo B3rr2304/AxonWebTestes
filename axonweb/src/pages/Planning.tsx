@@ -23,7 +23,7 @@ import {
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
-import type { Task, TaskType, TaskStatus } from "../lib/api";
+import type { Task, TaskType, TaskStatus, Subtask } from "../lib/api";
 
 type ViewMode = "month" | "week";
 type DisplayStatus = "todo" | "progress" | "done" | "scheduled";
@@ -202,6 +202,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [subtasksMap, setSubtasksMap] = useState<Record<string, Subtask[]>>({});
 
   const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
@@ -241,13 +242,25 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
   const loadSubtasks = useCallback(async () => {
     try {
       const all = await api.getSubtasks();
-      const map: Record<string, api.Subtask[]> = {};
-      for (const s of all) {
-        if (!map[s.task_id]) map[s.task_id] = [];
-        map[s.task_id].push(s);
+
+      const map: Record<string, Subtask[]> = {};
+
+      for (const subtask of all) {
+        if (!map[subtask.task_id]) {
+          map[subtask.task_id] = [];
+        }
+
+        map[subtask.task_id].push(subtask);
       }
+
+      Object.values(map).forEach((items) => {
+        items.sort((a, b) => a.position - b.position);
+      });
+
       setSubtasksMap(map);
-    } catch { /* silent */ }
+    } catch {
+      setSubtasksMap({});
+    }
   }, []);
 
   const loadTasks = useCallback(async () => {
@@ -269,8 +282,11 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
         if (moved.length > 0) setCarriedCount(moved.length);
       })
       .catch(() => null)
-      .finally(() => loadTasks());
-  }, [loadTasks]);
+      .finally(async () => {
+        await loadTasks();
+        await loadSubtasks();
+      });
+  }, [loadTasks, loadSubtasks]);
 
   const taskDates = useMemo(() => {
     const dates = new Set<string>();
@@ -353,8 +369,28 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
     try {
       await api.updateTask(task.id, next);
       await loadTasks();
+      await loadSubtasks();
     } catch {
       // mantém o estado atual em caso de erro
+    }
+  }
+
+  async function handleToggleSubtask(subtask: Subtask) {
+    const nextDone = !subtask.done;
+
+    setSubtasksMap((prev) => ({
+      ...prev,
+      [subtask.task_id]: (prev[subtask.task_id] ?? []).map((item) =>
+        item.id === subtask.id ? { ...item, done: nextDone } : item
+      ),
+    }));
+
+    try {
+      await api.updateSubtask(subtask.id, { done: nextDone });
+      await loadTasks();
+      await loadSubtasks();
+    } catch {
+      await loadSubtasks();
     }
   }
 
@@ -409,6 +445,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
       await api.deleteTask(taskToDelete.id);
       setTaskToDelete(null);
       await loadTasks();
+      await loadSubtasks();
     } catch {
       // depois podemos colocar um toast/erro visual aqui
     } finally {
@@ -638,10 +675,12 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
                             key={task.id}
                             task={task}
                             selectedIso={selectedIso}
+                            subtasks={subtasksMap[task.id] ?? []}
                             onToggle={handleToggleDone}
                             onToggleKey={handleToggleKey}
                             onEdit={handleEdit}
                             onDelete={handleDelete}
+                            onToggleSubtask={handleToggleSubtask}
                           />
                         ))}
                       </div>
@@ -680,6 +719,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
         onCreated={async () => {
           setIsCreateModalOpen(false);
           await loadTasks();
+          await loadSubtasks();
         }}
       />
 
@@ -689,6 +729,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
         onUpdated={async () => {
           setTaskToEdit(null);
           await loadTasks();
+          await loadSubtasks();
         }}
         onSubtaskChange={loadSubtasks}
       />
@@ -1202,17 +1243,21 @@ function WeekCalendar({
 function TimelineItem({
   task,
   selectedIso,
+  subtasks = [],
   onToggle,
   onToggleKey,
   onEdit,
   onDelete,
+  onToggleSubtask,
 }: {
   task: Task;
   selectedIso: string;
+  subtasks?: Subtask[];
   onToggle: (t: Task) => void;
   onToggleKey?: (t: Task) => void;
   onEdit: (t: Task) => void;
   onDelete: (t: Task) => void;
+  onToggleSubtask: (subtask: Subtask) => void;
 }) {
   const isKey = !!task.is_key_task;
   const Icon =
@@ -1227,14 +1272,21 @@ function TimelineItem({
   const subtitle = task.description || typeLabels[task.task_type];
 
   const isDone = task.status === "done";
-  const isProgress = task.status === "progress";
   const isEvent = task.task_type === "event";
   const isRoutine = task.task_type === "routine";
 
-  const displayStatus = getDisplayStatus(task, selectedIso);
-const isDisplayDone = displayStatus === "done";
-const isDisplayProgress = displayStatus === "progress";
-const isDisplayScheduled = displayStatus === "scheduled";
+  const completedSubtasks = subtasks.filter((subtask) => subtask.done).length;
+  const hasSubtasks = subtasks.length > 0;
+  const visualProgress = hasSubtasks
+    ? Math.round((completedSubtasks / subtasks.length) * 100)
+    : task.progress ?? 0;
+
+  const displayStatus = hasSubtasks && completedSubtasks === subtasks.length
+    ? "done"
+    : getDisplayStatus(task, selectedIso);
+  const isDisplayDone = displayStatus === "done";
+  const isDisplayProgress = displayStatus === "progress";
+  const isDisplayScheduled = displayStatus === "scheduled";
 
   const multiDayProgress = isEvent
     ? getMultiDayEventProgress(task, selectedIso)
@@ -1242,7 +1294,6 @@ const isDisplayScheduled = displayStatus === "scheduled";
 
   const isMultiDayEvent = Boolean(multiDayProgress);
   const canCompleteMultiDayEvent = multiDayProgress?.isLastDay;
-
   const taskEndDate = getTaskEndDate(task);
 
   const detailLabel =
@@ -1278,18 +1329,21 @@ const isDisplayScheduled = displayStatus === "scheduled";
         }${
           isKey
             ? "border-amber-300/30 bg-amber-400/[0.08]"
-            : isDone
+            : isDisplayDone
             ? "border-emerald-300/20 bg-emerald-400/10"
+            : isEvent && isDisplayProgress
+            ? "border-purple-300/25 bg-purple-500/12"
             : isEvent
             ? "border-cyan-300/20 bg-cyan-400/10"
             : isRoutine
             ? "border-fuchsia-300/20 bg-fuchsia-400/10"
-            : isProgress
+            : isDisplayProgress
             ? "border-purple-300/25 bg-purple-500/12"
             : "border-white/10 bg-white/[0.055]"
         }`}
       >
-        <div className="mb-3 flex items-center justify-between">
+        {/* Header do card: tipo, status, subtarefas e ações rápidas. */}
+        <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
             {isKey && (
               <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-300/30 bg-amber-400/10 px-3 py-1 text-[0.65rem] font-semibold text-amber-100">
@@ -1297,6 +1351,7 @@ const isDisplayScheduled = displayStatus === "scheduled";
                 Tarefa chave
               </span>
             )}
+
             <span
               className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[0.65rem] font-semibold ${
                 isEvent
@@ -1305,7 +1360,7 @@ const isDisplayScheduled = displayStatus === "scheduled";
                   ? "border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100"
                   : isDisplayDone
                   ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
-                  : isProgress
+                  : isDisplayProgress
                   ? "border-purple-300/25 bg-purple-500/15 text-purple-100"
                   : "border-white/10 bg-white/[0.055] text-white/52"
               }`}
@@ -1327,9 +1382,16 @@ const isDisplayScheduled = displayStatus === "scheduled";
             >
               {statusLabels[displayStatus]}
             </span>
+
+            {hasSubtasks && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-300/20 bg-purple-500/12 px-3 py-1 text-[0.65rem] font-semibold text-purple-100">
+                <CheckCircle2 className="h-3 w-3" />
+                {completedSubtasks}/{subtasks.length}
+              </span>
+            )}
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex shrink-0 items-center gap-2">
             {onToggleKey && (
               <button
                 onClick={() => onToggleKey(task)}
@@ -1369,20 +1431,21 @@ const isDisplayScheduled = displayStatus === "scheduled";
           </div>
         </div>
 
+        {/* Conteúdo principal do card. */}
         <div className="mb-4 flex items-center gap-3">
           <div
-            className={`rounded-[1.55rem] border p-4 shadow-xl shadow-black/20 ${
+            className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
               isDisplayDone
-                ? "border-emerald-300/20 bg-emerald-400/10"
+                ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
                 : isEvent && isDisplayProgress
-                ? "border-purple-300/25 bg-purple-500/12"
+                ? "border-purple-300/25 bg-purple-500/12 text-purple-100"
                 : isEvent
-                ? "border-cyan-300/20 bg-cyan-400/10"
+                ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
                 : isRoutine
-                ? "border-fuchsia-300/20 bg-fuchsia-400/10"
+                ? "border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100"
                 : isDisplayProgress
-                ? "border-purple-300/25 bg-purple-500/12"
-                : "border-white/10 bg-white/[0.055]"
+                ? "border-purple-300/25 bg-purple-500/12 text-purple-100"
+                : "border-white/10 bg-white/[0.055] text-white/50"
             }`}
           >
             {isDisplayDone ? (
@@ -1406,6 +1469,7 @@ const isDisplayScheduled = displayStatus === "scheduled";
           </div>
         </div>
 
+        {/* Linha de horário e ação de conclusão. */}
         <div className="mb-3 flex items-center justify-between gap-3">
           <p className="truncate text-xs text-white/38">{detailLabel}</p>
 
@@ -1462,6 +1526,7 @@ const isDisplayScheduled = displayStatus === "scheduled";
           ) : null}
         </div>
 
+        {/* Barra de progresso. Em tarefas com subtarefas, usa o checklist como fonte. */}
         {isMultiDayEvent ? (
           <div>
             <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/35">
@@ -1486,41 +1551,92 @@ const isDisplayScheduled = displayStatus === "scheduled";
             </div>
           </div>
         ) : !isEvent ? (
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-            <div
-              className={`h-full rounded-full ${
-                isDone
-                  ? "bg-emerald-300"
-                  : isRoutine
-                  ? "bg-gradient-to-r from-fuchsia-300 to-purple-300"
-                  : isProgress
-                  ? "bg-gradient-to-r from-purple-400 to-fuchsia-300"
-                  : "bg-white/30"
-              }`}
-              style={{ width: `${Math.max(task.progress ?? 0, 6)}%` }}
-            />
+          <div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                className={`h-full rounded-full ${
+                  isDisplayDone
+                    ? "bg-emerald-300"
+                    : isRoutine
+                    ? "bg-gradient-to-r from-fuchsia-300 to-purple-300"
+                    : isDisplayProgress
+                    ? "bg-gradient-to-r from-purple-400 to-fuchsia-300"
+                    : "bg-white/30"
+                }`}
+                style={{ width: `${Math.max(visualProgress, 6)}%` }}
+              />
+            </div>
+
+            {hasSubtasks && (
+              <SubtasksPreview
+                subtasks={subtasks}
+                completedSubtasks={completedSubtasks}
+                onToggleSubtask={onToggleSubtask}
+              />
+            )}
           </div>
         ) : null}
-        </div>
-
-        {!isEvent && (
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
-            <div
-              className={`h-full rounded-full ${
-                isDone
-                  ? "bg-emerald-300"
-                  : isRoutine
-                  ? "bg-gradient-to-r from-fuchsia-300 to-purple-300"
-                  : isProgress
-                  ? "bg-gradient-to-r from-purple-400 to-fuchsia-300"
-                  : "bg-white/30"
-              }`}
-              style={{ width: `${Math.max(task.progress ?? 0, 6)}%` }}
-            />
-          </div>
-        )}
-
       </div>
+    </div>
+  );
+}
+function SubtasksPreview({
+  subtasks,
+  completedSubtasks,
+  onToggleSubtask,
+}: {
+  subtasks: Subtask[];
+  completedSubtasks: number;
+  onToggleSubtask: (subtask: Subtask) => void;
+}) {
+  const visibleSubtasks = subtasks.slice(0, 3);
+  const hiddenCount = subtasks.length - visibleSubtasks.length;
+
+  return (
+    <div className="mt-4 space-y-2 rounded-[1.25rem] border border-white/10 bg-black/15 p-3">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+          Subtarefas
+        </p>
+
+        <p className="text-[0.68rem] font-semibold text-purple-100/70">
+          {completedSubtasks} de {subtasks.length}
+        </p>
+      </div>
+
+      {visibleSubtasks.map((subtask) => (
+        <button
+          key={subtask.id}
+          type="button"
+          onClick={() => onToggleSubtask(subtask)}
+          className="flex w-full items-center gap-2 rounded-xl px-1 py-1.5 text-left active:scale-[0.99]"
+        >
+          <span
+            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+              subtask.done
+                ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-100"
+                : "border-white/14 bg-white/[0.04] text-white/30"
+            }`}
+          >
+            {subtask.done && <CheckCircle2 className="h-3.5 w-3.5" />}
+          </span>
+
+          <span
+            className={`line-clamp-1 text-xs ${
+              subtask.done ? "text-white/32 line-through" : "text-white/58"
+            }`}
+          >
+            {subtask.title}
+          </span>
+        </button>
+      ))}
+
+      {hiddenCount > 0 && (
+        <p className="pl-7 text-[0.68rem] font-medium text-white/30">
+          +{hiddenCount} subtarefas
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -2565,7 +2681,6 @@ function EditPlanningItemModal({
     </div>
   );
 }
-
 function SubtaskEditor({ taskId, onSubtaskChange }: { taskId: string; onSubtaskChange?: () => void }) {
   const [subtasks, setSubtasks] = useState<api.Subtask[]>([]);
   const [loading, setLoading] = useState(true);
