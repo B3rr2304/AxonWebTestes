@@ -208,7 +208,6 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [subtasksMap, setSubtasksMap] = useState<Record<string, api.Subtask[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);

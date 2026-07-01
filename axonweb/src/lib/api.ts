@@ -1084,41 +1084,4 @@ export function deleteObjective(id: string) {
   return request<void>(`/objectives/${id}`, { method: "DELETE" });
 }
 
-// --- Subtasks ---
-
-export interface Subtask {
-  id: string;
-  task_id: string;
-  title: string;
-  done: boolean;
-  position: number;
-  created_at: string;
-}
-
-export function getSubtasks() {
-  return request<Subtask[]>("/subtasks");
-}
-
-export function getTaskSubtasks(taskId: string) {
-  return request<Subtask[]>(`/subtasks/task/${taskId}`);
-}
-
-export function createSubtask(taskId: string, payload: { title: string }) {
-  return request<Subtask>(`/subtasks/task/${taskId}`, {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function updateSubtask(subtaskId: string, payload: { title?: string; done?: boolean }) {
-  return request<Subtask>(`/subtasks/${subtaskId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-}
-
-export function deleteSubtask(subtaskId: string) {
-  return request<void>(`/subtasks/${subtaskId}`, { method: "DELETE" });
-}
-
 
