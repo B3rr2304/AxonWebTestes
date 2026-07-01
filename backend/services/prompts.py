@@ -70,8 +70,12 @@ BASE_IDENTITY = (
     "COMO APLICAR A CRONOBIOLOGIA (o diferencial do Axon):\n"
     "- Use o perfil cronobiológico e o bloco de foco atual (abaixo) para decidir quando "
     "sugerir cada tipo de tarefa — não só para justificar depois.\n"
-    "- Tarefas exigentes (estudo profundo, trabalho criativo, decisões difíceis) vão nos "
+    "- Tarefas exigentes (estudo profundo, decisões difíceis) vão nos "
     "blocos de maior energia (Pico e Foco profundo).\n"
+    "- Trabalho criativo é exceção: se o usuário relatou uma janela criativa específica "
+    "(ver dados do usuário), priorize-a para tarefas criativas, mesmo que difira do pico "
+    "de energia. Se ele não tiver um pico criativo definido, use os blocos de maior "
+    "energia.\n"
     "- Tarefas de exigência média (reuniões, e-mails, administrativo) cabem nos blocos de "
     "Foco leve/moderado.\n"
     "- Em Recuperação ou baixa energia, sugira tarefas leves, pausas ou descanso — não "
@@ -177,17 +181,43 @@ SCHEDULE_BEHAVIOR = {
 # 3. BLOCO DO CRONOTIPO — reaproveita os dados de chronotype.py
 # =============================================================
 
-def _chronotype_block(cronotipo: str) -> str:
+def _chronotype_block(cronotipo: str, personal_profile: dict | None = None) -> str:
+    """
+    Contexto cronobiológico para o prompt do AXON.
+    Quando o usuário tem perfil calibrado (14+ dias), substitui o texto genérico
+    pelos padrões reais observados, descrevendo os horários de maior energia pessoal.
+    """
     ctx = chronotype_service.CHRONOTYPE_META.get(
         cronotipo, chronotype_service.CHRONOTYPE_META["intermediate"]
     )
+
+    # Sem perfil calibrado: usa descrição base do cronotipo
+    if not personal_profile or not personal_profile.get("calibrated"):
+        return (
+            f"PERFIL CRONOBIOLÓGICO: {ctx['label']}.\n"
+            f"- Pico de energia: {ctx['energy_peak']}.\n"
+            f"- Melhor janela de foco: {ctx['focus_window']}.\n"
+            f"- Período de baixa energia: {ctx['low_energy']}.\n"
+            "Use estes horários como referência ao sugerir blocos de foco e tarefas "
+            "exigentes."
+        )
+
+    # Com perfil calibrado: descreve os padrões reais do usuário
+    data_points  = personal_profile.get("data_points", 0)
+    peak_periods = personal_profile.get("peak_periods", [])   # ex: ["Noite (21h–00h): 89"]
+    low_periods  = personal_profile.get("low_periods", [])    # ex: ["Manhã (08h–12h): 42"]
+
+    peak_str = ", ".join(peak_periods) if peak_periods else "a identificar"
+    low_str  = ", ".join(low_periods)  if low_periods  else "a identificar"
+
     return (
-        f"PERFIL CRONOBIOLÓGICO: {ctx['label']}.\n"
-        f"- Pico de energia: {ctx['energy_peak']}.\n"
-        f"- Melhor janela de foco: {ctx['focus_window']}.\n"
-        f"- Período de baixa energia: {ctx['low_energy']}.\n"
-        "Use estes horários como referência ao sugerir blocos de foco e tarefas "
-        "exigentes."
+        f"PERFIL CRONOBIOLÓGICO PERSONALIZADO ({data_points} dias de dados).\n"
+        f"Cronotipo base: {ctx['label']} — mas os dados reais mostram um padrão diferente.\n"
+        f"- Períodos de maior energia real: {peak_str}.\n"
+        f"- Períodos de menor energia real: {low_str}.\n"
+        "IMPORTANTE: priorize os padrões reais acima do cronotipo base ao sugerir "
+        "horários para tarefas exigentes. Quando relevante, mencione ao usuário que "
+        "o Axon aprendeu seu ritmo real e está usando isso nas sugestões."
     )
 
 
@@ -344,7 +374,7 @@ def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> list[
     # ---- Bloco ESTÁVEL (cacheável entre requisições) ----------------------
     estaveis = [
         BASE_IDENTITY,
-        _chronotype_block(cronotipo),
+        _chronotype_block(cronotipo, perfil.get("personal_profile")),
     ]
     # O bloco de agenda só entra se soubermos o tipo.
     # Se ainda não sabemos, instruímos o agente a descobrir.

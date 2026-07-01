@@ -247,3 +247,75 @@ create index if not exists tasks_objective_id_idx on public.tasks(objective_id);
 alter table public.objectives
   add column if not exists priority text
   check (priority in ('low', 'medium', 'high')) default 'medium';
+
+-- =============================================
+-- Migration 9: subtarefas (checklist dentro de uma tarefa)
+-- ---------------------------------------------
+-- Cada tarefa pode ter N subtarefas simples (título + feita/não feita).
+-- Ao marcar/desmarcar uma subtarefa o progresso da tarefa mãe é recalculado.
+-- Cascade: ao deletar a tarefa mãe, todas as subtarefas somem junto.
+-- =============================================
+
+create table if not exists public.subtasks (
+  id         uuid default gen_random_uuid() primary key,
+  task_id    uuid references public.tasks(id) on delete cascade not null,
+  user_id    uuid references auth.users(id) on delete cascade not null,
+  title      text not null,
+  done       boolean default false not null,
+  position   integer default 0 not null,
+  created_at timestamp with time zone default now()
+);
+
+create index if not exists subtasks_task_id_idx on public.subtasks(task_id);
+create index if not exists subtasks_user_id_idx on public.subtasks(user_id);
+
+alter table public.subtasks enable row level security;
+
+create policy "subtasks_select" on public.subtasks for select using (auth.uid() = user_id);
+create policy "subtasks_insert" on public.subtasks for insert with check (auth.uid() = user_id);
+create policy "subtasks_update" on public.subtasks for update using (auth.uid() = user_id);
+create policy "subtasks_delete" on public.subtasks for delete using (auth.uid() = user_id);
+
+-- =============================================
+-- Migration 10: exclusão de contas e bloqueio de e-mail por 60 dias
+-- ---------------------------------------------
+-- Quando um usuário exclui a conta, gravamos o e-mail aqui.
+-- O endpoint de registro verifica se o e-mail está dentro do período de bloqueio.
+-- Sem RLS: acessada apenas pelo backend (service_role).
+-- =============================================
+
+create table if not exists public.deleted_accounts (
+  id         uuid default gen_random_uuid() primary key,
+  email      text not null,
+  deleted_at timestamp with time zone default now() not null
+);
+
+create index if not exists deleted_accounts_email_idx on public.deleted_accounts(email);
+
+-- =============================================
+-- Migration 11: período de pico de produtividade no registro diário
+-- ---------------------------------------------
+-- Permite que o usuário informe em qual(is) período(s) do dia se sentiu
+-- mais produtivo. Usado pelo serviço de calibração para personalizar os
+-- blocos de foco. Array de até 2 slugs.
+-- =============================================
+
+alter table public.daily_logs
+  add column if not exists peak_periods text[] default '{}';
+
+-- =============================================
+-- Migration 12: perfil de energia personalizado por usuário
+-- ---------------------------------------------
+-- Armazena os 16 scores de foco (blocos de 90 min) calibrados
+-- a partir do comportamento real do usuário. Inicializado com os
+-- valores do cronotipo base e ajustado a cada registro diário.
+-- Sem RLS: acesso exclusivo via service_role no backend.
+-- =============================================
+
+create table if not exists public.user_energy_profiles (
+  user_id         uuid references auth.users(id) on delete cascade primary key,
+  block_scores    jsonb not null,           -- array de 16 floats (0–100)
+  data_points     integer default 0 not null,
+  last_calibrated timestamp with time zone,
+  created_at      timestamp with time zone default now()
+);

@@ -208,6 +208,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
   const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
   const [isDeletingTask, setIsDeletingTask] = useState(false);
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [subtasksMap, setSubtasksMap] = useState<Record<string, api.Subtask[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
@@ -265,14 +266,14 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
   const loadTasks = useCallback(async () => {
     setError(null);
     try {
-      const data = await api.getTasks();
+      const [data] = await Promise.all([api.getTasks(), loadSubtasks()]);
       setTasks(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Erro ao carregar tarefas");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadSubtasks]);
 
   useEffect(() => {
     // Primeiro arrasta pendentes de ontem, depois carrega a lista atualizada
@@ -335,13 +336,30 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
   const now = new Date();
   // base = itens do dia selecionado (dayTasks já filtra por isTaskOnDate); agora inclui eventos
   const actionable = dayTasks;
-  const completedItems = actionable.filter((t) =>
-    t.task_type === "event" ? isEventCompleted(t, now) : t.status === "done"
-  ).length;
+
+  // Pontuação proporcional: tarefas sem subtarefas valem 0 ou 1;
+  // tarefas com subtarefas contribuem com a fração concluída (ex: 3/5 = 0.6).
+  const completedScore = actionable.reduce((acc, t) => {
+    if (t.task_type === "event") return acc + (isEventCompleted(t, now) ? 1 : 0);
+    const subs = subtasksMap[t.id];
+    if (subs && subs.length > 0) {
+      return acc + subs.filter((s) => s.done).length / subs.length;
+    }
+    return acc + (t.status === "done" ? 1 : 0);
+  }, 0);
+
+  // Para o texto "X de Y concluídos" conta tarefas totalmente finalizadas.
+  const completedItems = actionable.filter((t) => {
+    if (t.task_type === "event") return isEventCompleted(t, now);
+    const subs = subtasksMap[t.id];
+    if (subs && subs.length > 0) return subs.every((s) => s.done);
+    return t.status === "done";
+  }).length;
+
   const progress =
     actionable.length === 0
       ? 0
-      : Math.round((completedItems / actionable.length) * 100);
+      : Math.round((completedScore / actionable.length) * 100);
 
   async function handleToggleDone(task: Task) {
     const next =
@@ -713,6 +731,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
           await loadTasks();
           await loadSubtasks();
         }}
+        onSubtaskChange={loadSubtasks}
       />
 
       <DeletePlanningItemModal
@@ -1561,7 +1580,6 @@ function TimelineItem({
     </div>
   );
 }
-
 function SubtasksPreview({
   subtasks,
   completedSubtasks,
@@ -2264,10 +2282,12 @@ function EditPlanningItemModal({
   task,
   onClose,
   onUpdated,
+  onSubtaskChange,
 }: {
   task: Task | null;
   onClose: () => void;
   onUpdated: () => void | Promise<void>;
+  onSubtaskChange?: () => void;
 }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
@@ -2619,7 +2639,7 @@ function EditPlanningItemModal({
             </label>
 
             {isTask && (
-              <SubtaskEditor taskId={task.id} />
+              <SubtaskEditor taskId={task.id} onSubtaskChange={onSubtaskChange} />
             )}
 
             {formError && (
@@ -2661,8 +2681,7 @@ function EditPlanningItemModal({
     </div>
   );
 }
-
-function SubtaskEditor({ taskId }: { taskId: string }) {
+function SubtaskEditor({ taskId, onSubtaskChange }: { taskId: string; onSubtaskChange?: () => void }) {
   const [subtasks, setSubtasks] = useState<api.Subtask[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState("");
@@ -2679,6 +2698,7 @@ function SubtaskEditor({ taskId }: { taskId: string }) {
     try {
       const updated = await api.updateSubtask(s.id, { done: !s.done });
       setSubtasks((prev) => prev.map((x) => x.id === updated.id ? updated : x));
+      onSubtaskChange?.();
     } catch { /* silent */ }
   }
 
@@ -2686,6 +2706,7 @@ function SubtaskEditor({ taskId }: { taskId: string }) {
     try {
       await api.deleteSubtask(subtaskId);
       setSubtasks((prev) => prev.filter((x) => x.id !== subtaskId));
+      onSubtaskChange?.();
     } catch { /* silent */ }
   }
 
@@ -2697,6 +2718,7 @@ function SubtaskEditor({ taskId }: { taskId: string }) {
       setSubtasks((prev) => [...prev, created]);
       setNewTitle("");
       setAdding(false);
+      onSubtaskChange?.();
     } catch { /* silent */ }
   }
 

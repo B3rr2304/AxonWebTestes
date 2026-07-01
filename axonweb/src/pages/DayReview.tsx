@@ -5,6 +5,7 @@ import { Dumbbell, Moon, Smile, Target, X, Zap } from "lucide-react";
 
 import * as api from "../lib/api";
 import type { DailyLog, TagItem } from "../lib/api";
+import { PEAK_PERIODS } from "../lib/api";
 import {
   MOOD_TAGS,
   PRODUCTIVITY_TAGS,
@@ -32,6 +33,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
   const [moodTags, setMoodTags] = useState<string[]>(existing?.mood_tags ?? []);
   const [prodRating, setProdRating] = useState<number | null>(existing?.productivity_rating ?? null);
   const [prodTags, setProdTags] = useState<string[]>(existing?.productivity_tags ?? []);
+  const [peakPeriods, setPeakPeriods] = useState<string[]>(existing?.peak_periods ?? []);
   const [exercised, setExercised] = useState<boolean>(existing?.exercised ?? false);
   const [notes, setNotes] = useState(existing?.notes ?? "");
   const [saving, setSaving] = useState(false);
@@ -53,6 +55,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
     setMoodTags(existing?.mood_tags ?? []);
     setProdRating(existing?.productivity_rating ?? null);
     setProdTags(existing?.productivity_tags ?? []);
+    setPeakPeriods(existing?.peak_periods ?? []);
     setExercised(existing?.exercised ?? false);
     setNotes(existing?.notes ?? "");
     setError(null);
@@ -79,6 +82,14 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
     }
   }
 
+  function togglePeakPeriod(slug: string) {
+    if (peakPeriods.includes(slug)) {
+      setPeakPeriods(peakPeriods.filter((p) => p !== slug));
+    } else if (peakPeriods.length < 2) {
+      setPeakPeriods([...peakPeriods, slug]);
+    }
+  }
+
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -92,6 +103,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
         mood_tags: moodTags,
         productivity_rating: prodRating ?? undefined,
         productivity_tags: prodTags,
+        peak_periods: peakPeriods,
         exercised,
         notes: notes.trim() || undefined,
       });
@@ -177,6 +189,38 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
                 selected={prodTags}
                 onToggle={(s) => toggleTag(prodTags, setProdTags, s)}
               />
+            </Section>
+
+            <Section icon={Zap} title="Quando você foi mais produtivo? (opcional)">
+              <div className="flex flex-wrap gap-2">
+                {PEAK_PERIODS.map((p) => {
+                  const isSelected = peakPeriods.includes(p.slug);
+                  const atLimit = !isSelected && peakPeriods.length >= 2;
+                  return (
+                    <button
+                      key={p.slug}
+                      type="button"
+                      onClick={() => togglePeakPeriod(p.slug)}
+                      disabled={atLimit}
+                      className={`flex flex-col items-start rounded-2xl border px-3.5 py-2.5 text-left transition active:scale-[0.96] ${
+                        isSelected
+                          ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
+                          : atLimit
+                          ? "cursor-not-allowed border-white/5 bg-white/[0.02] text-white/20"
+                          : "border-white/10 bg-white/[0.05] text-white/55"
+                      }`}
+                    >
+                      <span className="text-xs font-semibold">{p.label}</span>
+                      <span className={`text-[0.62rem] ${isSelected ? "text-purple-200/60" : "text-white/30"}`}>
+                        {p.hours}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+              {peakPeriods.length >= 2 && (
+                <p className="mt-2 text-xs text-white/30">Máximo de 2 períodos selecionado</p>
+              )}
             </Section>
 
             <Section icon={Dumbbell} title="Você se exercitou hoje?">

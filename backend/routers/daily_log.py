@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, Header, Query
 from auth_helper import get_current_user
 from database import supabase
 from models.schemas import DailyLogCreate, DailyLogResponse
-from services import memory_service, user_tz
+from services import memory_service, user_tz, calibration_service
 
 router = APIRouter(prefix="/daily-log", tags=["daily-log"])
 
@@ -25,8 +25,8 @@ def _calc_hours_slept(sleep_time: str, wake_time: str) -> float | None:
 
 
 def _serialize(row: dict) -> dict:
-    """Garante que campos jsonb viram listas e não None."""
-    for field in ("sleep_tags", "mood_tags", "productivity_tags"):
+    """Garante que campos array/jsonb viram listas e não None."""
+    for field in ("sleep_tags", "mood_tags", "productivity_tags", "peak_periods"):
         row[field] = row.get(field) or []
     return row
 
@@ -57,6 +57,7 @@ def upsert_daily_log(
         "mood_tags":           body.mood_tags,
         "productivity_rating": body.productivity_rating,
         "productivity_tags":   body.productivity_tags,
+        "peak_periods":        body.peak_periods,
         "exercised":           body.exercised,
         "notes":               body.notes,
     }
@@ -74,6 +75,11 @@ def upsert_daily_log(
     memory_service.sync_dated_memory(
         user_id, prefix, f"{prefix} {note}" if note else None
     )
+
+    # Calibra o perfil de energia personalizado do usuário (falha silenciosa).
+    profile_res = supabase.table("profiles").select("chronotype").eq("id", user_id).single().execute()
+    chronotype = (profile_res.data or {}).get("chronotype") or "Misto"
+    calibration_service.calibrate_from_log(user_id, chronotype, result.data[0])
 
     return _serialize(result.data[0])
 

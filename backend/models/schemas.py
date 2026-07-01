@@ -252,6 +252,12 @@ class GoogleConnectResponse(BaseModel):
 
 # --- Daily Log ---
 
+_VALID_PEAK_PERIODS = {
+    "madrugada", "cedo_manha", "manha",
+    "inicio_tarde", "fim_tarde", "inicio_noite", "noite",
+}
+
+
 class DailyLogCreate(BaseModel):
     sleep_time:          Optional[str] = None   # "23:30"
     wake_time:           Optional[str] = None   # "07:00"
@@ -261,6 +267,7 @@ class DailyLogCreate(BaseModel):
     mood_tags:           list[str]     = []     # ["ansioso", "tranquilo"]
     productivity_rating: Optional[int] = None   # 1–5
     productivity_tags:   list[str]     = []     # ["em_flow"]
+    peak_periods:        list[str]     = []     # até 2 slugs de período
     exercised:           Optional[bool] = None
     notes:               Optional[str]  = None
 
@@ -278,6 +285,16 @@ class DailyLogCreate(BaseModel):
             raise ValueError("máximo de 3 tags por campo")
         return v
 
+    @field_validator("peak_periods")
+    @classmethod
+    def _validate_peak_periods(cls, v: list[str]) -> list[str]:
+        if len(v) > 2:
+            raise ValueError("máximo de 2 períodos de pico")
+        for slug in v:
+            if slug not in _VALID_PEAK_PERIODS:
+                raise ValueError(f"período inválido: {slug}")
+        return v
+
 
 class DailyLogResponse(BaseModel):
     id:                  str
@@ -291,6 +308,7 @@ class DailyLogResponse(BaseModel):
     mood_tags:           list[str]      = []
     productivity_rating: Optional[int]  = None
     productivity_tags:   list[str]      = []
+    peak_periods:        list[str]      = []
     exercised:           Optional[bool] = None
     notes:               Optional[str]  = None
     created_at:          str
@@ -429,6 +447,26 @@ class RoutineListItem(BaseModel):
     streak:          int = 0
     streak_unit:     str = "dias"
     item_count:      int = 0
+
+
+# --- Subtasks ---
+
+class SubtaskCreate(BaseModel):
+    title: str
+
+
+class SubtaskUpdate(BaseModel):
+    title: Optional[str] = None
+    done: Optional[bool] = None
+
+
+class SubtaskResponse(BaseModel):
+    id: str
+    task_id: str
+    title: str
+    done: bool
+    position: int
+    created_at: str
 
 
 # --- Objectives ---

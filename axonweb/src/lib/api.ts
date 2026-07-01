@@ -688,6 +688,25 @@ export function updatePlanningPreferences(prefs: PlanningPreferences) {
 
 // --- Daily Log ---
 
+export type PeakPeriodSlug =
+  | "madrugada"
+  | "cedo_manha"
+  | "manha"
+  | "inicio_tarde"
+  | "fim_tarde"
+  | "inicio_noite"
+  | "noite";
+
+export const PEAK_PERIODS: { slug: PeakPeriodSlug; label: string; hours: string }[] = [
+  { slug: "madrugada",    label: "Madrugada",        hours: "00h–05h" },
+  { slug: "cedo_manha",   label: "Cedo da manhã",    hours: "05h–08h" },
+  { slug: "manha",        label: "Manhã",             hours: "08h–12h" },
+  { slug: "inicio_tarde", label: "Começo da tarde",  hours: "12h–15h" },
+  { slug: "fim_tarde",    label: "Fim da tarde",      hours: "15h–18h" },
+  { slug: "inicio_noite", label: "Começo da noite",  hours: "18h–21h" },
+  { slug: "noite",        label: "Noite",             hours: "21h–00h" },
+];
+
 export interface DailyLog {
   id: string;
   date: string;
@@ -700,6 +719,7 @@ export interface DailyLog {
   mood_tags: string[];
   productivity_rating: number | null;
   productivity_tags: string[];
+  peak_periods: string[];
   exercised: boolean | null;
   notes: string | null;
   created_at: string;
@@ -715,6 +735,7 @@ export interface DailyLogInput {
   mood_tags?: string[];
   productivity_rating?: number;
   productivity_tags?: string[];
+  peak_periods?: string[];
   exercised?: boolean;
   notes?: string;
 }
@@ -786,6 +807,29 @@ export function getPatternInsights(refresh = false) {
   return request<PatternInsightsResponse>(
     `/insights/patterns${refresh ? "?refresh=true" : ""}`
   );
+}
+
+export interface FocusBlockItem {
+  idx: number;
+  level: "sono" | "recuperacao" | "foco_leve" | "foco_moderado" | "foco_profundo" | "pico";
+  label: string;
+  energy: number;
+  focus: number;
+  description: string;
+  start_time: string;
+  end_time: string;
+}
+
+export interface FocusBlocksResponse {
+  chronotype: string;
+  calibrated: boolean;
+  data_points: number;
+  min_data_points: number;
+  blocks: FocusBlockItem[];
+}
+
+export function getFocusBlocks() {
+  return request<FocusBlocksResponse>("/insights/blocks");
 }
 
 // --- Routines ---
@@ -1038,6 +1082,43 @@ export function updateObjective(
 
 export function deleteObjective(id: string) {
   return request<void>(`/objectives/${id}`, { method: "DELETE" });
+}
+
+// --- Subtasks ---
+
+export interface Subtask {
+  id: string;
+  task_id: string;
+  title: string;
+  done: boolean;
+  position: number;
+  created_at: string;
+}
+
+export function getSubtasks() {
+  return request<Subtask[]>("/subtasks");
+}
+
+export function getTaskSubtasks(taskId: string) {
+  return request<Subtask[]>(`/subtasks/task/${taskId}`);
+}
+
+export function createSubtask(taskId: string, payload: { title: string }) {
+  return request<Subtask>(`/subtasks/task/${taskId}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function updateSubtask(subtaskId: string, payload: { title?: string; done?: boolean }) {
+  return request<Subtask>(`/subtasks/${subtaskId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function deleteSubtask(subtaskId: string) {
+  return request<void>(`/subtasks/${subtaskId}`, { method: "DELETE" });
 }
 
 

@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends
 from auth_helper import get_current_user
 from database import supabase
-from services import chronotype as chronotype_service
+from services import chronotype as chronotype_service, calibration_service
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -67,6 +67,14 @@ def get_dashboard(current_user: dict = Depends(get_current_user)):
     now = datetime.now(_TZ)
     hour = now.hour
     ctx = chronotype_service.get_chronotype_context(curve_key, hour)
+
+    # Substitui energy_percent pelo score pessoal quando calibrado
+    personal_scores, calibrated, _ = calibration_service.get_block_scores(
+        user_id, chronotype or "Misto"
+    )
+    if calibrated:
+        block_idx = (hour * 60) // 90
+        ctx = {**ctx, "energy": round(personal_scores[block_idx])}
 
     # Busca todas as tarefas de hoje com horário definido — usadas para enriquecer
     # os blocos de foco com as tarefas reais que o usuário deveria estar fazendo.
