@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { useLocation } from "react-router-dom";
 
+// ===========================================================================
+// RESET DE SCROLL ENTRE ROTAS
+// ===========================================================================
+// Garante que cada troca de página comece no topo da viewport.
 export default function ScrollToTop() {
   const { pathname } = useLocation();
 

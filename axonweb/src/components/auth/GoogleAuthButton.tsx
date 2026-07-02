@@ -1,10 +1,23 @@
+// ===========================================================================
+// CONFIGURAÇÃO DA API
+// ===========================================================================
+// URL base usada para iniciar o fluxo OAuth com o backend.
 const API_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
+
+// ===========================================================================
+// TIPOS DO COMPONENTE
+// ===========================================================================
 
 type GoogleAuthButtonProps = {
   label: string;
 };
 
+// ===========================================================================
+// BOTÃO DE AUTENTICAÇÃO COM GOOGLE
+// ===========================================================================
+
 export default function GoogleAuthButton({ label }: GoogleAuthButtonProps) {
+  // Redireciona para o endpoint do backend responsável pelo OAuth do Google.
   function handleClick() {
     window.location.href = `${API_URL}/auth/google`;
   }
@@ -21,6 +34,10 @@ export default function GoogleAuthButton({ label }: GoogleAuthButtonProps) {
   );
 }
 
+// ===========================================================================
+// ÍCONE DO GOOGLE
+// ===========================================================================
+// SVG local para evitar depender de imagem externa no botão de login/cadastro.
 function GoogleIcon() {
   return (
     <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" aria-hidden="true">

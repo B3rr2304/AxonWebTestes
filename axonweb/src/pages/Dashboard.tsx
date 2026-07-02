@@ -25,6 +25,11 @@ import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 import type { DashboardData, FocusBlock, BlockTask, Task, Subtask } from "../lib/api";
 
+// ============================================================================
+// Tipos locais
+// Props e aliases usados apenas na montagem visual do Dashboard.
+// ============================================================================
+
 type MetricCardProps = {
   icon: ElementType;
   label: string;
@@ -32,13 +37,19 @@ type MetricCardProps = {
   helper: string;
 };
 
+// ============================================================================
+// Página Dashboard
+// Tela inicial pós-login: ritmo atual, tarefa-chave, plano do dia e notificações.
+// ============================================================================
+
 export default function Dashboard() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // ---------------------------------------------------------------------------
-  // ESTADOS GERAIS DA TELA
-  // ---------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Estados da página
+  // Controlam menu lateral, carregamento inicial, plano do dia e modais locais.
+  // --------------------------------------------------------------------------
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -51,9 +62,10 @@ export default function Dashboard() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // ---------------------------------------------------------------------------
-  // NOTIFICAÇÕES
-  // ---------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Notificações
+  // Mantém o contador do sino sincronizado com o toast global e o modal.
+  // --------------------------------------------------------------------------
   const refreshUnreadCount = useCallback(() => {
     api
       .getUnreadCount()
@@ -79,11 +91,10 @@ export default function Dashboard() {
     };
   }, [refreshUnreadCount]);
 
-  // ---------------------------------------------------------------------------
-  // SUBTAREFAS
-  // Carrega todas as subtarefas uma vez e organiza por task_id.
-  // No dashboard usamos apenas um indicador compacto no plano do dia.
-  // ---------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Subtarefas do plano enxuto
+  // Agrupa por task_id para mostrar progresso compacto dentro da seção “Hoje”.
+  // --------------------------------------------------------------------------
   const loadSubtasks = useCallback(async () => {
     try {
       const all = await api.getSubtasks();
@@ -108,14 +119,11 @@ export default function Dashboard() {
     }
   }, []);
 
-  // ---------------------------------------------------------------------------
-  // CARREGAMENTO PRINCIPAL DO DASHBOARD
-  // - Valida login
-  // - Busca dados do dashboard
-  // - Busca revisão diária
-  // - Atualiza notificações
-  // - Dá auto-refresh a cada 30 minutos e ao voltar para a aba
-  // ---------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Carregamento principal
+  // Busca dashboard, tarefa-chave, revisão diária, subtarefas e notificações.
+  // Também atualiza dados ao retornar para a aba e a cada 30 minutos.
+  // --------------------------------------------------------------------------
   useEffect(() => {
     if (!api.isLoggedIn()) {
       navigate("/login");
@@ -173,8 +181,7 @@ export default function Dashboard() {
       loadSubtasks();
     }, 30 * 60 * 1000);
 
-    // Polling periódico para capturar notificações geradas pelo scheduler
-    // enquanto o usuário já está com o app aberto
+    // Captura notificações geradas pelo scheduler enquanto o app permanece aberto.
     const notifInterval = window.setInterval(refreshUnreadCount, 2 * 60 * 1000);
 
     const handleVisibility = () => {
@@ -199,10 +206,10 @@ export default function Dashboard() {
     };
   }, [navigate, refreshUnreadCount, loadSubtasks]);
 
-  // ---------------------------------------------------------------------------
-  // ABERTURA AUTOMÁTICA DA REVISÃO DIÁRIA
-  // Usado quando outra tela navega para o dashboard pedindo para abrir o DayReview.
-  // ---------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Abertura automática da revisão diária
+  // Permite que outra tela navegue para cá já abrindo o DayReview.
+  // --------------------------------------------------------------------------
   useEffect(() => {
     if (location.state?.openDayReview) {
       setReviewOpen(true);
@@ -210,11 +217,10 @@ export default function Dashboard() {
     }
   }, [location.state, location.pathname]);
 
-  // ---------------------------------------------------------------------------
-  // ABERTURA AUTOMÁTICA DAS NOTIFICAÇÕES VIA URL
-  // O toast global navega para /dashboard?notifications=open.
-  // Este efeito abre o modal e limpa o parâmetro da URL.
-  // ---------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Abertura automática das notificações
+  // O toast global usa /dashboard?notifications=open para abrir o modal do sino.
+  // --------------------------------------------------------------------------
   useEffect(() => {
     if (searchParams.get("notifications") !== "open") return;
 
@@ -225,11 +231,10 @@ export default function Dashboard() {
     setSearchParams(nextParams, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  // ---------------------------------------------------------------------------
-  // DADOS DERIVADOS
-  // Valores calculados a partir da resposta do backend.
-  // Mantemos fallbacks para evitar tela quebrada enquanto carrega.
-  // ---------------------------------------------------------------------------
+  // --------------------------------------------------------------------------
+  // Dados derivados do dashboard
+  // Centraliza fallbacks e rótulos calculados para simplificar o JSX.
+  // --------------------------------------------------------------------------
   const showReviewCard = new Date().getHours() >= 18 && todayLog === null;
 
   const chronotypeKey =
@@ -270,7 +275,7 @@ export default function Dashboard() {
       <Background />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        {/* Header: logo, sino de notificações e menu lateral */}
+        {/* Header fixo: acesso ao dashboard, central de notificações e sidebar. */}
         <header className="mb-5 flex items-center justify-between">
           <button
             onClick={() => navigate("/dashboard")}
@@ -313,7 +318,7 @@ export default function Dashboard() {
           </div>
         </header>
 
-        {/* Hero principal: mostra o estado atual do dia e o bloco de foco */}
+        {/* Bloco “Agora”: resume a janela de foco atual e o próximo bloco do dia. */}
         <section className="mb-4">
           <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
@@ -379,7 +384,7 @@ export default function Dashboard() {
           </div>
         </section>
 
-        {/* Tarefa chave do dia */}
+        {/* Tarefa-chave: destaque rápido para a prioridade principal do dia. */}
         {keyTask && (
           <section className="mb-4">
             <button
@@ -423,7 +428,7 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Card de revisão diária: aparece à noite se o usuário ainda não registrou */}
+        {/* Revisão diária: aparece à noite quando ainda não existe registro de hoje. */}
         {showReviewCard && (
           <section className="mb-4">
             <button
@@ -449,7 +454,7 @@ export default function Dashboard() {
           </section>
         )}
 
-        {/* Métricas rápidas do dia */}
+        {/* Métricas rápidas: energia, foco, próximo pico e ritmo predominante. */}
         <section className="mb-4 grid grid-cols-2 gap-3">
           <MetricCard
             icon={Zap}
@@ -480,7 +485,7 @@ export default function Dashboard() {
           />
         </section>
 
-        {/* Lista resumida de tarefas/blocos do dia */}
+        {/* Plano enxuto: mostra até cinco itens dos blocos do dia, com subtarefas. */}
         <section className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/75 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
           <div className="mb-4 flex items-center justify-between">
             <div>
@@ -607,7 +612,7 @@ export default function Dashboard() {
         </section>
       </div>
 
-      {/* Modais e overlays globais da página */}
+      {/* Overlays globais: sidebar, revisão diária e central de notificações. */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -631,10 +636,12 @@ export default function Dashboard() {
   );
 }
 
-// ===========================================================================
-// COMPONENTES DE UI DO DASHBOARD
-// ===========================================================================
+// ============================================================================
+// Componentes internos do Dashboard
+// Cards visuais usados apenas nesta página.
+// ============================================================================
 
+// Card compacto usado na grade de métricas rápidas do topo.
 function MetricCard({ icon: Icon, label, value, helper }: MetricCardProps) {
   return (
     <div className="rounded-[1.55rem] border border-white/10 bg-[#1b1b27]/75 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
@@ -653,6 +660,7 @@ function MetricCard({ icon: Icon, label, value, helper }: MetricCardProps) {
   );
 }
 
+// Exibe o bloco cronobiológico atual; usa fallback enquanto o backend carrega.
 function CurrentFocusBlockCard({
   currentBlock,
   nextBlock,
@@ -807,6 +815,7 @@ function CurrentFocusBlockCard({
   );
 }
 
+// Linha curta de tarefa dentro dos blocos de foco atual/próximo.
 function BlockTaskRow({ task, compact = false }: { task: BlockTask; compact?: boolean }) {
   const isProgress = task.status === "progress";
 
@@ -835,10 +844,12 @@ function BlockTaskRow({ task, compact = false }: { task: BlockTask; compact?: bo
   );
 }
 
-// ===========================================================================
-// HELPERS DE CÁLCULO E FORMATAÇÃO
-// ===========================================================================
+// ============================================================================
+// Helpers de cálculo
+// Mantêm regras de progresso fora do JSX principal.
+// ============================================================================
 
+// Calcula o avanço temporal do bloco atual com base no horário local do usuário.
 function getCurrentBlockProgress(block: FocusBlock) {
   const now = new Date();
 
@@ -851,9 +862,7 @@ function getCurrentBlockProgress(block: FocusBlock) {
   const end = new Date(now);
   end.setHours(endHour, endMinute, 0, 0);
 
-  // Exemplo: 23:30 – 00:00
-  // Mesmo não atravessando a madrugada com atividade,
-  // o horário final 00:00 pertence ao próximo dia.
+  // Blocos que terminam em 00:00 precisam ser tratados como fim no dia seguinte.
   if (end <= start) {
     end.setDate(end.getDate() + 1);
   }
@@ -871,9 +880,10 @@ function clampPercent(value: number) {
   return Math.min(Math.max(value, 0), 100);
 }
 
-// ===========================================================================
-// BACKGROUND VISUAL DA PÁGINA
-// ===========================================================================
+// ============================================================================
+// Background
+// Camadas decorativas do visual dark premium.
+// ============================================================================
 
 function Background() {
   return (
@@ -890,10 +900,10 @@ function Background() {
 }
 
 
-// ===========================================================================
-// NOTIFICAÇÕES
-// Modal aberto pelo sino do header e pelo toast global (/dashboard?notifications=open)
-// ===========================================================================
+// ============================================================================
+// Central de notificações
+// Modal aberto pelo sino do header e pelo toast global via query param.
+// ============================================================================
 
 type NotificationAction = {
   task_id?: string;
@@ -907,6 +917,7 @@ type NotificationWithAction = api.NotificationData & {
   action?: NotificationAction | null;
 };
 
+// Item individual do modal: leitura simples, alteração aplicada ou sugestão acionável.
 function NotificationItem({
   notification,
   onRead,
@@ -1093,6 +1104,7 @@ function NotificationItem({
   );
 }
 
+// Formata datas recentes em linguagem curta para caber no card mobile.
 function formatNotificationTime(createdAt: string) {
   const date = new Date(createdAt);
   const now = new Date();
@@ -1125,6 +1137,7 @@ function NotificationsSheet({
   onClose: () => void;
   onUnreadCountChange: (count: number) => void;
 }) {
+  // Estados do modal: lista local, aba ativa, paginação e carregamento.
   const [notifications, setNotifications] = useState<api.NotificationData[]>([]);
   const [notificationView, setNotificationView] = useState<"unread" | "read">(
     "unread"
@@ -1133,6 +1146,7 @@ function NotificationsSheet({
   const [loading, setLoading] = useState(false);
   const NOTIFICATIONS_PAGE_SIZE = 10;
 
+  // Listas derivadas para separar rapidamente o que está pendente do que já foi tratado.
   const unreadNotifications = notifications.filter(
     (notification) => notification.status === "unread"
   );
@@ -1153,6 +1167,7 @@ function NotificationsSheet({
     onUnreadCountChange(unreadCount);
   }, [unreadCount, onUnreadCountChange]);
 
+  // Carrega uma página extra para descobrir se ainda existe “Ver mais”.
   function loadNotifications() {
     setLoading(true);
 
@@ -1207,10 +1222,11 @@ function NotificationsSheet({
 
       setHasMore(more.length > NOTIFICATIONS_PAGE_SIZE);
     } catch {
-      // ignore
+      // Falha silenciosa para não travar a central de notificações.
     }
   }
 
+  // Marca como lida e avisa outros pontos da interface para atualizarem o contador.
   async function handleRead(id: string) {
     const currentNotification = notifications.find(
       (notification) => notification.id === id
@@ -1235,6 +1251,7 @@ function NotificationsSheet({
     window.dispatchEvent(new Event("axon:notifications-updated"));
   }
 
+  // Aceita sugestões de melhoria e move o item para a aba de lidas/tratadas.
   async function handleAccept(id: string) {
     await api.acceptNotification(id).catch(() => null);
 
@@ -1253,6 +1270,7 @@ function NotificationsSheet({
     setNotificationView("read");
   }
 
+  // Recusa sugestões mantendo o histórico visível na aba de lidas/tratadas.
   async function handleReject(id: string) {
     await api.rejectNotification(id).catch(() => null);
 

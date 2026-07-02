@@ -1,21 +1,25 @@
-import React from "react";
-import { useState } from "react";
+import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
-  ArrowRight,
-  Mail,
-  Lock,
-  User,
-  Sparkles,
-  CheckCircle2,
   AlertCircle,
+  ArrowRight,
+  CheckCircle2,
   Eye,
   EyeOff,
+  Lock,
+  Mail,
+  Sparkles,
+  User,
 } from "lucide-react";
+
 import AuthLogo from "../components/auth/AuthLogo";
-import * as api from "../lib/api";
 import GoogleAuthButton from "../components/auth/GoogleAuthButton";
+import * as api from "../lib/api";
+
+// ===========================================================================
+// BACKGROUND DA AUTENTICAÇÃO
+// ===========================================================================
 
 function AuthBackground() {
   return (
@@ -23,11 +27,16 @@ function AuthBackground() {
       <div className="absolute left-1/2 top-[-16rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-purple-700/25 blur-[120px]" />
       <div className="absolute right-[-14rem] top-[16rem] h-[28rem] w-[28rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
       <div className="absolute bottom-[-12rem] left-[-10rem] h-[28rem] w-[28rem] rounded-full bg-indigo-500/10 blur-[120px]" />
+
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-20" />
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,11,0.08),#05050b_88%)]" />
     </div>
   );
 }
+
+// ===========================================================================
+// CAMPOS DO FORMULÁRIO
+// ===========================================================================
 
 type InputFieldProps = {
   icon: React.ElementType;
@@ -38,12 +47,24 @@ type InputFieldProps = {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
-function InputField({ icon: Icon, label, type = "text", placeholder, value, onChange }: InputFieldProps) {
+// Campo genérico usado para nome e e-mail.
+function InputField({
+  icon: Icon,
+  label,
+  type = "text",
+  placeholder,
+  value,
+  onChange,
+}: InputFieldProps) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-white/55">{label}</span>
+      <span className="mb-2 block text-sm font-medium text-white/55">
+        {label}
+      </span>
+
       <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.055] px-4 backdrop-blur-2xl transition focus-within:border-purple-300/35 focus-within:bg-white/[0.075]">
         <Icon className="h-5 w-5 text-purple-200/80" />
+
         <input
           type={type}
           placeholder={placeholder}
@@ -64,6 +85,7 @@ type PasswordFieldProps = {
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
+// Campo de senha com alternância de visibilidade.
 function PasswordField({
   label,
   placeholder,
@@ -106,16 +128,32 @@ function PasswordField({
   );
 }
 
+// ===========================================================================
+// PÁGINA DE CADASTRO
+// ===========================================================================
+
 export default function Signup() {
   const navigate = useNavigate();
+
+  // ---------------------------------------------------------------------------
+  // Estado do formulário
+  // ---------------------------------------------------------------------------
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+
+  // ---------------------------------------------------------------------------
+  // Estado de envio, erro e aceite legal
+  // ---------------------------------------------------------------------------
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
+  // ---------------------------------------------------------------------------
+  // Validação e criação da conta
+  // ---------------------------------------------------------------------------
+  // Depois do cadastro, a sessão é salva e o usuário entra no onboarding.
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -131,7 +169,9 @@ export default function Signup() {
     }
 
     if (!acceptedTerms) {
-      setError("Você precisa aceitar os Termos de Uso e a Política de Privacidade.");
+      setError(
+        "Você precisa aceitar os Termos de Uso e a Política de Privacidade."
+      );
       return;
     }
 
@@ -142,7 +182,9 @@ export default function Signup() {
       api.saveSession(res);
       navigate("/questionnaire-intro");
     } catch (err: unknown) {
-      setError((err as Error).message ?? "Erro ao criar conta. Tente novamente.");
+      setError(
+        (err as Error).message ?? "Erro ao criar conta. Tente novamente."
+      );
     } finally {
       setLoading(false);
     }
@@ -161,25 +203,48 @@ export default function Signup() {
           transition={{ duration: 0.55 }}
           className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/35 backdrop-blur-2xl sm:p-6"
         >
+          {/* Cabeçalho: prepara o usuário para o cadastro e o questionário. */}
           <div className="mb-4">
             <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs text-purple-100">
               <Sparkles className="h-3.5 w-3.5" />
               Primeiro acesso
             </div>
+
             <h1 className="text-[2rem] font-semibold leading-[1.05] tracking-[-0.045em] text-white">
               Crie seu Axon pessoal.
             </h1>
+
             <div className="flex items-start gap-3 py-4">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-purple-200" />
+
               <p className="text-sm leading-6 text-white/48">
-                Depois do cadastro, você responderá um questionário rápido para personalizar sua experiência.
+                Depois do cadastro, você responderá um questionário rápido para
+                personalizar sua experiência.
               </p>
             </div>
           </div>
 
           <form className="space-y-4" onSubmit={handleSubmit}>
-            <InputField icon={User} label="Nome" type="text" placeholder="Como devemos te chamar?" value={name} onChange={(e) => setName(e.target.value)} />
-            <InputField icon={Mail} label="E-mail" type="email" placeholder="seuemail@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+            {/* Dados básicos da nova conta. */}
+            <InputField
+              icon={User}
+              label="Nome"
+              type="text"
+              placeholder="Como devemos te chamar?"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+
+            <InputField
+              icon={Mail}
+              label="E-mail"
+              type="email"
+              placeholder="seuemail@exemplo.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
+
+            {/* Senha e confirmação antes de criar a conta no backend. */}
             <PasswordField
               label="Senha"
               placeholder="Crie uma senha segura"
@@ -205,6 +270,7 @@ export default function Signup() {
               </div>
             )}
 
+            {/* Aceite obrigatório antes do cadastro tradicional. */}
             <label className="flex cursor-pointer items-start gap-3 pt-1">
               <input
                 type="checkbox"
@@ -230,8 +296,10 @@ export default function Signup() {
               </span>
             </label>
 
+            {/* Cadastro social e divisor visual. */}
             <div className="pt-4">
               <GoogleAuthButton label="Cadastrar com o Google" />
+
               <div className="my-5 flex items-center gap-3">
                 <div className="h-px flex-1 bg-white/10" />
                 <span className="text-xs font-medium text-white/42">ou</span>
@@ -242,16 +310,21 @@ export default function Signup() {
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+              className="mt-1 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Criando conta..." : "Criar minha conta"}
               {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
             </button>
           </form>
 
+          {/* Link para quem já possui uma conta. */}
           <p className="mt-6 text-center text-xs text-white/40">
             Já tem conta?{" "}
-            <Link to="/login" className="font-medium" style={{ color: '#a855f7' }}>
+            <Link
+              to="/login"
+              className="font-medium"
+              style={{ color: "#a855f7" }}
+            >
               Entrar
             </Link>
           </p>

@@ -1,5 +1,14 @@
 const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
 
+/* ============================================================================
+ * API BASE E HELPERS
+ * Centraliza URL, headers, sessão e tratamento padrão de erros.
+ * ========================================================================== */
+
+/**
+ * Wrapper direto de fetch mantido para compatibilidade com imports existentes.
+ * Use `request` abaixo quando precisar do tratamento padrão de erro/sessão.
+ */
 async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
   const token = localStorage.getItem("axon_token");
 
@@ -12,7 +21,7 @@ async function apiFetch(path: string, options?: RequestInit): Promise<Response> 
       ...options?.headers,
     },
   });
-} 
+}
 
 export default apiFetch;
 
@@ -25,21 +34,26 @@ function authHeaders(): Record<string, string> {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+/**
+ * Helper principal das chamadas autenticadas.
+ * Também renova o marcador de atividade e redireciona sessões expiradas.
+ */
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
   let res: Response;
+
   try {
     res = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers: {
-      "Content-Type": "application/json",
-      "X-Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
-      ...authHeaders(),
-      ...(options.headers as Record<string, string> | undefined),
-    },
-  });
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        "X-Timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+        ...authHeaders(),
+        ...(options.headers as Record<string, string> | undefined),
+      },
+    });
   } catch {
     throw new Error(
       "⚠️ DEV: Backend inacessível. Abra a porta 8000 como Pública no painel de Portas do VS Code e certifique-se de que o servidor está rodando (uvicorn main:app --reload)."
@@ -55,6 +69,7 @@ async function request<T>(
       window.location.href = "/login";
       throw new Error("Sessão expirada");
     }
+
     const error = await res.json().catch(() => ({ detail: "Erro desconhecido" }));
     throw new Error(error.detail ?? "Erro na requisição");
   }
@@ -67,49 +82,10 @@ async function request<T>(
   return res.json();
 }
 
-// --- Auth ---
-
-export interface ChatProjectData {
-  id: string;
-  name: string;
-  description?: string | null;
-  conversation_count?: number;
-  created_at?: string;
-  updated_at?: string;
-}
-
-export async function updateChatProject(
-  projectId: string,
-  payload: {
-    name: string;
-    description?: string;
-  }
-) {
-  return request<ChatProjectData>(`/chat/projects/${projectId}`, {
-    method: "PATCH",
-    body: JSON.stringify(payload),
-  });
-}
-
-export async function deleteChatProject(projectId: string) {
-  return request<void>(`/chat/projects/${projectId}`, {
-    method: "DELETE",
-  });
-}
-
-export async function getChatProjects() {
-  return request<ChatProjectData[]>("/chat/projects");
-}
-
-export async function createChatProject(payload: {
-  name: string;
-  description?: string;
-}) {
-  return request<ChatProjectData>("/chat/projects", {
-    method: "POST",
-    body: JSON.stringify(payload),
-  });
-}
+/* ============================================================================
+ * AUTH E SESSÃO
+ * Fluxos de cadastro, login, Google OAuth, refresh e persistência local.
+ * ========================================================================== */
 
 export interface AuthResponse {
   access_token: string;
@@ -134,25 +110,24 @@ export function login(email: string, password: string) {
   });
 }
 
+// Usado no callback do Google para transformar o code em sessão do AXON.
 export function exchangeGoogleSession(code: string) {
   return request<AuthResponse>(`/auth/google/session?code=${encodeURIComponent(code)}`);
 }
 
+// Inicia o fluxo para conectar Google Calendar nas integrações.
 export function connectGoogleCalendar() {
   return request<{ auth_url: string }>("/auth/google/connect");
 }
 
-export function logout() {
-  localStorage.removeItem("axon_token");
-  localStorage.removeItem("axon_refresh_token");
-  localStorage.removeItem("axon_user");
-  localStorage.removeItem("axon_last_active");
+export function refreshSession(refreshToken: string) {
+  return request<AuthResponse>("/auth/refresh", {
+    method: "POST",
+    body: JSON.stringify({ refresh_token: refreshToken }),
+  });
 }
 
-export function deleteAccount() {
-  return request<void>("/account", { method: "DELETE" });
-}
-
+// Mantém os dados mínimos da sessão usados pelas rotas privadas e headers.
 export function saveSession(res: AuthResponse) {
   localStorage.setItem("axon_token", res.access_token);
   localStorage.setItem("axon_refresh_token", res.refresh_token);
@@ -164,14 +139,26 @@ export function isLoggedIn(): boolean {
   return !!getToken();
 }
 
-export function refreshSession(refreshToken: string) {
-  return request<AuthResponse>("/auth/refresh", {
-    method: "POST",
-    body: JSON.stringify({ refresh_token: refreshToken }),
-  });
+export function logout() {
+  localStorage.removeItem("axon_token");
+  localStorage.removeItem("axon_refresh_token");
+  localStorage.removeItem("axon_user");
+  localStorage.removeItem("axon_last_active");
 }
 
-// --- Profile ---
+/* ============================================================================
+ * ACCOUNT
+ * Ações sensíveis da conta: exclusão permanente e limpeza de sessão.
+ * ========================================================================== */
+
+export function deleteAccount() {
+  return request<void>("/account", { method: "DELETE" });
+}
+
+/* ============================================================================
+ * PROFILE
+ * Dados pessoais, avatar, cronotipo salvo e preferências do usuário.
+ * ========================================================================== */
 
 export interface ProfileData {
   name?: string;
@@ -196,6 +183,7 @@ export function updateProfile(payload: { name?: string }) {
   });
 }
 
+// Envio de avatar usa FormData; por isso não passa pelo helper JSON `request`.
 export async function uploadAvatar(file: File): Promise<ProfileData> {
   const token = getToken();
   const form = new FormData();
@@ -221,8 +209,6 @@ export function deleteAvatar(): Promise<ProfileData> {
   return request<ProfileData>("/profile/avatar", { method: "DELETE" });
 }
 
-// --- Tag preferences ---
-
 export interface TagItem {
   slug: string;
   label: string;
@@ -245,7 +231,10 @@ export function updateTagPreferences(prefs: TagPreferences): Promise<TagPreferen
   });
 }
 
-// --- Users ---
+/* ============================================================================
+ * USERS E CRONOTIPO
+ * Dados do usuário atual e salvamento do resultado do questionário.
+ * ========================================================================== */
 
 export interface UserProfile {
   id: string;
@@ -259,6 +248,7 @@ export function getMe() {
   return request<UserProfile>("/users/me");
 }
 
+// Usado após o questionário para persistir cronotipo, pontuação e respostas.
 export function saveChronotype(
   chronotype: string,
   scores: Record<string, number>,
@@ -270,13 +260,12 @@ export function saveChronotype(
   });
 }
 
-// --- Classify ---
-
 export interface ClassifyResponse {
   cronotipo: string;
   pontos: Record<string, number>;
 }
 
+// Calcula o cronotipo sem necessariamente persistir no perfil do usuário.
 export function classify(
   respostas: Record<string, string>,
   qualidade_sono: string,
@@ -288,6 +277,7 @@ export function classify(
   });
 }
 
+// Usado no fluxo final do questionário para classificar e salvar em uma chamada.
 export function classifyAndSave(
   respostas: Record<string, string>,
   qualidade_sono: string,
@@ -299,7 +289,10 @@ export function classifyAndSave(
   });
 }
 
-// --- Dashboard ---
+/* ============================================================================
+ * DASHBOARD
+ * Dados agregados da tela inicial: energia, foco, blocos e plano enxuto do dia.
+ * ========================================================================== */
 
 export interface NextFocusBlock {
   start: string;
@@ -328,7 +321,6 @@ export interface DayBlock {
   level_label: string;
   tasks: BlockTask[];
 }
-
 
 export interface FocusBlock {
   index: number;
@@ -362,11 +354,15 @@ export interface DashboardData {
   day_blocks: DayBlock[];
 }
 
+// Usado no Dashboard para carregar blocos atuais, próximos e tarefas do dia.
 export function getDashboard() {
   return request<DashboardData>("/dashboard/");
 }
 
-// --- Tasks ---
+/* ============================================================================
+ * PLANNING / TASKS
+ * Tarefas, eventos, rotinas pontuais, estatísticas diárias e fila do calendário.
+ * ========================================================================== */
 
 export type TaskType = "task" | "event" | "routine";
 export type TaskStatus = "todo" | "progress" | "done" | "scheduled";
@@ -419,6 +415,7 @@ export type TaskUpdateInput = Partial<TaskCreateInput> & {
   is_key_task?: boolean;
 };
 
+// Usado no Planning, Dashboard e Focus com filtros opcionais de data/status/tipo.
 export function getTasks(params?: {
   scheduled_date?: string;
   status?: TaskStatus;
@@ -428,6 +425,7 @@ export function getTasks(params?: {
   if (params?.scheduled_date) query.set("scheduled_date", params.scheduled_date);
   if (params?.status) query.set("status", params.status);
   if (params?.task_type) query.set("task_type", params.task_type);
+
   const qs = query.toString();
   return request<Task[]>(`/tasks${qs ? `?${qs}` : ""}`);
 }
@@ -450,14 +448,9 @@ export function deleteTask(id: string) {
   return request<void>(`/tasks/${id}`, { method: "DELETE" });
 }
 
+// Move tarefas pendentes para o próximo dia quando o usuário decide reorganizar.
 export function carryForwardTasks() {
   return request<Task[]>("/tasks/carry-forward", { method: "POST" });
-}
-
-export function getDailyStats(start: string, end: string) {
-  return request<DailyStat[]>(
-    `/tasks/daily-stats?start=${start}&end=${end}`
-  );
 }
 
 export interface DailyStat {
@@ -468,7 +461,17 @@ export interface DailyStat {
   carried_forward: number;
 }
 
-// --- Subtasks ---
+// Usado no Planning para congelar/consultar estatísticas de dias anteriores.
+export function getDailyStats(start: string, end: string) {
+  return request<DailyStat[]>(
+    `/tasks/daily-stats?start=${start}&end=${end}`
+  );
+}
+
+/* ============================================================================
+ * SUBTASKS
+ * Subtarefas ligadas às tarefas do Planning e ao plano enxuto do Dashboard.
+ * ========================================================================== */
 
 export interface Subtask {
   id: string;
@@ -479,6 +482,7 @@ export interface Subtask {
   created_at: string;
 }
 
+// Carrega todas as subtarefas quando a tela precisa montar um mapa por task_id.
 export function getSubtasks() {
   return request<Subtask[]>("/subtasks");
 }
@@ -500,12 +504,6 @@ export function createSubtask(
   });
 }
 
-export function deleteSubtask(subtaskId: string) {
-  return request<void>(`/subtasks/${subtaskId}`, {
-    method: "DELETE",
-  });
-}
-
 export function updateSubtask(
   subtaskId: string,
   body: {
@@ -520,7 +518,76 @@ export function updateSubtask(
   });
 }
 
-// --- Conversations ---
+export function deleteSubtask(subtaskId: string) {
+  return request<void>(`/subtasks/${subtaskId}`, {
+    method: "DELETE",
+  });
+}
+
+/* ============================================================================
+ * NOTIFICATIONS
+ * Sininho do Dashboard, toast global e sugestões aceitas/rejeitadas pelo usuário.
+ * ========================================================================== */
+
+export interface NotificationAction {
+  task_id: string;
+  new_date?: string | null;
+  new_start_time?: string | null;
+  new_end_time?: string | null;
+  reason?: string | null;
+}
+
+export interface NotificationData {
+  id: string;
+  type: "simple" | "improvement" | "change";
+  title: string;
+  body: string;
+  status: "unread" | "read" | "accepted" | "rejected";
+  action?: NotificationAction | null;
+  created_at: string;
+}
+
+export function getNotifications(limit = 10, offset = 0) {
+  return request<NotificationData[]>(
+    `/notifications?limit=${limit}&offset=${offset}`
+  );
+}
+
+export function getUnreadCount() {
+  return request<{ unread: number }>("/notifications/unread-count");
+}
+
+// Dispara a análise do backend para gerar possíveis sugestões/notificações.
+export function analyzeNotifications() {
+  return request<{ analyzed: boolean; notification?: NotificationData }>(
+    "/notifications/analyze",
+    { method: "POST" }
+  );
+}
+
+export function markNotificationRead(id: string) {
+  return request<NotificationData>(`/notifications/${id}/read`, {
+    method: "PATCH",
+  });
+}
+
+export function acceptNotification(id: string) {
+  return request<{ analyzed: boolean; notification?: NotificationData }>(
+    `/notifications/${id}/accept`,
+    { method: "POST" }
+  );
+}
+
+export function rejectNotification(id: string) {
+  return request<NotificationData>(`/notifications/${id}/reject`, {
+    method: "POST",
+  });
+}
+
+/* ============================================================================
+ * CHAT / CONVERSATIONS
+ * Lista de conversas, histórico, envio normal e streaming da resposta do Axon.
+ * ========================================================================== */
 
 export interface ConversationData {
   id: string;
@@ -554,6 +621,17 @@ export async function createConversation(
   });
 }
 
+export function updateConversation(
+  id: string,
+  updates: { title?: string; archived?: boolean; project_id?: string | null }
+) {
+  return request<ConversationData>(`/chat/conversations/${id}`, {
+    method: "PATCH",
+    body: JSON.stringify(updates),
+  });
+}
+
+// Usado no modal da conversa para mover ou remover o chat de um projeto.
 export async function updateConversationProject(
   conversationId: string,
   projectId: string | null
@@ -563,16 +641,6 @@ export async function updateConversationProject(
     body: JSON.stringify({
       project_id: projectId,
     }),
-  });
-}
-
-export function updateConversation(
-  id: string,
-  updates: { title?: string; archived?: boolean; project_id?: string | null }
-) {
-  return request<ConversationData>(`/chat/conversations/${id}`, {
-    method: "PATCH",
-    body: JSON.stringify(updates),
   });
 }
 
@@ -594,8 +662,6 @@ export interface StoredMessage {
 export function getConversationMessages(id: string) {
   return request<StoredMessage[]>(`/chat/conversations/${id}/messages`);
 }
-
-// --- Chat ---
 
 export interface ChatApiResponse {
   response: string;
@@ -623,71 +689,136 @@ export interface ToolEvent {
   summary?: string;
 }
 
-// --- Notifications ---
+// Usado na conversa interna para mostrar resposta em tempo real e eventos de ferramentas.
+export function streamChat(
+  message: string,
+  history: ChatMessage[],
+  onChunk: (text: string) => void,
+  onDone: () => void,
+  onError: (err: Error) => void,
+  conversationId?: string,
+  onTool?: (event: ToolEvent) => void
+): void {
+  const token = getToken();
 
-export interface NotificationAction {
-  task_id: string;
-  new_date?: string | null;
-  new_start_time?: string | null;
-  new_end_time?: string | null;
-  reason?: string | null;
-}
-
-export interface NotificationData {
-  id: string;
-  type: "simple" | "improvement" | "change";
-  title: string;
-  body: string;
-  status: "unread" | "read" | "accepted" | "rejected";
-  action?: NotificationAction | null;
-  created_at: string;
-}
-
-export function getNotifications(limit = 10, offset = 0) {
-  return request<NotificationData[]>(
-    `/notifications?limit=${limit}&offset=${offset}`
-  );
-}
-
-export function getUnreadCount() {
-  return request<{ unread: number }>("/notifications/unread-count");
-}
-
-export function analyzeNotifications() {
-  return request<{ analyzed: boolean; notification?: NotificationData }>(
-    "/notifications/analyze",
-    { method: "POST" }
-  );
-}
-
-export function markNotificationRead(id: string) {
-  return request<NotificationData>(`/notifications/${id}/read`, {
-    method: "PATCH",
-  });
-}
-
-export function acceptNotification(id: string) {
-  return request<{ analyzed: boolean; notification?: NotificationData }>(
-    `/notifications/${id}/accept`,
-    { method: "POST" }
-  );
-}
-
-export function rejectNotification(id: string) {
-  return request<NotificationData>(`/notifications/${id}/reject`, {
+  fetch(`${BASE_URL}/chat/message`, {
     method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
+    body: JSON.stringify({ message, history, conversation_id: conversationId ?? null }),
+  })
+    .then(async (res) => {
+      if (!res.ok) {
+        const error = await res.json().catch(() => ({ detail: "Erro no chat" }));
+        throw new Error(error.detail ?? "Erro no chat");
+      }
+
+      const reader = res.body!.getReader();
+      const decoder = new TextDecoder();
+
+      const pump = async () => {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          onDone();
+          return;
+        }
+
+        const chunk = decoder.decode(value, { stream: true });
+        const lines = chunk.split("\n");
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+
+          const payload = line.slice(6);
+
+          if (payload === "[DONE]") {
+            onDone();
+            return;
+          }
+
+          try {
+            const parsed = JSON.parse(payload);
+
+            if (parsed.text) {
+              onChunk(parsed.text);
+            } else if (parsed.tool) {
+              onTool?.(parsed as ToolEvent);
+            }
+          } catch {
+            // Linhas SSE incompletas/malformadas são ignoradas até o próximo chunk.
+          }
+        }
+
+        pump();
+      };
+
+      pump();
+    })
+    .catch(onError);
+}
+
+/* ============================================================================
+ * CHAT PROJECTS
+ * Pastas/projetos usados na tela de Chat para agrupar conversas.
+ * ========================================================================== */
+
+export interface ChatProjectData {
+  id: string;
+  name: string;
+  description?: string | null;
+  conversation_count?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export function getChatProjects() {
+  return request<ChatProjectData[]>("/chat/projects");
+}
+
+export function createChatProject(payload: {
+  name: string;
+  description?: string;
+}) {
+  return request<ChatProjectData>("/chat/projects", {
+    method: "POST",
+    body: JSON.stringify(payload),
   });
 }
 
-// --- Planning Preferences ---
+export async function updateChatProject(
+  projectId: string,
+  payload: {
+    name: string;
+    description?: string;
+  }
+) {
+  return request<ChatProjectData>(`/chat/projects/${projectId}`, {
+    method: "PATCH",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function deleteChatProject(projectId: string) {
+  return request<void>(`/chat/projects/${projectId}`, {
+    method: "DELETE",
+  });
+}
+
+/* ============================================================================
+ * PLANNING PREFERENCES
+ * Preferências de planejamento diário/semanal usadas pelas notificações futuras.
+ * ========================================================================== */
 
 export interface PlanningPreferences {
-  daily_planning_enabled:  boolean;
-  daily_planning_time:     string | null;  // "HH:MM"
-  daily_use_chronotype:    boolean;
+  daily_planning_enabled: boolean;
+  daily_planning_time: string | null; // "HH:MM"
+  daily_use_chronotype: boolean;
   weekly_planning_enabled: boolean;
-  weekly_planning_day:     number | null;  // 0=Seg…6=Dom
-  weekly_use_chronotype:   boolean;
+  weekly_planning_day: number | null; // 0=Seg…6=Dom
+  weekly_use_chronotype: boolean;
 }
 
 export function getPlanningPreferences() {
@@ -701,7 +832,10 @@ export function updatePlanningPreferences(prefs: PlanningPreferences) {
   });
 }
 
-// --- Daily Log ---
+/* ============================================================================
+ * DAILY LOG
+ * Registro diário de sono, humor, produtividade e períodos de maior energia.
+ * ========================================================================== */
 
 export type PeakPeriodSlug =
   | "madrugada"
@@ -713,13 +847,13 @@ export type PeakPeriodSlug =
   | "noite";
 
 export const PEAK_PERIODS: { slug: PeakPeriodSlug; label: string; hours: string }[] = [
-  { slug: "madrugada",    label: "Madrugada",        hours: "00h–05h" },
-  { slug: "cedo_manha",   label: "Cedo da manhã",    hours: "05h–08h" },
-  { slug: "manha",        label: "Manhã",             hours: "08h–12h" },
-  { slug: "inicio_tarde", label: "Começo da tarde",  hours: "12h–15h" },
-  { slug: "fim_tarde",    label: "Fim da tarde",      hours: "15h–18h" },
-  { slug: "inicio_noite", label: "Começo da noite",  hours: "18h–21h" },
-  { slug: "noite",        label: "Noite",             hours: "21h–00h" },
+  { slug: "madrugada", label: "Madrugada", hours: "00h–05h" },
+  { slug: "cedo_manha", label: "Cedo da manhã", hours: "05h–08h" },
+  { slug: "manha", label: "Manhã", hours: "08h–12h" },
+  { slug: "inicio_tarde", label: "Começo da tarde", hours: "12h–15h" },
+  { slug: "fim_tarde", label: "Fim da tarde", hours: "15h–18h" },
+  { slug: "inicio_noite", label: "Começo da noite", hours: "18h–21h" },
+  { slug: "noite", label: "Noite", hours: "21h–00h" },
 ];
 
 export interface DailyLog {
@@ -770,7 +904,10 @@ export function saveDailyLog(body: DailyLogInput) {
   });
 }
 
-// --- Task Insights ---
+/* ============================================================================
+ * INSIGHTS
+ * Métricas de tarefas, padrões por IA e blocos de energia/foco calibrados.
+ * ========================================================================== */
 
 export interface TaskInsightDay {
   date: string;
@@ -795,11 +932,10 @@ export interface TaskInsights {
   summary: TaskInsightSummary;
 }
 
+// Usado no Insights para montar gráficos e resumo de conclusão de tarefas.
 export function getTaskInsights(period: "week" | "month" = "week") {
   return request<TaskInsights>(`/insights/tasks?period=${period}`);
 }
-
-// --- Pattern Insights (IA) ---
 
 export interface PatternInsight {
   title: string;
@@ -809,16 +945,15 @@ export interface PatternInsight {
 
 export interface PatternInsightsResponse {
   status: "collecting" | "ready";
-  // quando "collecting":
   data_points?: number;
   days_needed?: number;
   message?: string;
-  // quando "ready":
   insights?: PatternInsight[];
   generated_at?: string;
   cached?: boolean;
 }
 
+// Retorna "collecting" até haver registros suficientes para gerar padrões confiáveis.
 export function getPatternInsights(refresh = false) {
   return request<PatternInsightsResponse>(
     `/insights/patterns${refresh ? "?refresh=true" : ""}`
@@ -844,28 +979,30 @@ export interface FocusBlocksResponse {
   blocks: FocusBlockItem[];
 }
 
+// Usado no Focus/Insights para visualizar blocos de energia ao longo do dia.
 export function getFocusBlocks() {
   return request<FocusBlocksResponse>("/insights/blocks");
 }
 
-// --- Routines ---
+/* ============================================================================
+ * ROUTINES
+ * Rotinas recorrentes compostas por itens fixos ou flexíveis.
+ * ========================================================================== */
 
 export type RoutineStatus = "active" | "paused";
 
-// Espelha RoutineItemResponse (backend/models/schemas.py)
 export interface RoutineItem {
   id: string;
   routine_id: string;
   title: string;
   days_of_week: number[]; // 0=Seg, 1=Ter, ..., 6=Dom
-  start_time?: string | null; // "HH:MM" (item fixo)
-  end_time?: string | null; // "HH:MM" (item fixo)
-  duration_minutes?: number | null; // item flexível
+  start_time?: string | null; // "HH:MM" para item fixo
+  end_time?: string | null; // "HH:MM" para item fixo
+  duration_minutes?: number | null; // duração usada em item flexível
   created_at: string;
   updated_at: string;
 }
 
-// Espelha RoutineListItem (GET /routines)
 export interface Routine {
   id: string;
   name: string;
@@ -881,12 +1018,11 @@ export interface Routine {
   item_count: number;
 }
 
-// Espelha RoutineResponse (GET /routines/{id}) — inclui os itens
 export interface RoutineDetail extends Omit<Routine, "item_count"> {
   items: RoutineItem[];
 }
 
-// Espelha RoutineItemCreate — item fixo (start_time+end_time) OU flexível (duration_minutes)
+// Item fixo usa start_time/end_time; item flexível usa duration_minutes.
 export interface RoutineItemCreateInput {
   title: string;
   days_of_week: number[]; // 0=Seg, ..., 6=Dom
@@ -895,10 +1031,9 @@ export interface RoutineItemCreateInput {
   duration_minutes?: number;
 }
 
-// Espelha RoutineCreate
 export interface RoutineCreateInput {
   name: string;
-  start_date?: string; // "YYYY-MM-DD" (default: hoje, no backend)
+  start_date?: string; // "YYYY-MM-DD" — backend usa hoje quando omitido
   end_date?: string | null;
   items: RoutineItemCreateInput[];
 }
@@ -945,14 +1080,20 @@ export function deleteRoutine(id: string) {
   return request<void>(`/routines/${id}`, { method: "DELETE" });
 }
 
-// Espelha RoutineItemUpdate. Atenção: o backend NÃO revalida fixo-vs-flexível
-// no PATCH, então ao trocar de modo envie null no lado não usado para limpá-lo.
+// No PATCH, envie null no campo não usado ao trocar entre item fixo e flexível.
 export interface RoutineItemUpdateInput {
   title?: string;
   days_of_week?: number[];
   start_time?: string | null;
   end_time?: string | null;
   duration_minutes?: number | null;
+}
+
+export function addRoutineItem(routineId: string, body: RoutineItemCreateInput) {
+  return request<RoutineItem>(`/routines/${routineId}/items`, {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
 }
 
 export function updateRoutineItem(
@@ -966,85 +1107,16 @@ export function updateRoutineItem(
   });
 }
 
-export function addRoutineItem(routineId: string, body: RoutineItemCreateInput) {
-  return request<RoutineItem>(`/routines/${routineId}/items`, {
-    method: "POST",
-    body: JSON.stringify(body),
-  });
-}
-
 export function deleteRoutineItem(routineId: string, itemId: string) {
   return request<void>(`/routines/${routineId}/items/${itemId}`, {
     method: "DELETE",
   });
 }
 
-export function streamChat(
-  message: string,
-  history: ChatMessage[],
-  onChunk: (text: string) => void,
-  onDone: () => void,
-  onError: (err: Error) => void,
-  conversationId?: string,
-  onTool?: (event: ToolEvent) => void
-): void {
-  const token = getToken();
-  fetch(`${BASE_URL}/chat/message`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: JSON.stringify({ message, history, conversation_id: conversationId ?? null }),
-  })
-    .then(async (res) => {
-      if (!res.ok) {
-        const error = await res.json().catch(() => ({ detail: "Erro no chat" }));
-        throw new Error(error.detail ?? "Erro no chat");
-      }
-
-      const reader = res.body!.getReader();
-      const decoder = new TextDecoder();
-
-      const pump = async () => {
-        const { done, value } = await reader.read();
-        if (done) {
-          onDone();
-          return;
-        }
-
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n");
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) continue;
-          const payload = line.slice(6);
-          if (payload === "[DONE]") {
-            onDone();
-            return;
-          }
-          try {
-            const parsed = JSON.parse(payload);
-            if (parsed.text) {
-              onChunk(parsed.text);
-            } else if (parsed.tool) {
-              onTool?.(parsed as ToolEvent);
-            }
-          } catch {
-            // ignore malformed SSE lines
-          }
-        }
-
-        pump();
-      };
-
-      pump();
-    })
-    .catch(onError);
-
-}
-
-// --- Objectives ---
+/* ============================================================================
+ * OBJECTIVES
+ * Objetivos de longo prazo que podem agrupar tarefas/subtarefas.
+ * ========================================================================== */
 
 export interface Objective {
   id: string;
@@ -1099,5 +1171,3 @@ export function updateObjective(
 export function deleteObjective(id: string) {
   return request<void>(`/objectives/${id}`, { method: "DELETE" });
 }
-
-

@@ -17,6 +17,10 @@ import {
 import * as api from "../../lib/api";
 import type { ProfileData } from "../../lib/api";
 
+// ===========================================================================
+// TIPOS DO COMPONENTE
+// ===========================================================================
+
 type SidebarProps = {
   isOpen: boolean;
   onClose: () => void;
@@ -35,6 +39,10 @@ type NavItem = {
   state?: Record<string, unknown>;
 };
 
+// ===========================================================================
+// ITENS DE NAVEGAÇÃO
+// ===========================================================================
+// Navegação principal do app interno.
 const mainItems: NavItem[] = [
   {
     label: "Dashboard",
@@ -68,6 +76,7 @@ const mainItems: NavItem[] = [
   },
 ];
 
+// Atalhos relacionados à conta.
 const secondaryItems = [
   {
     label: "Perfil",
@@ -81,29 +90,48 @@ const secondaryItems = [
   },
 ];
 
+// ===========================================================================
+// SIDEBAR GLOBAL
+// ===========================================================================
+
 export default function Sidebar({
   isOpen,
   onClose,
   chronotypeLabel,
+  energyPeak,
   userName,
   userEmail,
   userAvatar,
 }: SidebarProps) {
   const navigate = useNavigate();
 
+  // ---------------------------------------------------------------------------
+  // Estado interno
+  // ---------------------------------------------------------------------------
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
+  // ---------------------------------------------------------------------------
+  // Carregamento do perfil
+  // ---------------------------------------------------------------------------
+  // Busca dados atualizados apenas quando a sidebar abre e ainda não há perfil.
   useEffect(() => {
     if (isOpen && api.isLoggedIn() && !profile) {
-      api.getProfile().then(setProfile).catch(() => {});
+      api
+        .getProfile()
+        .then(setProfile)
+        .catch(() => {});
     }
   }, [isOpen, profile]);
 
+  // ---------------------------------------------------------------------------
+  // Dados exibidos no topo e no contexto ativo
+  // ---------------------------------------------------------------------------
   const displayName = profile?.name || userName || "Usuário";
   const displayEmail = profile?.email || userEmail || "";
   const displayChronotype =
     profile?.chronotype_label || chronotypeLabel || "Cronotipo não definido";
+  const displayEnergyPeak = energyPeak;
 
   const chronotypeDescription = getChronotypeDescription(displayChronotype);
 
@@ -111,12 +139,16 @@ export default function Sidebar({
     return displayName.trim().charAt(0).toUpperCase() || "A";
   }, [displayName]);
 
+  // ---------------------------------------------------------------------------
+  // Navegação e sessão
+  // ---------------------------------------------------------------------------
   function goTo(path: string, navState?: Record<string, unknown>) {
     if (navState) {
       navigate(path, { state: navState });
     } else {
       navigate(path);
     }
+
     onClose();
   }
 
@@ -140,6 +172,7 @@ export default function Sidebar({
       <AnimatePresence>
         {isOpen && (
           <>
+            {/* Overlay fecha a sidebar ao tocar fora do painel. */}
             <motion.button
               type="button"
               aria-label="Fechar menu"
@@ -161,6 +194,7 @@ export default function Sidebar({
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:28px_28px] opacity-20" />
 
               <div className="relative flex h-full flex-col p-4">
+                {/* Cabeçalho com dados básicos do usuário. */}
                 <header className="mb-5 flex items-center justify-between gap-3">
                   <button
                     type="button"
@@ -203,6 +237,7 @@ export default function Sidebar({
                   </button>
                 </header>
 
+                {/* Contexto ativo: explica o cronotipo usado pelo app. */}
                 <section className="mb-5 overflow-hidden rounded-[1.6rem] border border-purple-300/20 bg-purple-500/10 p-4">
                   <div className="mb-4 flex items-center gap-2">
                     <Sparkles className="h-3.5 w-3.5 shrink-0 text-purple-200" />
@@ -224,9 +259,22 @@ export default function Sidebar({
                     <p className="mt-1 text-xs leading-5 text-white/38">
                       {chronotypeDescription}
                     </p>
+
+                    {displayEnergyPeak && (
+                      <div className="mt-4 rounded-2xl border border-purple-300/15 bg-purple-500/10 px-3 py-2">
+                        <p className="text-[0.65rem] font-medium uppercase tracking-[0.14em] text-purple-100/60">
+                          Pico de energia
+                        </p>
+
+                        <p className="mt-1 text-xs font-semibold text-purple-100">
+                          {displayEnergyPeak}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </section>
 
+                {/* Links principais e atalhos de conta. */}
                 <section className="min-h-0 flex-1 overflow-y-auto pr-1">
                   <p className="mb-2 px-2 text-[0.68rem] font-medium uppercase tracking-[0.16em] text-white/28">
                     Navegação
@@ -240,7 +288,7 @@ export default function Sidebar({
                         <button
                           key={item.label}
                           onClick={() => goTo(item.path, item.state)}
-                          className="group flex w-full items-center gap-3 rounded-[1.35rem] border border-white/0 px-3 py-3 text-left transition active:scale-[0.98] hover:border-white/10 hover:bg-white/[0.055]"
+                          className="group flex w-full items-center gap-3 rounded-[1.35rem] border border-white/0 px-3 py-3 text-left transition hover:border-white/10 hover:bg-white/[0.055] active:scale-[0.98]"
                         >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/45 group-hover:border-purple-300/20 group-hover:bg-purple-500/10 group-hover:text-purple-200">
                             <Icon className="h-4 w-4" />
@@ -274,7 +322,7 @@ export default function Sidebar({
                         <button
                           key={item.label}
                           onClick={() => goTo(item.path)}
-                          className="group flex w-full items-center gap-3 rounded-[1.35rem] border border-white/0 px-3 py-3 text-left transition active:scale-[0.98] hover:border-white/10 hover:bg-white/[0.055]"
+                          className="group flex w-full items-center gap-3 rounded-[1.35rem] border border-white/0 px-3 py-3 text-left transition hover:border-white/10 hover:bg-white/[0.055] active:scale-[0.98]"
                         >
                           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/45 group-hover:border-purple-300/20 group-hover:bg-purple-500/10 group-hover:text-purple-200">
                             <Icon className="h-4 w-4" />
@@ -289,6 +337,7 @@ export default function Sidebar({
                   </div>
                 </section>
 
+                {/* Logout exige confirmação antes de encerrar a sessão. */}
                 <footer className="mt-4">
                   <button
                     onClick={handleLogout}
@@ -304,58 +353,84 @@ export default function Sidebar({
         )}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {showLogoutConfirm && (
-          <motion.div
-            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <motion.div
-              initial={{ opacity: 0, y: 18, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 18, scale: 0.96 }}
-              transition={{ duration: 0.22, ease: "easeOut" }}
-              className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
-            >
-              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
-                <LogOut className="h-6 w-6" />
-              </div>
-
-              <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
-                Deseja sair da sua conta?
-              </h2>
-
-              <p className="mt-3 text-sm leading-6 text-white/45">
-                Você será desconectado do Axon e precisará fazer login
-                novamente para acessar seu ambiente.
-              </p>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <button
-                  type="button"
-                  onClick={cancelLogout}
-                  className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
-                >
-                  Cancelar
-                </button>
-
-                <button
-                  type="button"
-                  onClick={confirmLogout}
-                  className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
-                >
-                  Sair
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <LogoutConfirmModal
+        isOpen={showLogoutConfirm}
+        onCancel={cancelLogout}
+        onConfirm={confirmLogout}
+      />
     </>
   );
 }
+
+// ===========================================================================
+// MODAL DE CONFIRMAÇÃO DE LOGOUT
+// ===========================================================================
+
+function LogoutConfirmModal({
+  isOpen,
+  onCancel,
+  onConfirm,
+}: {
+  isOpen: boolean;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.96 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
+          >
+            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+              <LogOut className="h-6 w-6" />
+            </div>
+
+            <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
+              Deseja sair da sua conta?
+            </h2>
+
+            <p className="mt-3 text-sm leading-6 text-white/45">
+              Você será desconectado do Axon e precisará fazer login novamente
+              para acessar seu ambiente.
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={onCancel}
+                className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={onConfirm}
+                className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
+              >
+                Sair
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+// ===========================================================================
+// DESCRIÇÃO DO CRONOTIPO
+// ===========================================================================
 
 function getChronotypeDescription(chronotypeLabel: string) {
   const normalized = chronotypeLabel.toLowerCase();

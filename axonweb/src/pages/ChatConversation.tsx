@@ -28,6 +28,10 @@ import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 
+// ============================================================================
+// Tipos e contratos locais
+// ============================================================================
+
 type ToolActivity = {
   tool: string;
   label: string;
@@ -56,6 +60,7 @@ type NotificationItem = {
 
 type ConfirmAction = "clear" | "archive" | "delete" | null;
 
+// Cronotipos aceitos para preencher a Sidebar sem depender de dados externos.
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
   "Vespertino",
@@ -64,6 +69,7 @@ const validKeys: ChronotypeResultKey[] = [
   "Bimodal",
 ];
 
+// Conversa especial usada como central fixa de avisos dentro do Chat.
 const systemNotifications: NotificationItem[] = [
   {
     id: 1,
@@ -110,14 +116,15 @@ const systemNotifications: NotificationItem[] = [
 ];
 
 
-// ============================================================
+// ============================================================================
 // Página principal da conversa
-// ============================================================
+// ============================================================================
 
 export default function ChatConversation() {
   const navigate = useNavigate();
   const { chatId: conversationId } = useParams();
 
+  // Estados de navegação e modais da conversa atual.
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
@@ -125,24 +132,25 @@ export default function ChatConversation() {
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [isProjectSheetOpen, setIsProjectSheetOpen] = useState(false);
 
+  // Mensagem digitada, histórico renderizado e estado de envio para o composer.
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<Message[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(true);
   const [isSending, setIsSending] = useState(false);
 
-  // Controla qual resposta do Axon deve ter efeito de digitação.
-  // Mensagens antigas carregadas do histórico ficam estáticas.
+  // Aplica o efeito de digitação apenas na resposta recém-gerada pelo Axon.
   const [streamingMessageId, setStreamingMessageId] = useState<number | null>(null);
 
-  // Histórico enviado ao backend e ponto invisível usado para rolar até o fim.
+  // Histórico compacto enviado ao backend e marcador usado para rolar até o fim.
   const historyRef = useRef<api.ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
+  // Dados da conversa atual usados no título e na movimentação entre projetos.
   const [conversation, setConversation] = useState<api.ConversationData | null>(
     null
   );
 
-  // Carrega os dados da conversa atual para título e projeto
+  // Busca metadados da conversa para sincronizar título e projeto no header.
   useEffect(() => {
     if (!conversationId || conversationId === "axon-notifications") return;
 
@@ -162,7 +170,7 @@ export default function ChatConversation() {
       .catch(() => null);
   }, [conversationId]);
 
-  // Carrega o histórico real da conversa ao abrir
+  // Carrega mensagens persistidas e reconstrói o histórico enviado ao backend.
   useEffect(() => {
     if (!conversationId || conversationId === "axon-notifications") {
       setLoadingHistory(false);
@@ -188,14 +196,16 @@ export default function ChatConversation() {
         }));
       })
       .catch(() => {
-        // Falha silenciosa — conversa começa vazia, o que é aceitável
+        // Conversa vazia continua utilizável mesmo se o histórico falhar.
       })
       .finally(() => setLoadingHistory(false));
   }, [conversationId]);
 
+  // Título visível e rascunho usado somente no modal de renomear.
   const [chatTitle, setChatTitle] = useState(formatChatTitle(conversationId));
   const [draftTitle, setDraftTitle] = useState(formatChatTitle(conversationId));
 
+  // Dados de cronotipo exibidos na Sidebar compartilhada do app.
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
 
@@ -208,6 +218,8 @@ export default function ChatConversation() {
 
   const result = results[resultKey];
   const isNotificationsChat = conversationId === "axon-notifications";
+
+  // Rota interna que reaproveita o layout do chat como central de notificações.
   if (isNotificationsChat) {
     return (
       <NotificationsConversation
@@ -221,9 +233,7 @@ export default function ChatConversation() {
     );
   }
 
-  // ------------------------------------------------------------
-  // Envio de mensagem e streaming da resposta do Axon
-  // ------------------------------------------------------------
+  // Envio de mensagem: cria bolhas locais e acompanha o streaming do backend.
   function handleSend(e?: React.FormEvent) {
     e?.preventDefault();
     const text = message.trim();
@@ -312,9 +322,7 @@ export default function ChatConversation() {
     );
   }
 
-  // ------------------------------------------------------------
-  // Ações do menu da conversa: renomear, limpar, arquivar, excluir
-  // ------------------------------------------------------------
+  // Renomeia a conversa localmente e persiste o título no backend.
   async function handleRename() {
     const newTitle = draftTitle.trim();
     if (!newTitle) return;
@@ -327,6 +335,7 @@ export default function ChatConversation() {
     }
   }
 
+  // Executa ações destrutivas após confirmação no modal.
   async function handleConfirmAction() {
     if (!conversationId) {
       setConfirmAction(null);
@@ -356,6 +365,7 @@ export default function ChatConversation() {
     }
   }
 
+  // Atualiza o vínculo da conversa com um projeto ou remove esse vínculo.
   async function handleMoveConversationToProject(projectId: string | null) {
     if (!conversation) return;
 
@@ -374,9 +384,7 @@ export default function ChatConversation() {
     );
   }
 
-  // ------------------------------------------------------------
-  // Controle de scroll: entrar no final e acompanhar novas mensagens
-  // ------------------------------------------------------------
+  // Mantém o usuário no final do histórico ao abrir ou receber novas mensagens.
   function scrollToBottom(behavior: ScrollBehavior = "smooth") {
     requestAnimationFrame(() => {
       messagesEndRef.current?.scrollIntoView({
@@ -400,6 +408,7 @@ export default function ChatConversation() {
     return () => clearTimeout(timeout);
   }, [messages, isSending]);
 
+  // Layout principal: header fixo, histórico scrollável, composer e modais globais.
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
       <Background />
@@ -589,6 +598,10 @@ export default function ChatConversation() {
   );
 }
 
+// ============================================================================
+// Sheet de opções e ações da conversa
+// ============================================================================
+
 function ChatOptionsSheet({
   isOpen,
   onClose,
@@ -687,6 +700,7 @@ function ChatOptionsSheet({
   );
 }
 
+// Item reutilizável do menu de ações da conversa.
 function OptionButton({
   icon: Icon,
   title,
@@ -733,6 +747,7 @@ function OptionButton({
   );
 }
 
+// Modal simples para editar apenas o título da conversa atual.
 function RenameConversationModal({
   isOpen,
   value,
@@ -791,6 +806,7 @@ function RenameConversationModal({
   );
 }
 
+// Mostra um resumo rápido do contexto usado nesta conversa.
 function ConversationContextModal({
   isOpen,
   onClose,
@@ -843,6 +859,7 @@ function ConversationContextModal({
   );
 }
 
+// Linha compacta usada dentro do resumo de contexto.
 function ContextRow({ label, value }: { label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
@@ -852,6 +869,7 @@ function ContextRow({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Confirma ações que podem remover mensagens, arquivar ou excluir a conversa.
 function ConfirmActionModal({
   action,
   onClose,
@@ -937,10 +955,11 @@ function ConfirmActionModal({
   );
 }
 
-// ============================================================
-// Componentes visuais da conversa
-// ============================================================
+// ============================================================================
+// Renderização das mensagens
+// ============================================================================
 
+// Feedback visual exibido enquanto a resposta do Axon ainda está em andamento.
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
@@ -967,6 +986,7 @@ function TypingIndicator() {
   );
 }
 
+// Revela a resposta nova em etapas sem animar mensagens antigas do histórico.
 function AnimatedMessageText({
   text,
   animate,
@@ -997,7 +1017,7 @@ function AnimatedMessageText({
         return;
       }
 
-      // Quanto maior o texto, mais caracteres revelamos por frame para não ficar lento.
+      // Textos longos avançam em blocos maiores para manter a animação fluida.
       const remaining = targetLength - currentLength;
       const step = remaining > 220 ? 10 : remaining > 90 ? 6 : 3;
       const nextLength = Math.min(currentLength + step, targetLength);
@@ -1018,6 +1038,7 @@ function AnimatedMessageText({
   return <AxonMarkdown text={visibleText} />;
 }
 
+// Bolha única de mensagem; mensagens do Axon também renderizam atividades de tools.
 function MessageBubble({
   message,
   animateText = false,
@@ -1093,6 +1114,7 @@ function MessageBubble({
   );
 }
 
+// Markdown controlado para respostas do Axon dentro do visual mobile-first.
 function AxonMarkdown({ text }: { text: string }) {
   return (
     <ReactMarkdown
@@ -1156,6 +1178,10 @@ function AxonMarkdown({ text }: { text: string }) {
 }
 
 
+// ============================================================================
+// Projetos: mover conversa entre pastas
+// ============================================================================
+
 function MoveConversationProjectSheet({
   isOpen,
   currentProjectId,
@@ -1170,12 +1196,19 @@ function MoveConversationProjectSheet({
   const [projects, setProjects] = useState<api.ChatProjectData[]>([]);
   const [loading, setLoading] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(
-  currentProjectId
+    currentProjectId
   );
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Carrega a lista de projetos ao abrir o modal
+  // Mantém a seleção alinhada à conversa atual sempre que a sheet é aberta.
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setSelectedProjectId(currentProjectId);
+  }, [isOpen, currentProjectId]);
+
+  // Carrega projetos somente quando a sheet abre.
   useEffect(() => {
     if (!isOpen) return;
 
@@ -1357,12 +1390,16 @@ function MoveConversationProjectSheet({
   );
 }
 
+// ============================================================================
+// Helpers e background
+// ============================================================================
+
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 function formatChatTitle(chatId?: string) {
   if (!chatId) return "Conversa";
 
-  // IDs reais de conversa são UUIDs — não viram título legível.
+  // UUIDs reais não são transformados em título para evitar nomes ilegíveis.
   if (UUID_RE.test(chatId)) return "Conversa";
 
   return chatId
@@ -1371,6 +1408,7 @@ function formatChatTitle(chatId?: string) {
     .join(" ");
 }
 
+// Camada visual compartilhada pelas telas de conversa e notificações.
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -1384,6 +1422,10 @@ function Background() {
     </div>
   );
 }
+
+// ============================================================================
+// Conversa especial de notificações
+// ============================================================================
 
 function NotificationsConversation({
   onBack,
@@ -1511,6 +1553,7 @@ function NotificationsConversation({
   );
 }
 
+// Card individual da central fixa de notificações.
 function NotificationCard({
   notification,
   onAction,
@@ -1575,6 +1618,7 @@ function NotificationCard({
   );
 }
 
+// Escolhe o ícone de acordo com a categoria visual da notificação.
 function getNotificationIcon(category: NotificationItem["category"]) {
   if (category === "planning") return CalendarDays;
   if (category === "focus") return Sparkles;

@@ -1,22 +1,22 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ElementType, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
+  AlertTriangle,
   Bell,
   ChevronRight,
   Download,
   Link2,
   LogOut,
+  Mail,
   Menu,
   Moon,
   Palette,
   Settings as SettingsIcon,
   Shield,
-  Sparkles,
-  Trash2,
-  AlertTriangle,
-  Mail,
   Tag,
+  Trash2,
 } from "lucide-react";
 
 import { results, type ChronotypeResultKey } from "../data/results";
@@ -25,8 +25,12 @@ import TagEditorSheet from "../components/settings/TagEditorSheet";
 import NotificationSettingsSheet from "../components/settings/NotificationSettingsSheet";
 import * as api from "../lib/api";
 
+// ===========================================================================
+// TIPOS DA TELA
+// ===========================================================================
+
 type SettingItemProps = {
-  icon: React.ElementType;
+  icon: ElementType;
   title: string;
   description: string;
   value?: string;
@@ -35,13 +39,17 @@ type SettingItemProps = {
 };
 
 type ToggleItemProps = {
-  icon: React.ElementType;
+  icon: ElementType;
   title: string;
   description: string;
   enabled: boolean;
   onToggle: () => void;
 };
 
+// ===========================================================================
+// CRONOTIPO USADO NA SIDEBAR
+// ===========================================================================
+// A tela de configurações usa o cronotipo apenas para contextualizar a sidebar.
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
   "Vespertino",
@@ -50,27 +58,56 @@ const validKeys: ChronotypeResultKey[] = [
   "Bimodal",
 ];
 
+// ===========================================================================
+// PÁGINA DE CONFIGURAÇÕES
+// ===========================================================================
+
 export default function Settings() {
   const navigate = useNavigate();
 
+  // ---------------------------------------------------------------------------
+  // Estados gerais da tela
+  // ---------------------------------------------------------------------------
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [tagEditorOpen, setTagEditorOpen] = useState(false);
+  const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
+
+  // ---------------------------------------------------------------------------
+  // Dados básicos da conta
+  // ---------------------------------------------------------------------------
   const [userName, setUserName] = useState("");
   const [userEmail, setUserEmail] = useState("");
+
+  // ---------------------------------------------------------------------------
+  // Modais de ações sensíveis
+  // ---------------------------------------------------------------------------
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const [showDeleteFirstModal, setShowDeleteFirstModal] = useState(false);
   const [showDeleteFinalModal, setShowDeleteFinalModal] = useState(false);
 
+  // ---------------------------------------------------------------------------
+  // Preferências visuais/locais
+  // ---------------------------------------------------------------------------
   const [silentMode, setSilentMode] = useState(true);
-  const [notifSettingsOpen, setNotifSettingsOpen] = useState(false);
 
+  // ---------------------------------------------------------------------------
+  // Carregamento do perfil
+  // ---------------------------------------------------------------------------
+  // Alimenta a sidebar e a confirmação de exclusão com dados atuais da conta.
   useEffect(() => {
-    api.getProfile().then((p) => {
-      setUserName(p.name || "Usuário");
-      setUserEmail(p.email);
-    }).catch(() => {});
+    api
+      .getProfile()
+      .then((profile) => {
+        setUserName(profile.name || "Usuário");
+        setUserEmail(profile.email);
+      })
+      .catch(() => {});
   }, []);
 
+  // ---------------------------------------------------------------------------
+  // Dados derivados para sidebar
+  // ---------------------------------------------------------------------------
+  // Usa o cronotipo salvo localmente para manter a sidebar consistente.
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
 
@@ -83,18 +120,43 @@ export default function Settings() {
 
   const result = results[resultKey];
 
+  // ---------------------------------------------------------------------------
+  // Ações de conta
+  // ---------------------------------------------------------------------------
+  function handleLogout() {
+    api.logout();
+    setShowLogoutModal(false);
+    navigate("/");
+  }
+
+  async function handleDeleteAccount() {
+    try {
+      await api.deleteAccount();
+      api.logout();
+      setShowDeleteFinalModal(false);
+      navigate("/");
+    } catch (error) {
+      console.error("Erro ao excluir conta:", error);
+    }
+  }
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
       <Background />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
+        {/* Header: volta ao Dashboard e abre o menu lateral global. */}
         <header className="mb-5 flex items-center justify-between">
           <button
             onClick={() => navigate("/dashboard")}
             className="flex items-center gap-3 text-left active:scale-[0.98]"
           >
             <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
+              <img
+                src="/axon-logo.svg"
+                alt="Axon"
+                className="h-8 w-8 object-contain"
+              />
             </div>
 
             <div>
@@ -112,6 +174,7 @@ export default function Settings() {
           </button>
         </header>
 
+        {/* Hero: explica o objetivo da central de configurações. */}
         <section className="mb-4">
           <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
@@ -135,6 +198,7 @@ export default function Settings() {
           </div>
         </section>
 
+        {/* Experiência visual e comportamento geral. */}
         <Section title="Experiência">
           <SettingItem
             icon={Moon}
@@ -151,6 +215,7 @@ export default function Settings() {
           />
         </Section>
 
+        {/* Configurações usadas pela revisão diária e pelos Insights. */}
         <Section title="Análise diária">
           <SettingItem
             icon={Tag}
@@ -160,6 +225,7 @@ export default function Settings() {
           />
         </Section>
 
+        {/* Notificações e alertas inteligentes. */}
         <Section title="Notificações">
           <SettingItem
             icon={Bell}
@@ -178,6 +244,7 @@ export default function Settings() {
           />
         </Section>
 
+        {/* Dados, privacidade e integrações futuras. */}
         <Section title="Dados e integrações">
           <SettingItem
             icon={Link2}
@@ -201,6 +268,7 @@ export default function Settings() {
           />
         </Section>
 
+        {/* Versão e ações sensíveis da conta. */}
         <Section title="Sistema">
           <SettingItem
             icon={SettingsIcon}
@@ -231,6 +299,7 @@ export default function Settings() {
         </p>
       </div>
 
+      {/* Sidebar global com contexto do usuário. */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -240,16 +309,14 @@ export default function Settings() {
         userEmail={userEmail}
       />
 
+      {/* Confirmação simples de logout. */}
       <LogoutConfirmModal
         isOpen={showLogoutModal}
         onClose={() => setShowLogoutModal(false)}
-        onConfirm={() => {
-          api.logout();
-          setShowLogoutModal(false);
-          navigate("/");
-        }}
+        onConfirm={handleLogout}
       />
 
+      {/* Fluxo em duas etapas para reduzir exclusão acidental da conta. */}
       <DeleteAccountFirstModal
         isOpen={showDeleteFirstModal}
         onClose={() => setShowDeleteFirstModal(false)}
@@ -263,18 +330,10 @@ export default function Settings() {
         isOpen={showDeleteFinalModal}
         email={userEmail}
         onClose={() => setShowDeleteFinalModal(false)}
-        onConfirm={async () => {
-          try {
-            await api.deleteAccount();
-            api.logout();
-            setShowDeleteFinalModal(false);
-            navigate("/");
-          } catch (error) {
-            console.error("Erro ao excluir conta:", error);
-          }
-        }}
+        onConfirm={handleDeleteAccount}
       />
 
+      {/* Sheets de configuração específicos. */}
       <TagEditorSheet
         isOpen={tagEditorOpen}
         onClose={() => setTagEditorOpen(false)}
@@ -288,13 +347,11 @@ export default function Settings() {
   );
 }
 
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
+// ===========================================================================
+// SEÇÕES E ITENS DE CONFIGURAÇÃO
+// ===========================================================================
+
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mb-5">
       <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/28">
@@ -406,6 +463,10 @@ function ToggleItem({
   );
 }
 
+// ===========================================================================
+// MODAL DE LOGOUT
+// ===========================================================================
+
 function LogoutConfirmModal({
   isOpen,
   onClose,
@@ -467,6 +528,10 @@ function LogoutConfirmModal({
     </AnimatePresence>
   );
 }
+
+// ===========================================================================
+// MODAIS DE EXCLUSÃO DE CONTA
+// ===========================================================================
 
 function DeleteAccountFirstModal({
   isOpen,
@@ -565,8 +630,9 @@ function DeleteAccountFinalModal({
             </h2>
 
             <p className="mt-3 text-sm leading-6 text-white/45">
-              O e-mail abaixo não poderá ser usado para criar outra conta no Axon
-              pelos próximos <span className="font-semibold text-white">60 dias</span>.
+              O e-mail abaixo não poderá ser usado para criar outra conta no
+              Axon pelos próximos{" "}
+              <span className="font-semibold text-white">60 dias</span>.
             </p>
 
             <div className="mt-5 flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
@@ -599,6 +665,10 @@ function DeleteAccountFinalModal({
     </AnimatePresence>
   );
 }
+
+// ===========================================================================
+// BACKGROUND VISUAL
+// ===========================================================================
 
 function Background() {
   return (
