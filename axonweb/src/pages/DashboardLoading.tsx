@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import favicon from "../assets/favicon.svg";
 
+// Mensagens exibidas durante a preparação inicial do Dashboard.
 const loadingTexts = [
   "Lendo seu perfil produtivo...",
   "Organizando suas prioridades...",
@@ -11,8 +12,11 @@ const loadingTexts = [
 
 export default function DashboardLoading() {
   const navigate = useNavigate();
+
+  // Controla qual mensagem curta aparece durante a transição.
   const [textIndex, setTextIndex] = useState(0);
 
+  // Alterna os textos de carregamento e redireciona após a animação inicial.
   useEffect(() => {
     const textInterval = window.setInterval(() => {
       setTextIndex((current) => (current + 1) % loadingTexts.length);
@@ -33,6 +37,7 @@ export default function DashboardLoading() {
       <Background />
 
       <section className="relative z-10 flex w-full max-w-[360px] flex-col items-center text-center">
+        {/* Marca central: reforça a transição entre resultado e Dashboard. */}
         <div className="relative flex h-52 w-52 items-center justify-center">
           <motion.div
             animate={{
@@ -93,6 +98,7 @@ export default function DashboardLoading() {
           </motion.div>
         </div>
 
+        {/* Texto dinâmico: comunica o que o app está preparando. */}
         <motion.div
           key={textIndex}
           initial={{ opacity: 0, y: 8 }}
@@ -111,6 +117,7 @@ export default function DashboardLoading() {
           </p>
         </motion.div>
 
+        {/* Progresso visual sincronizado com o redirecionamento. */}
         <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
           <motion.div
             initial={{ width: "0%" }}
@@ -124,6 +131,7 @@ export default function DashboardLoading() {
   );
 }
 
+// Background premium usado apenas para profundidade visual da tela de loading.
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">

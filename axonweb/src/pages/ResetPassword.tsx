@@ -13,19 +13,36 @@ import {
 
 import AuthLogo from "../components/auth/AuthLogo";
 
+// ===========================================================================
+// PÁGINA DE REDEFINIÇÃO DE SENHA
+// ===========================================================================
+
 export default function ResetPassword() {
   const navigate = useNavigate();
 
+  // ---------------------------------------------------------------------------
+  // Campos do formulário
+  // ---------------------------------------------------------------------------
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
+  // ---------------------------------------------------------------------------
+  // Visibilidade dos campos de senha
+  // ---------------------------------------------------------------------------
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
+  // ---------------------------------------------------------------------------
+  // Estado de envio e feedback
+  // ---------------------------------------------------------------------------
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
+  // ---------------------------------------------------------------------------
+  // Validação e envio da nova senha
+  // ---------------------------------------------------------------------------
+  // Fluxo visual temporário até conectar a API real de reset de senha.
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -48,7 +65,6 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      // Aqui depois conectamos com a API real.
       // Exemplo futuro: await api.resetPassword({ token, password });
       await new Promise((resolve) => setTimeout(resolve, 900));
 
@@ -73,103 +89,23 @@ export default function ResetPassword() {
 
           <div className="relative">
             {!success ? (
-              <>
-                <div className="mb-7">
-                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Redefinir senha
-                  </div>
-
-                  <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-white">
-                    Crie uma nova senha.
-                  </h1>
-
-                  <p className="mt-3 text-sm leading-6 text-white/50">
-                    Escolha uma senha segura para recuperar seu acesso ao Axon.
-                  </p>
-                </div>
-
-                <form className="space-y-4" onSubmit={handleSubmit}>
-                  <PasswordField
-                    label="Nova senha"
-                    placeholder="Digite sua nova senha"
-                    value={password}
-                    showPassword={showPassword}
-                    onToggleVisibility={() => setShowPassword((prev) => !prev)}
-                    onChange={(event) => setPassword(event.target.value)}
-                  />
-
-                  <PasswordField
-                    label="Confirmar nova senha"
-                    placeholder="Repita sua nova senha"
-                    value={confirmPassword}
-                    showPassword={showConfirmPassword}
-                    onToggleVisibility={() =>
-                      setShowConfirmPassword((prev) => !prev)
-                    }
-                    onChange={(event) =>
-                      setConfirmPassword(event.target.value)
-                    }
-                  />
-
-                  {error && (
-                    <div className="flex items-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3">
-                      <AlertCircle className="h-4 w-4 shrink-0 text-red-300" />
-                      <p className="text-xs leading-5 text-red-200">
-                        {error}
-                      </p>
-                    </div>
-                  )}
-
-                  <button
-                    type="submit"
-                    disabled={loading}
-                    className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {loading ? "Salvando..." : "Salvar nova senha"}
-                    {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
-                  </button>
-                </form>
-
-                <Link
-                  to="/login"
-                  className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 backdrop-blur-2xl active:scale-[0.98]"
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Voltar para login
-                </Link>
-              </>
+              <ResetPasswordForm
+                password={password}
+                confirmPassword={confirmPassword}
+                showPassword={showPassword}
+                showConfirmPassword={showConfirmPassword}
+                loading={loading}
+                error={error}
+                onSubmit={handleSubmit}
+                onPasswordChange={setPassword}
+                onConfirmPasswordChange={setConfirmPassword}
+                onTogglePassword={() => setShowPassword((prev) => !prev)}
+                onToggleConfirmPassword={() =>
+                  setShowConfirmPassword((prev) => !prev)
+                }
+              />
             ) : (
-              <>
-                <div className="mb-7">
-                  <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-100">
-                    <CheckCircle2 className="h-7 w-7" />
-                  </div>
-
-                  <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Senha alterada
-                  </div>
-
-                  <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-white">
-                    Seu acesso foi recuperado.
-                  </h1>
-
-                  <p className="mt-3 text-sm leading-6 text-white/50">
-                    Sua senha foi redefinida com sucesso. Agora você já pode
-                    entrar novamente no Axon.
-                  </p>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={() => navigate("/login")}
-                  className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 active:scale-[0.98]"
-                >
-                  Ir para login
-                  <ArrowRight className="ml-2 h-4 w-4" />
-                </button>
-              </>
+              <ResetPasswordSuccess onGoToLogin={() => navigate("/login")} />
             )}
           </div>
         </section>
@@ -177,6 +113,145 @@ export default function ResetPassword() {
     </main>
   );
 }
+
+// ===========================================================================
+// ESTADOS VISUAIS DA TELA
+// ===========================================================================
+
+function ResetPasswordForm({
+  password,
+  confirmPassword,
+  showPassword,
+  showConfirmPassword,
+  loading,
+  error,
+  onSubmit,
+  onPasswordChange,
+  onConfirmPasswordChange,
+  onTogglePassword,
+  onToggleConfirmPassword,
+}: {
+  password: string;
+  confirmPassword: string;
+  showPassword: boolean;
+  showConfirmPassword: boolean;
+  loading: boolean;
+  error: string;
+  onSubmit: (event: React.FormEvent<HTMLFormElement>) => void;
+  onPasswordChange: (value: string) => void;
+  onConfirmPasswordChange: (value: string) => void;
+  onTogglePassword: () => void;
+  onToggleConfirmPassword: () => void;
+}) {
+  return (
+    <>
+      {/* Estado inicial: coleta e confirma a nova senha. */}
+      <div className="mb-7">
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+          <Sparkles className="h-3.5 w-3.5" />
+          Redefinir senha
+        </div>
+
+        <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-white">
+          Crie uma nova senha.
+        </h1>
+
+        <p className="mt-3 text-sm leading-6 text-white/50">
+          Escolha uma senha segura para recuperar seu acesso ao Axon.
+        </p>
+      </div>
+
+      <form className="space-y-4" onSubmit={onSubmit}>
+        <PasswordField
+          label="Nova senha"
+          placeholder="Digite sua nova senha"
+          value={password}
+          showPassword={showPassword}
+          onToggleVisibility={onTogglePassword}
+          onChange={(event) => onPasswordChange(event.target.value)}
+        />
+
+        <PasswordField
+          label="Confirmar nova senha"
+          placeholder="Repita sua nova senha"
+          value={confirmPassword}
+          showPassword={showConfirmPassword}
+          onToggleVisibility={onToggleConfirmPassword}
+          onChange={(event) => onConfirmPasswordChange(event.target.value)}
+        />
+
+        {error && (
+          <div className="flex items-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3">
+            <AlertCircle className="h-4 w-4 shrink-0 text-red-300" />
+
+            <p className="text-xs leading-5 text-red-200">{error}</p>
+          </div>
+        )}
+
+        <button
+          type="submit"
+          disabled={loading}
+          className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          {loading ? "Salvando..." : "Salvar nova senha"}
+          {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
+        </button>
+      </form>
+
+      <Link
+        to="/login"
+        className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 backdrop-blur-2xl active:scale-[0.98]"
+      >
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        Voltar para login
+      </Link>
+    </>
+  );
+}
+
+function ResetPasswordSuccess({
+  onGoToLogin,
+}: {
+  onGoToLogin: () => void;
+}) {
+  return (
+    <>
+      {/* Estado de sucesso: confirma que a senha foi redefinida. */}
+      <div className="mb-7">
+        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-100">
+          <CheckCircle2 className="h-7 w-7" />
+        </div>
+
+        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+          <Sparkles className="h-3.5 w-3.5" />
+          Senha alterada
+        </div>
+
+        <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-white">
+          Seu acesso foi recuperado.
+        </h1>
+
+        <p className="mt-3 text-sm leading-6 text-white/50">
+          Sua senha foi redefinida com sucesso. Agora você já pode entrar
+          novamente no Axon.
+        </p>
+      </div>
+
+      <button
+        type="button"
+        onClick={onGoToLogin}
+        className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 active:scale-[0.98]"
+      >
+        Ir para login
+        <ArrowRight className="ml-2 h-4 w-4" />
+      </button>
+    </>
+  );
+}
+
+// ===========================================================================
+// COMPONENTES INTERNOS
+// ===========================================================================
 
 type PasswordFieldProps = {
   label: string;
@@ -187,6 +262,7 @@ type PasswordFieldProps = {
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
+// Campo de senha reutilizado para nova senha e confirmação.
 function PasswordField({
   label,
   placeholder,
@@ -229,6 +305,10 @@ function PasswordField({
     </label>
   );
 }
+
+// ===========================================================================
+// BACKGROUND VISUAL
+// ===========================================================================
 
 function Background() {
   return (

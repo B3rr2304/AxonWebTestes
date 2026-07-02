@@ -1,3 +1,7 @@
+// ===========================================================================
+// TIPOS DOS RESULTADOS DE CRONOTIPO
+// ===========================================================================
+// Chaves usadas pelas páginas Result/Profile e pelo mapeamento vindo da API.
 export type ChronotypeResultKey =
   | "Matutino"
   | "Vespertino"
@@ -5,34 +9,49 @@ export type ChronotypeResultKey =
   | "Misto"
   | "Bimodal";
 
+// Estrutura completa consumida pela página Result.tsx e pelos cards de perfil.
 export type ChronotypeResult = {
   label: string;
   title: string;
   subtitle: string;
   description: string;
 
+  // Métricas rápidas exibidas nos cards do resultado.
   focusWindow: string;
   energyPeak: string;
   lowEnergy: string;
 
+  // Recomendação resumida e dicas iniciais para rotina.
   recommendation: string;
   routineTips: string[];
 
+  // Conteúdo detalhado exibido na tela de resultado completo.
   summary: string;
   idealStart: string;
   idealEnd: string;
   bestActivities: string[];
   avoid: string[];
   axonSetup: string[];
+  // Blocos sugeridos exibidos como janelas de foco no resultado completo.
   focusBlocks: {
     period: string;
     title: string;
     description: string;
   }[];
+
+  // Tags curtas exibidas no card principal do resultado.
   profileTags: string[];
 };
 
+// ===========================================================================
+// CONTEÚDO DOS RESULTADOS
+// ===========================================================================
+// Cada entrada descreve como o Axon deve explicar e adaptar a experiência
+// para o cronotipo calculado no questionário.
 export const results: Record<ChronotypeResultKey, ChronotypeResult> = {
+  // ---------------------------------------------------------------------------
+  // MATUTINO
+  // ---------------------------------------------------------------------------
   Matutino: {
     label: "Cronotipo Matutino",
     title: "Você rende melhor nas primeiras horas do dia.",
@@ -78,22 +97,28 @@ export const results: Record<ChronotypeResultKey, ChronotypeResult> = {
       {
         period: "06h - 08h",
         title: "Ativação",
-        description: "Bom momento para acordar, revisar o dia e iniciar com clareza.",
+        description:
+          "Bom momento para acordar, revisar o dia e iniciar com clareza.",
       },
       {
         period: "08h - 11h",
         title: "Foco máximo",
-        description: "Melhor janela para tarefas difíceis, estudos e decisões.",
+        description:
+          "Melhor janela para tarefas difíceis, estudos e decisões.",
       },
       {
         period: "14h - 17h",
         title: "Execução leve",
-        description: "Ideal para tarefas operacionais, revisão e organização.",
+        description:
+          "Ideal para tarefas operacionais, revisão e organização.",
       },
     ],
     profileTags: ["Energia cedo", "Alta clareza matinal", "Queda à noite"],
   },
 
+  // ---------------------------------------------------------------------------
+  // VESPERTINO
+  // ---------------------------------------------------------------------------
   Vespertino: {
     label: "Cronotipo Vespertino",
     title: "Você ganha energia conforme o dia avança.",
@@ -139,22 +164,28 @@ export const results: Record<ChronotypeResultKey, ChronotypeResult> = {
       {
         period: "08h - 11h",
         title: "Aquecimento",
-        description: "Bom momento para tarefas simples, mensagens e organização.",
+        description:
+          "Bom momento para tarefas simples, mensagens e organização.",
       },
       {
         period: "14h - 18h",
         title: "Foco principal",
-        description: "Melhor janela para tarefas profundas e decisões importantes.",
+        description:
+          "Melhor janela para tarefas profundas e decisões importantes.",
       },
       {
         period: "18h - 20h",
         title: "Criatividade",
-        description: "Bom período para ideias, revisão e projetos pessoais.",
+        description:
+          "Bom período para ideias, revisão e projetos pessoais.",
       },
     ],
     profileTags: ["Energia à tarde", "Manhã lenta", "Boa criatividade"],
   },
 
+  // ---------------------------------------------------------------------------
+  // NOTURNO
+  // ---------------------------------------------------------------------------
   Noturno: {
     label: "Cronotipo Noturno",
     title: "Seu pico de clareza aparece quando o mundo desacelera.",
@@ -200,22 +231,28 @@ export const results: Record<ChronotypeResultKey, ChronotypeResult> = {
       {
         period: "09h - 12h",
         title: "Entrada lenta",
-        description: "Período melhor para tarefas simples e organização básica.",
+        description:
+          "Período melhor para tarefas simples e organização básica.",
       },
       {
         period: "16h - 19h",
         title: "Retomada",
-        description: "Energia começa a subir e pode ser usada para execução média.",
+        description:
+          "Energia começa a subir e pode ser usada para execução média.",
       },
       {
         period: "20h - 01h",
         title: "Foco profundo",
-        description: "Janela principal para tarefas difíceis, criativas e analíticas.",
+        description:
+          "Janela principal para tarefas difíceis, criativas e analíticas.",
       },
     ],
     profileTags: ["Pico noturno", "Manhã fraca", "Alta profundidade"],
   },
 
+  // ---------------------------------------------------------------------------
+  // MISTO
+  // ---------------------------------------------------------------------------
   Misto: {
     label: "Cronotipo Misto",
     title: "Seu ritmo varia — e isso é uma característica, não um problema.",
@@ -261,22 +298,28 @@ export const results: Record<ChronotypeResultKey, ChronotypeResult> = {
       {
         period: "Manhã",
         title: "Teste de energia",
-        description: "Avalie se o dia começou com clareza ou se precisa de aquecimento.",
+        description:
+          "Avalie se o dia começou com clareza ou se precisa de aquecimento.",
       },
       {
         period: "Tarde",
         title: "Bloco adaptativo",
-        description: "Ajuste tarefas conforme energia, urgência e disponibilidade.",
+        description:
+          "Ajuste tarefas conforme energia, urgência e disponibilidade.",
       },
       {
         period: "Noite",
         title: "Revisão",
-        description: "Observe o que funcionou e alimente o Axon com esse padrão.",
+        description:
+          "Observe o que funcionou e alimente o Axon com esse padrão.",
       },
     ],
     profileTags: ["Flexível", "Contextual", "Adaptativo"],
   },
 
+  // ---------------------------------------------------------------------------
+  // BIMODAL
+  // ---------------------------------------------------------------------------
   Bimodal: {
     label: "Cronotipo Bimodal",
     title: "Você tem dois picos de energia bem definidos.",
@@ -322,17 +365,20 @@ export const results: Record<ChronotypeResultKey, ChronotypeResult> = {
       {
         period: "09h - 12h",
         title: "Primeiro pico",
-        description: "Ideal para análise, estudo, decisões e tarefas estratégicas.",
+        description:
+          "Ideal para análise, estudo, decisões e tarefas estratégicas.",
       },
       {
         period: "13h - 17h",
         title: "Vale de energia",
-        description: "Melhor para tarefas leves, pausas e rotinas automáticas.",
+        description:
+          "Melhor para tarefas leves, pausas e rotinas automáticas.",
       },
       {
         period: "20h - 23h",
         title: "Segundo pico",
-        description: "Bom para criatividade, revisão e projetos importantes.",
+        description:
+          "Bom para criatividade, revisão e projetos importantes.",
       },
     ],
     profileTags: ["Dois picos", "Queda à tarde", "Criatividade noturna"],

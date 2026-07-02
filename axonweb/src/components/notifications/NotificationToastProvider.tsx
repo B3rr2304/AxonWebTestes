@@ -4,49 +4,85 @@ import { Bell, X } from "lucide-react";
 
 import * as api from "../../lib/api";
 
+// ===========================================================================
+// CONFIGURAÇÕES DO PROVIDER
+// ===========================================================================
+
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/reset-password",
+];
+
+const SHOWN_NOTIFICATIONS_KEY = "axon_shown_notification_ids";
+const TOAST_HIDE_DELAY_MS = 10000;
+const POLLING_INTERVAL_MS = 15000;
+
+type NotificationAction = "read" | "accept" | "reject" | null;
+
+// ===========================================================================
+// HISTÓRICO LOCAL DE TOASTS EXIBIDOS
+// ===========================================================================
+// Evita mostrar repetidamente a mesma notificação em polling.
+function getShownIds() {
+  try {
+    return JSON.parse(
+      localStorage.getItem(SHOWN_NOTIFICATIONS_KEY) ?? "[]"
+    ) as string[];
+  } catch {
+    return [];
+  }
+}
+
+function saveShownId(id: string) {
+  const shownIds = getShownIds();
+  const next = [id, ...shownIds.filter((shownId) => shownId !== id)].slice(
+    0,
+    30
+  );
+
+  localStorage.setItem(SHOWN_NOTIFICATIONS_KEY, JSON.stringify(next));
+}
+
+// ===========================================================================
+// PROVIDER GLOBAL DE TOASTS DE NOTIFICAÇÃO
+// ===========================================================================
+
 export default function NotificationToastProvider() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ---------------------------------------------------------------------------
+  // Estado do toast atual
+  // ---------------------------------------------------------------------------
   const [toast, setToast] = useState<api.NotificationData | null>(null);
   const [isVisible, setIsVisible] = useState(false);
-  
+  const [actionLoading, setActionLoading] =
+    useState<NotificationAction>(null);
 
-  const lastSeenIdRef = useRef<string | null>(null);
+  // ---------------------------------------------------------------------------
+  // Controle de timers
+  // ---------------------------------------------------------------------------
   const hideTimeoutRef = useRef<number | null>(null);
 
-  const [actionLoading, setActionLoading] = useState<"read" | "accept" | "reject" | null>(null);
-
+  // ---------------------------------------------------------------------------
+  // Condição para ativar notificações
+  // ---------------------------------------------------------------------------
+  // Não consulta notificações em rotas públicas ou quando não há sessão.
   const shouldCheckNotifications =
-    api.isLoggedIn() &&
-    !["/", "/login", "/signup", "/forgot-password", "/reset-password"].includes(
-      location.pathname
-    );
+    api.isLoggedIn() && !PUBLIC_ROUTES.includes(location.pathname);
 
+  // ---------------------------------------------------------------------------
+  // Polling de notificações
+  // ---------------------------------------------------------------------------
+  // Busca notificações novas ao entrar no app, a cada intervalo e ao voltar para aba.
   useEffect(() => {
     if (!shouldCheckNotifications) return;
+
     let interval: number | undefined;
     let cancelled = false;
-
-    const shownKey = "axon_shown_notification_ids";
-
-    function getShownIds() {
-      try {
-        return JSON.parse(localStorage.getItem(shownKey) ?? "[]") as string[];
-      } catch {
-        return [];
-      }
-    }
-
-    function saveShownId(id: string) {
-      const shownIds = getShownIds();
-      const next = [id, ...shownIds.filter((shownId) => shownId !== id)].slice(
-        0,
-        30
-      );
-
-      localStorage.setItem(shownKey, JSON.stringify(next));
-    }
 
     async function checkNotifications() {
       try {
@@ -60,7 +96,6 @@ export default function NotificationToastProvider() {
         const shownIds = getShownIds();
 
         if (shownIds.includes(latestUnread.id)) return;
-
         if (cancelled) return;
 
         saveShownId(latestUnread.id);
@@ -75,18 +110,20 @@ export default function NotificationToastProvider() {
 
         hideTimeoutRef.current = window.setTimeout(() => {
           setIsVisible(false);
-        }, 10000);
+        }, TOAST_HIDE_DELAY_MS);
       } catch {
-        // silencioso
+        // Falhas de polling não devem interromper o uso do app.
       }
     }
 
     checkNotifications();
 
-    interval = window.setInterval(checkNotifications, 15000);
+    interval = window.setInterval(checkNotifications, POLLING_INTERVAL_MS);
 
     const handleVisibility = () => {
-      if (!document.hidden) checkNotifications();
+      if (!document.hidden) {
+        checkNotifications();
+      }
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
@@ -94,15 +131,21 @@ export default function NotificationToastProvider() {
     return () => {
       cancelled = true;
 
-      if (interval) window.clearInterval(interval);
-      if (hideTimeoutRef.current) window.clearTimeout(hideTimeoutRef.current);
+      if (interval) {
+        window.clearInterval(interval);
+      }
+
+      if (hideTimeoutRef.current) {
+        window.clearTimeout(hideTimeoutRef.current);
+      }
 
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [shouldCheckNotifications]);
 
-  if (!toast || !isVisible) return null;
-
+  // ---------------------------------------------------------------------------
+  // Ações do toast
+  // ---------------------------------------------------------------------------
   function openNotifications() {
     setIsVisible(false);
     navigate("/dashboard?notifications=open");
@@ -156,6 +199,11 @@ export default function NotificationToastProvider() {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Renderização condicional
+  // ---------------------------------------------------------------------------
+  if (!toast || !isVisible) return null;
+
   const isImprovement = toast.type === "improvement";
 
   return (
@@ -163,6 +211,7 @@ export default function NotificationToastProvider() {
       <div className="mx-auto w-full max-w-[430px] overflow-hidden rounded-[1.6rem] border border-purple-300/20 bg-[#171720]/95 p-4 shadow-2xl shadow-black/45 backdrop-blur-2xl">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
+            {/* Clique no conteúdo abre a central de notificações do Dashboard. */}
             <button
               type="button"
               onClick={openNotifications}
@@ -187,6 +236,7 @@ export default function NotificationToastProvider() {
               </div>
             </button>
 
+            {/* Sugestões têm aceitar/recusar; notificações comuns podem ser lidas. */}
             <div className="mt-3 flex gap-2 pl-14">
               {isImprovement ? (
                 <>
@@ -215,7 +265,9 @@ export default function NotificationToastProvider() {
                   disabled={actionLoading !== null}
                   className="min-h-9 rounded-xl border border-white/10 bg-white/[0.055] px-3 text-xs font-semibold text-white/55 active:scale-[0.98] disabled:opacity-60"
                 >
-                  {actionLoading === "read" ? "Marcando..." : "Marcar como lida"}
+                  {actionLoading === "read"
+                    ? "Marcando..."
+                    : "Marcar como lida"}
                 </button>
               )}
             </div>
@@ -232,8 +284,13 @@ export default function NotificationToastProvider() {
         </div>
       </div>
     </div>
-  );  
+  );
+}
 
+// ===========================================================================
+// SOM DO TOAST
+// ===========================================================================
+// Feedback sonoro curto; falha silenciosamente se o navegador bloquear áudio.
 function playNotificationSound() {
   try {
     const AudioContextClass =
@@ -248,7 +305,10 @@ function playNotificationSound() {
 
     gain.gain.setValueAtTime(0.0001, audioContext.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.06, audioContext.currentTime + 0.02);
-    gain.gain.exponentialRampToValueAtTime(0.0001, audioContext.currentTime + 0.22);
+    gain.gain.exponentialRampToValueAtTime(
+      0.0001,
+      audioContext.currentTime + 0.22
+    );
 
     oscillator.connect(gain);
     gain.connect(audioContext.destination);
@@ -256,7 +316,6 @@ function playNotificationSound() {
     oscillator.start();
     oscillator.stop(audioContext.currentTime + 0.24);
   } catch {
-    // Navegador bloqueou áudio ou não suporta Web Audio
+    // Navegador bloqueou áudio ou não suporta Web Audio.
   }
-}
 }
