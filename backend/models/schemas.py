@@ -175,6 +175,7 @@ class ConversationResponse(BaseModel):
     created_at: str
     last_message: Optional[str] = None
     message_count: int = 0
+    conversation_type: str = "regular"  # regular | axon_direct
 
 
 # --- Chat Projects ---

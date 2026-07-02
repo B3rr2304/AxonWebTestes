@@ -24,12 +24,12 @@ _MAX_HISTORY = 50
 _RELEVANT_ANSWERS = ["P10", "P11", "P13", "P14", "P17", "P18"]
 
 
-def _stream_and_save(user_id: str, conversation_id: str, user_message: str, history: list, system_prompt: str, tz_name: str | None = None):
+def _stream_and_save(user_id: str, conversation_id: str, user_message: str, history: list, system_prompt: str, tz_name: str | None = None, conversation_type: str = "regular"):
     """Faz o streaming da resposta da Claude e salva as mensagens no banco."""
     import json as json_module
     response_text = ""
     try:
-        for chunk in claude_service.stream_chat_with_tools(history, system_prompt, user_id, tz_name):
+        for chunk in claude_service.stream_chat_with_tools(history, system_prompt, user_id, tz_name, conversation_type):
             # chunk é no formato: "data: {\"text\": \"...\"}\n\n" ou "data: [DONE]\n\n"
             yield chunk
 
@@ -104,7 +104,7 @@ def _load_perfil(user_id: str, tz_header: str | None = None) -> dict:
     """Carrega o perfil completo do usuário para montar o prompt do agente."""
     profile_res = (
         supabase.table("profiles")
-        .select("name, chronotype, qualidade_sono, schedule_type, timezone")
+        .select("name, chronotype, qualidade_sono, schedule_type, timezone, axon_direct_onboarding_completed")
         .eq("id", user_id)
         .single()
         .execute()
@@ -174,7 +174,24 @@ def _load_perfil(user_id: str, tz_header: str | None = None) -> dict:
         "current_block": current_block,
         "timezone": tz_name,
         "personal_profile": personal_profile,
+        "axon_direct_onboarding_completed": profile_data.get("axon_direct_onboarding_completed", False),
     }
+
+
+def _load_conversation_type(conversation_id: str | None, user_id: str) -> str:
+    """Descobre o conversation_type da conversa atual (regular por padrão)."""
+    if not conversation_id:
+        return "regular"
+    res = (
+        supabase.table("conversations")
+        .select("conversation_type")
+        .eq("id", conversation_id)
+        .eq("user_id", user_id)
+        .execute()
+    )
+    if not res.data:
+        return "regular"
+    return res.data[0].get("conversation_type") or "regular"
 
 
 @router.post("/message")
@@ -195,13 +212,17 @@ def chat_message(
     user_id = current_user["id"]
 
     perfil = _load_perfil(user_id, request.headers.get("X-Timezone"))
+    perfil["conversation_type"] = _load_conversation_type(body.conversation_id, user_id)
     system_prompt = claude_service.build_agent_prompt(perfil, perfil.get("memories", []))
 
     history = [{"role": m.role, "content": m.content} for m in body.history[-_MAX_HISTORY:]]
     history.append({"role": "user", "content": body.message})
 
     return StreamingResponse(
-        _stream_and_save(user_id, body.conversation_id, body.message, history, system_prompt, perfil.get("timezone")),
+        _stream_and_save(
+            user_id, body.conversation_id, body.message, history, system_prompt,
+            perfil.get("timezone"), perfil["conversation_type"],
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

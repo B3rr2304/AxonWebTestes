@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from models.schemas import ConversationCreate, ConversationUpdate, ConversationResponse
 from auth_helper import get_current_user
 from database import supabase
+from services import axon_direct_service
 
 router = APIRouter(prefix="/chat/conversations", tags=["conversations"])
 
@@ -19,6 +20,42 @@ def _assert_project_owned(user_id: str, project_id: str) -> None:
         raise HTTPException(status_code=404, detail="Projeto não encontrado")
 
 
+def _to_response(conv: dict, last_message: str | None, message_count: int) -> ConversationResponse:
+    return ConversationResponse(
+        id=conv["id"],
+        title=conv["title"],
+        type=conv["type"],
+        archived=conv["archived"],
+        project_id=conv.get("project_id"),
+        created_at=conv["created_at"],
+        last_message=last_message,
+        message_count=message_count,
+        conversation_type=conv.get("conversation_type", "regular"),
+    )
+
+
+def _load_last_message_and_count(conversation_id: str) -> tuple[str | None, int]:
+    msgs_res = (
+        supabase.table("messages")
+        .select("content, role, created_at")
+        .eq("conversation_id", conversation_id)
+        .order("created_at", desc=True)
+        .limit(1)
+        .execute()
+    )
+    msgs = msgs_res.data or []
+    last_message = msgs[0]["content"] if msgs else None
+
+    count_res = (
+        supabase.table("messages")
+        .select("id", count="exact")
+        .eq("conversation_id", conversation_id)
+        .execute()
+    )
+
+    return last_message, count_res.count or 0
+
+
 @router.get("", response_model=list[ConversationResponse])
 def list_conversations(
     limit: int = Query(8, ge=1, le=50),
@@ -28,10 +65,16 @@ def list_conversations(
 ):
     user_id = current_user["id"]
 
+    # O Canal do Axon é fixo (independente de projeto/recência) e sempre
+    # aparece primeiro. Garantimos que ele existe (cria + mensagem de
+    # abertura na primeira vez) de forma transparente aqui.
+    axon_direct_conv = axon_direct_service.get_axon_direct_conversation(user_id)
+
     query = (
         supabase.table("conversations")
         .select("*")
         .eq("user_id", user_id)
+        .neq("conversation_type", axon_direct_service.CONVERSATION_TYPE)
         .order("updated_at", desc=True)
         .limit(limit)
         .offset(offset)
@@ -46,41 +89,19 @@ def list_conversations(
     # Sem filtro: retorna todas (comportamento anterior)
 
     res = query.execute()
-
     conversations = res.data or []
+
     result = []
 
+    # O Canal do Axon só entra na 1ª página e apenas quando não há filtro por
+    # projeto específico (ele nunca pertence a um projeto).
+    if offset == 0 and project_id is None:
+        last_message, message_count = _load_last_message_and_count(axon_direct_conv["id"])
+        result.append(_to_response(axon_direct_conv, last_message, message_count))
+
     for conv in conversations:
-        msgs_res = (
-            supabase.table("messages")
-            .select("content, role, created_at")
-            .eq("conversation_id", conv["id"])
-            .order("created_at", desc=True)
-            .limit(1)
-            .execute()
-        )
-        msgs = msgs_res.data or []
-        last_message = msgs[0]["content"] if msgs else None
-
-        count_res = (
-            supabase.table("messages")
-            .select("id", count="exact")
-            .eq("conversation_id", conv["id"])
-            .execute()
-        )
-
-        result.append(
-            ConversationResponse(
-                id=conv["id"],
-                title=conv["title"],
-                type=conv["type"],
-                archived=conv["archived"],
-                project_id=conv.get("project_id"),
-                created_at=conv["created_at"],
-                last_message=last_message,
-                message_count=count_res.count or 0,
-            )
-        )
+        last_message, message_count = _load_last_message_and_count(conv["id"])
+        result.append(_to_response(conv, last_message, message_count))
 
     return result
 
@@ -173,13 +194,16 @@ def delete_conversation(
 
     existing = (
         supabase.table("conversations")
-        .select("id")
+        .select("id, conversation_type")
         .eq("id", conversation_id)
         .eq("user_id", user_id)
         .execute()
     )
     if not existing.data:
         raise HTTPException(status_code=404, detail="Conversa não encontrada")
+
+    if existing.data[0].get("conversation_type") == axon_direct_service.CONVERSATION_TYPE:
+        raise HTTPException(status_code=403, detail="O Canal do Axon não pode ser excluído")
 
     supabase.table("conversations").delete().eq("id", conversation_id).eq("user_id", user_id).execute()
 
