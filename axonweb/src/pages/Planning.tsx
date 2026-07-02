@@ -22,6 +22,8 @@ import {
 
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
+import Routines from "./Routines";
+import Goals from "./Goals";
 import * as api from "../lib/api";
 import type { Task, TaskType, TaskStatus, Subtask, DailyStat } from "../lib/api";
 
@@ -196,7 +198,101 @@ function weekDaysOf(selected: Date): Date[] {
   });
 }
 
-export default function Planning({ embedded = false }: { embedded?: boolean } = {}) {
+type View = "agenda" | "rotinas" | "objetivos";
+
+const TABS: { key: View; label: string; icon: typeof CalendarDays }[] = [
+  { key: "agenda", label: "Agenda", icon: CalendarDays },
+  { key: "rotinas", label: "Rotinas", icon: Repeat },
+  { key: "objetivos", label: "Objetivos", icon: Target },
+];
+
+// Hub de Planejamento: cabeçalho + Sidebar + seletor de abas. Cada aba renderiza
+// seu conteúdo em modo `embedded` (sem moldura própria), pois a moldura vem daqui.
+export default function Planning({
+  initialView = "agenda",
+}: {
+  initialView?: View;
+} = {}) {
+  const navigate = useNavigate();
+  const [view, setView] = useState<View>(initialView);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  const resultKey: ChronotypeResultKey = (() => {
+    const s = localStorage.getItem("axon_chronotype");
+    return s && validKeys.includes(s as ChronotypeResultKey)
+      ? (s as ChronotypeResultKey)
+      : "Misto";
+  })();
+  const result = results[resultKey];
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
+      <Background />
+
+      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
+        <header className="mb-5 flex items-center justify-between">
+          <button
+            onClick={() => navigate("/dashboard")}
+            className="flex items-center gap-3 text-left active:scale-[0.98]"
+          >
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
+              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
+            </div>
+
+            <div>
+              <p className="text-sm font-semibold text-white">Planejamento</p>
+              <p className="text-xs text-white/40">Agenda, rotinas e objetivos</p>
+            </div>
+          </button>
+
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </header>
+
+        {/* Seletor de visão */}
+        <div className="mb-5 flex rounded-2xl border border-white/10 bg-black/20 p-1">
+          {TABS.map((tab) => {
+            const Icon = tab.icon;
+            const active = view === tab.key;
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setView(tab.key)}
+                className={`flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
+                  active
+                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
+                    : "text-white/42"
+                }`}
+              >
+                <Icon className="h-3.5 w-3.5" />
+                {tab.label}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Conteúdo da visão ativa (sem moldura própria) */}
+        {view === "agenda" && <AgendaView embedded />}
+        {view === "rotinas" && <Routines embedded />}
+        {view === "objetivos" && <Goals embedded />}
+      </div>
+
+      <Sidebar
+        isOpen={isSidebarOpen}
+        onClose={() => setIsSidebarOpen(false)}
+        chronotypeLabel={result.label}
+        energyPeak={result.energyPeak}
+      />
+    </main>
+  );
+}
+
+function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -369,7 +465,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
     ? selectedDailyStat?.completion_rate ?? 0
     : totalItems === 0
     ? 0
-    : Math.round((completedItems / totalItems) * 100);
+    : Math.round((completedScore / totalItems) * 100);
 
   const loadDailyStats = useCallback(async () => {
     try {
@@ -793,7 +889,8 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
     </>
   );
 
-  // No hub (embedded), a moldura — main, header, Sidebar — vem do Planejamento.
+  // No hub (embedded), a moldura — main, header, Sidebar — vem do componente
+  // Planning (hub de abas) acima, neste mesmo arquivo.
   if (embedded) {
     return (
       <>
