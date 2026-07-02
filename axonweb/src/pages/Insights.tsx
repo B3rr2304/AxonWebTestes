@@ -704,15 +704,15 @@ export default function Insights() {
               <p className="text-sm leading-6 text-white/58">
                 {taskInsights.summary.best_weekday ? (
                   <>
-                    Seu dia mais produtivo costuma ser{" "}
+                    Seu dia mais produtivo costuma ser {taskInsights.summary.best_weekday}
                     <span className="font-semibold text-purple-100">
                       {taskInsights.summary.best_weekday}
                     </span>
                     . Você concluiu{" "}
                     <span className="font-semibold text-purple-100">
-                      {taskInsights.summary.total_completed}
+                      {taskInsights.summary.best_weekday_completed}
                     </span>{" "}
-                    tarefas no período.
+                    tarefas nesse dia.
                   </>
                 ) : (
                   "Conclua tarefas no Planejamento para ver seus padrões de produtividade aqui."

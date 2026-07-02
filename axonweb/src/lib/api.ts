@@ -329,6 +329,7 @@ export interface DayBlock {
   tasks: BlockTask[];
 }
 
+
 export interface FocusBlock {
   index: number;
   start: string;
@@ -451,6 +452,20 @@ export function deleteTask(id: string) {
 
 export function carryForwardTasks() {
   return request<Task[]>("/tasks/carry-forward", { method: "POST" });
+}
+
+export function getDailyStats(start: string, end: string) {
+  return request<DailyStat[]>(
+    `/tasks/daily-stats?start=${start}&end=${end}`
+  );
+}
+
+export interface DailyStat {
+  date: string;
+  total: number;
+  completed_items: number;
+  completion_rate: number;
+  carried_forward: number;
 }
 
 // --- Subtasks ---
@@ -770,6 +785,7 @@ export interface TaskInsightSummary {
   total_completed: number;
   avg_completion_rate: number;
   best_weekday: string | null;
+  best_weekday_completed: number;
   carry_forward_total: number;
 }
 
