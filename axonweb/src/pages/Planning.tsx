@@ -23,7 +23,7 @@ import {
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
-import type { Task, TaskType, TaskStatus, Subtask } from "../lib/api";
+import type { Task, TaskType, TaskStatus, Subtask, DailyStat } from "../lib/api";
 
 type ViewMode = "month" | "week";
 type DisplayStatus = "todo" | "progress" | "done" | "scheduled";
@@ -227,6 +227,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
     });
   const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
   const [calendarConnectError, setCalendarConnectError] = useState<string | null>(null);
+  const [dailyStatsMap, setDailyStatsMap] = useState<Record<string, DailyStat>>({});
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -284,6 +285,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
       .finally(async () => {
         await loadTasks();
         await loadSubtasks();
+        await loadDailyStats();
       });
   }, [loadTasks, loadSubtasks]);
 
@@ -347,18 +349,48 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
     return acc + (t.status === "done" ? 1 : 0);
   }, 0);
 
-  // Para o texto "X de Y concluídos" conta tarefas totalmente finalizadas.
-  const completedItems = actionable.filter((t) => {
-    if (t.task_type === "event") return isEventCompleted(t, now);
-    const subs = subtasksMap[t.id];
-    if (subs && subs.length > 0) return subs.every((s) => s.done);
-    return t.status === "done";
-  }).length;
+  const todayIso = toISODate(new Date());
+  const selectedDailyStat = dailyStatsMap[selectedIso];
+  const shouldUseSnapshot = selectedIso < todayIso;
 
-  const progress =
-    actionable.length === 0
-      ? 0
-      : Math.round((completedScore / actionable.length) * 100);
+  const liveCompletedItems = actionable.filter((t) =>
+    t.task_type === "event" ? isEventCompleted(t, now) : t.status === "done"
+  ).length;
+
+  const completedItems = shouldUseSnapshot
+    ? selectedDailyStat?.completed_items ?? 0
+    : liveCompletedItems;
+
+  const totalItems = shouldUseSnapshot
+    ? selectedDailyStat?.total ?? 0
+    : actionable.length;
+
+  const progress = shouldUseSnapshot
+    ? selectedDailyStat?.completion_rate ?? 0
+    : totalItems === 0
+    ? 0
+    : Math.round((completedItems / totalItems) * 100);
+
+  const loadDailyStats = useCallback(async () => {
+    try {
+      const { start, end } = monthRangeOf(selectedDate);
+      const stats = await api.getDailyStats(start, end);
+
+      const map: Record<string, DailyStat> = {};
+
+      for (const stat of stats) {
+        map[stat.date] = stat;
+      }
+
+      setDailyStatsMap(map);
+    } catch {
+      setDailyStatsMap({});
+    }
+  }, [selectedDate]);
+
+  useEffect(() => {
+    loadDailyStats();
+  }, [loadDailyStats]);
 
   async function handleToggleDone(task: Task) {
     const next =
@@ -523,7 +555,7 @@ export default function Planning({ embedded = false }: { embedded?: boolean } = 
                 <p className="mt-2 text-sm leading-6 text-white/46">
                   {actionable.length === 0
                     ? "Nenhuma tarefa ainda — crie pela conversa com o Axon ou no botão +."
-                    : `${completedItems} de ${actionable.length} itens concluídos.`}
+                    : `${completedItems} de ${totalItems} itens concluídos.`}
                 </p>
               </div>
 
@@ -1014,6 +1046,7 @@ function MonthCalendar({
       return iso === startDate;
     });
   }
+  
 
   function isMultiDayEventOnDate(task: Task, date: Date) {
     const iso = toISODate(date);
@@ -1158,6 +1191,20 @@ function MonthLegendDot({ color, label }: { color: string; label: string }) {
       <span className="text-[0.62rem] font-medium text-white/42">{label}</span>
     </div>
   );
+}
+
+function monthRangeOf(date: Date) {
+  const start = new Date(date.getFullYear(), date.getMonth(), 1);
+  const end = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+  return {
+    start: toISODate(start),
+    end: toISODate(end),
+  };
+}
+
+function isPastDate(isoDate: string) {
+  return isoDate < toISODate(new Date());
 }
 
 function WeekCalendar({
