@@ -32,7 +32,7 @@ const INPUT_CLS = "min-h-[52px] w-full rounded-2xl border border-white/10 bg-whi
 // PÁGINA PRINCIPAL
 // ──────────────────────────────────────────────────────────────────────────────
 
-export default function Objetivos({ embedded = false }: { embedded?: boolean } = {}) {
+export default function Goals({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);

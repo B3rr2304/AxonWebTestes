@@ -1,20 +1,37 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
+  ArrowLeft,
+  Check,
+  Clock,
   ListChecks,
   Menu,
   Pause,
+  Pencil,
   Play,
   Plus,
   Repeat,
+  Sparkles,
+  Trash2,
+  X,
 } from "lucide-react";
 
 import Sidebar from "../components/layout/Sidebar";
 import NewRoutineSheet from "../components/rotinas/NewRoutineSheet";
+import {
+  blankItem,
+  draftToCreateInput,
+  draftToUpdateInput,
+  itemToDraft,
+  itemValid,
+  RoutineItemEditor,
+  WEEKDAYS,
+  type DraftItem,
+} from "../components/rotinas/routineItem";
 import * as api from "../lib/api";
-import type { Routine } from "../lib/api";
+import type { Routine, RoutineDetail, RoutineItem } from "../lib/api";
 
-export default function Rotinas({ embedded = false }: { embedded?: boolean } = {}) {
+export default function Routines({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -368,4 +385,692 @@ function Background() {
       <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,11,0.05),#05050b_88%)]" />
     </div>
   );
+}
+
+// =====================================================================
+// Detalhe de uma rotina (rota /rotinas/:id). Reutiliza Background,
+// formatDate e StatusBadge definidos acima.
+// =====================================================================
+
+export function RoutineDetailPage() {
+  const { id = "" } = useParams();
+  const navigate = useNavigate();
+
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [routine, setRoutine] = useState<RoutineDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Edição do nome
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState("");
+  const [savingName, setSavingName] = useState(false);
+
+  // Edição de item
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [itemDraft, setItemDraft] = useState<DraftItem | null>(null);
+  const [savingItem, setSavingItem] = useState(false);
+
+  // Adicionar item
+  const [newItemDraft, setNewItemDraft] = useState<DraftItem | null>(null);
+  const [savingNewItem, setSavingNewItem] = useState(false);
+
+  // Excluir item
+  const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
+  const [busyDeleteItem, setBusyDeleteItem] = useState(false);
+
+  // Pausa / retomada / exclusão
+  const [showPause, setShowPause] = useState(false);
+  const [pauseUntil, setPauseUntil] = useState("");
+  const [busyStatus, setBusyStatus] = useState(false);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  function load() {
+    setLoading(true);
+    api
+      .getRoutine(id)
+      .then((data) => {
+        setRoutine(data);
+        setError(null);
+      })
+      .catch((e: Error) => {
+        setError(e.message || "Não foi possível carregar a rotina.");
+        setRoutine(null);
+      })
+      .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    if (id) load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  function startEditName() {
+    if (!routine) return;
+    setNameDraft(routine.name);
+    setEditingName(true);
+  }
+
+  async function saveName() {
+    if (!routine || !nameDraft.trim()) return;
+    setSavingName(true);
+    try {
+      const updated = await api.updateRoutine(routine.id, {
+        name: nameDraft.trim(),
+      });
+      setRoutine(updated);
+      setEditingName(false);
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message || "Não foi possível renomear a rotina.");
+    } finally {
+      setSavingName(false);
+    }
+  }
+
+  function startEditItem(item: RoutineItem) {
+    setItemDraft(itemToDraft(item));
+    setEditingItemId(item.id);
+  }
+
+  function cancelEditItem() {
+    setEditingItemId(null);
+    setItemDraft(null);
+  }
+
+  async function saveItem() {
+    if (!routine || !itemDraft || !editingItemId) return;
+    setSavingItem(true);
+    try {
+      await api.updateRoutineItem(
+        routine.id,
+        editingItemId,
+        draftToUpdateInput(itemDraft)
+      );
+      // Recarrega a rotina para refletir itens + streak recalculados.
+      const fresh = await api.getRoutine(routine.id);
+      setRoutine(fresh);
+      cancelEditItem();
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message || "Não foi possível salvar o item.");
+    } finally {
+      setSavingItem(false);
+    }
+  }
+
+  async function saveNewItem() {
+    if (!routine || !newItemDraft) return;
+    setSavingNewItem(true);
+    try {
+      await api.addRoutineItem(routine.id, draftToCreateInput(newItemDraft));
+      const fresh = await api.getRoutine(routine.id);
+      setRoutine(fresh);
+      setNewItemDraft(null);
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message || "Não foi possível adicionar o item.");
+    } finally {
+      setSavingNewItem(false);
+    }
+  }
+
+  async function confirmDeleteItem() {
+    if (!routine || !deletingItemId) return;
+    setBusyDeleteItem(true);
+    try {
+      // Era o último item: uma rotina sem itens não faz sentido, então a
+      // exclusão do item também exclui a rotina inteira (cascata no backend).
+      if (routine.items.length === 1) {
+        await api.deleteRoutine(routine.id);
+        navigate("/rotinas");
+        return;
+      }
+      await api.deleteRoutineItem(routine.id, deletingItemId);
+      const fresh = await api.getRoutine(routine.id);
+      setRoutine(fresh);
+      setDeletingItemId(null);
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message || "Não foi possível excluir o item.");
+    } finally {
+      setBusyDeleteItem(false);
+    }
+  }
+
+  async function confirmPause() {
+    if (!routine) return;
+    setBusyStatus(true);
+    try {
+      const updated = await api.pauseRoutine(routine.id, pauseUntil || null);
+      setRoutine(updated);
+      setShowPause(false);
+      setPauseUntil("");
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message || "Não foi possível pausar a rotina.");
+    } finally {
+      setBusyStatus(false);
+    }
+  }
+
+  async function resume() {
+    if (!routine) return;
+    setBusyStatus(true);
+    try {
+      const updated = await api.resumeRoutine(routine.id);
+      setRoutine(updated);
+      setError(null);
+    } catch (e) {
+      setError((e as Error).message || "Não foi possível retomar a rotina.");
+    } finally {
+      setBusyStatus(false);
+    }
+  }
+
+  async function confirmDelete() {
+    if (!routine) return;
+    setDeleting(true);
+    try {
+      await api.deleteRoutine(routine.id);
+      navigate("/rotinas");
+    } catch (e) {
+      setError((e as Error).message || "Não foi possível excluir a rotina.");
+      setDeleting(false);
+    }
+  }
+
+  return (
+    <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
+      <Background />
+
+      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
+        <header className="mb-6 flex items-center justify-between">
+          <button
+            onClick={() => navigate("/rotinas")}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 active:scale-[0.96]"
+            aria-label="Voltar para rotinas"
+          >
+            <ArrowLeft className="h-5 w-5" />
+          </button>
+
+          <button
+            onClick={() => setIsSidebarOpen(true)}
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 backdrop-blur-2xl active:scale-[0.96]"
+            aria-label="Abrir menu"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        </header>
+
+        {loading ? (
+          <DetailSkeleton />
+        ) : !routine ? (
+          <div className="rounded-[1.6rem] border border-red-300/20 bg-red-500/10 p-5 text-sm leading-6 text-red-100/80">
+            {error || "Rotina não encontrada."}
+          </div>
+        ) : (
+          <>
+            {/* Nome editável inline */}
+            <section className="mb-5">
+              {editingName ? (
+                <div className="flex items-center gap-2">
+                  <input
+                    autoFocus
+                    value={nameDraft}
+                    onChange={(e) => setNameDraft(e.target.value)}
+                    className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/25 px-4 py-2.5 text-lg font-semibold text-white outline-none focus:border-purple-300/40"
+                  />
+                  <button
+                    onClick={saveName}
+                    disabled={!nameDraft.trim() || savingName}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-emerald-300/20 bg-emerald-500/15 text-emerald-100 active:scale-[0.96] disabled:opacity-40"
+                    aria-label="Salvar nome"
+                  >
+                    <Check className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => setEditingName(false)}
+                    className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/55 active:scale-[0.96]"
+                    aria-label="Cancelar"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+              ) : (
+                <div className="flex items-start gap-2">
+                  <h1 className="min-w-0 flex-1 text-[1.8rem] font-semibold leading-tight tracking-[-0.04em] text-white">
+                    {routine.name}
+                  </h1>
+                  <button
+                    onClick={startEditName}
+                    className="mt-1 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/50 active:scale-[0.96]"
+                    aria-label="Editar nome"
+                  >
+                    <Pencil className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+            </section>
+
+            {/* Status + streak */}
+            <section className="mb-5 rounded-[1.7rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+              <div className="flex items-center justify-between gap-3">
+                <StatusBadge status={routine.status} />
+                {routine.status === "paused" && routine.paused_until && (
+                  <span className="text-xs text-white/40">
+                    Retomar em {formatDate(routine.paused_until)}
+                  </span>
+                )}
+              </div>
+
+              <div className="mt-4 rounded-[1.4rem] border border-amber-300/15 bg-amber-500/[0.07] p-4">
+                {routine.streak > 0 ? (
+                  <p className="text-sm font-semibold text-amber-100/90">
+                    🔥 {routine.streak}{" "}
+                    {routine.streak === 1 ? "dia seguido" : "dias seguidos"}
+                  </p>
+                ) : (
+                  <p className="text-sm font-medium text-white/45">
+                    Sem sequência ainda
+                  </p>
+                )}
+                <p className="mt-1 text-xs leading-5 text-white/40">
+                  Conclua todos os itens do dia para manter sua sequência.
+                </p>
+              </div>
+
+              <div className="mt-3 flex items-center gap-2 text-xs text-white/40">
+                <span>Início {formatDate(routine.start_date)}</span>
+                <span className="text-white/15">•</span>
+                <span>
+                  {routine.end_date
+                    ? `Término ${formatDate(routine.end_date)}`
+                    : "Sem data de término"}
+                </span>
+              </div>
+            </section>
+
+            {/* Itens */}
+            <section className="mb-5">
+              <p className="mb-3 text-sm font-semibold text-white">
+                Itens da rotina
+              </p>
+
+              <div className="space-y-3">
+                {routine.items.map((item) =>
+                  editingItemId === item.id && itemDraft ? (
+                    <div key={item.id}>
+                      <div className="mb-2 flex items-center gap-2 rounded-2xl border border-purple-300/15 bg-purple-500/[0.08] px-3 py-2 text-xs text-purple-100/80">
+                        <Sparkles className="h-3.5 w-3.5 shrink-0" />
+                        Apenas as tarefas futuras serão alteradas.
+                      </div>
+
+                      <RoutineItemEditor
+                        item={itemDraft}
+                        canRemove={false}
+                        onChange={(patch) =>
+                          setItemDraft((cur) => (cur ? { ...cur, ...patch } : cur))
+                        }
+                        onToggleDay={(day) =>
+                          setItemDraft((cur) => {
+                            if (!cur) return cur;
+                            const days = cur.days.includes(day)
+                              ? cur.days.filter((d) => d !== day)
+                              : [...cur.days, day].sort((a, b) => a - b);
+                            return { ...cur, days };
+                          })
+                        }
+                        onRemove={() => {}}
+                      />
+
+                      <div className="mt-2 flex gap-2">
+                        <button
+                          onClick={cancelEditItem}
+                          disabled={savingItem}
+                          className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-white/60 active:scale-[0.97] disabled:opacity-40"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={saveItem}
+                          disabled={savingItem || !itemValid(itemDraft)}
+                          className="flex-1 rounded-full bg-purple-500/90 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98] disabled:opacity-40"
+                        >
+                          {savingItem ? "Salvando..." : "Salvar item"}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <ItemRow
+                      key={item.id}
+                      item={item}
+                      onEdit={() => startEditItem(item)}
+                      onDelete={() => setDeletingItemId(item.id)}
+                    />
+                  )
+                )}
+
+                {newItemDraft ? (
+                  <div>
+                    <RoutineItemEditor
+                      item={newItemDraft}
+                      canRemove={false}
+                      onChange={(patch) =>
+                        setNewItemDraft((cur) => (cur ? { ...cur, ...patch } : cur))
+                      }
+                      onToggleDay={(day) =>
+                        setNewItemDraft((cur) => {
+                          if (!cur) return cur;
+                          const days = cur.days.includes(day)
+                            ? cur.days.filter((d) => d !== day)
+                            : [...cur.days, day].sort((a, b) => a - b);
+                          return { ...cur, days };
+                        })
+                      }
+                      onRemove={() => {}}
+                    />
+
+                    <div className="mt-2 flex gap-2">
+                      <button
+                        onClick={() => setNewItemDraft(null)}
+                        disabled={savingNewItem}
+                        className="rounded-full border border-white/10 bg-white/[0.05] px-4 py-2.5 text-sm font-semibold text-white/60 active:scale-[0.97] disabled:opacity-40"
+                      >
+                        Cancelar
+                      </button>
+                      <button
+                        onClick={saveNewItem}
+                        disabled={savingNewItem || !itemValid(newItemDraft)}
+                        className="flex-1 rounded-full bg-purple-500/90 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98] disabled:opacity-40"
+                      >
+                        {savingNewItem ? "Adicionando..." : "Adicionar item"}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setNewItemDraft(blankItem())}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-3 text-sm font-medium text-white/55 active:scale-[0.98]"
+                  >
+                    <Plus className="h-4 w-4" />
+                    Adicionar item
+                  </button>
+                )}
+              </div>
+            </section>
+
+            {error && (
+              <div className="mb-4 rounded-[1.4rem] border border-red-300/20 bg-red-500/10 p-4 text-sm leading-6 text-red-100/80">
+                {error}
+              </div>
+            )}
+
+            {/* Ações */}
+            <section className="space-y-3">
+              {routine.status === "active" ? (
+                <button
+                  onClick={() => setShowPause(true)}
+                  disabled={busyStatus}
+                  className="flex w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.05] py-3.5 text-sm font-semibold text-white/70 active:scale-[0.98] disabled:opacity-40"
+                >
+                  <Pause className="h-4 w-4" />
+                  Pausar rotina
+                </button>
+              ) : (
+                <button
+                  onClick={resume}
+                  disabled={busyStatus}
+                  className="flex w-full items-center justify-center gap-2 rounded-full border border-emerald-300/20 bg-emerald-500/15 py-3.5 text-sm font-semibold text-emerald-100 active:scale-[0.98] disabled:opacity-40"
+                >
+                  <Play className="h-4 w-4" />
+                  {busyStatus ? "Retomando..." : "Retomar rotina"}
+                </button>
+              )}
+
+              <button
+                onClick={() => setShowDelete(true)}
+                className="flex w-full items-center justify-center gap-2 rounded-full border border-red-300/15 bg-red-500/[0.08] py-3.5 text-sm font-semibold text-red-200/80 active:scale-[0.98]"
+              >
+                <Trash2 className="h-4 w-4" />
+                Excluir rotina
+              </button>
+            </section>
+          </>
+        )}
+      </div>
+
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
+
+      {/* Modal: pausar rotina */}
+      {showPause && (
+        <Modal onClose={() => !busyStatus && setShowPause(false)}>
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/10 text-purple-200">
+            <Pause className="h-6 w-6" />
+          </div>
+          <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">
+            Pausar rotina
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-white/45">
+            As tarefas futuras serão removidas. Você pode definir uma data para o
+            Axon retomar automaticamente — ou deixar em branco para pausar
+            indefinidamente.
+          </p>
+
+          <div className="mt-5 text-left">
+            <label className="text-sm font-medium text-white/70">
+              Retomar em <span className="text-white/35">(opcional)</span>
+            </label>
+            <input
+              type="date"
+              value={pauseUntil}
+              min={new Date().toLocaleDateString("en-CA")}
+              onChange={(e) => setPauseUntil(e.target.value)}
+              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none focus:border-purple-300/40 [color-scheme:dark]"
+            />
+          </div>
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setShowPause(false)}
+              disabled={busyStatus}
+              className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:opacity-40"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmPause}
+              disabled={busyStatus}
+              className="min-h-12 rounded-2xl bg-purple-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98] disabled:opacity-60"
+            >
+              {busyStatus ? "Pausando..." : "Confirmar"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: excluir item */}
+      {deletingItemId && (
+        <Modal onClose={() => !busyDeleteItem && setDeletingItemId(null)}>
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+            <Trash2 className="h-6 w-6" />
+          </div>
+          {routine && routine.items.length === 1 ? (
+            <>
+              <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">
+                Excluir o último item?
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-white/45">
+                Este é o único item da rotina. Ao confirmar, a{" "}
+                <span className="font-semibold text-white/70">rotina inteira</span>{" "}
+                também será excluída. As tarefas futuras serão removidas; as já
+                concluídas permanecem no seu histórico.
+              </p>
+            </>
+          ) : (
+            <>
+              <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">
+                Excluir este item?
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-white/45">
+                As tarefas futuras geradas por este item serão removidas. As já
+                concluídas permanecem no seu histórico.
+              </p>
+            </>
+          )}
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setDeletingItemId(null)}
+              disabled={busyDeleteItem}
+              className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:opacity-40"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmDeleteItem}
+              disabled={busyDeleteItem}
+              className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98] disabled:opacity-60"
+            >
+              {busyDeleteItem
+                ? "Excluindo..."
+                : routine && routine.items.length === 1
+                ? "Excluir rotina"
+                : "Excluir"}
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal: excluir rotina */}
+      {showDelete && (
+        <Modal onClose={() => !deleting && setShowDelete(false)}>
+          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
+            <Trash2 className="h-6 w-6" />
+          </div>
+          <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">
+            Excluir esta rotina?
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-white/45">
+            As tarefas futuras geradas por ela serão removidas. As tarefas já
+            concluídas permanecem no seu histórico. Esta ação não pode ser
+            desfeita.
+          </p>
+
+          <div className="mt-6 grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setShowDelete(false)}
+              disabled={deleting}
+              className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:opacity-40"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={confirmDelete}
+              disabled={deleting}
+              className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98] disabled:opacity-60"
+            >
+              {deleting ? "Excluindo..." : "Excluir"}
+            </button>
+          </div>
+        </Modal>
+      )}
+    </main>
+  );
+}
+
+function ItemRow({
+  item,
+  onEdit,
+  onDelete,
+}: {
+  item: RoutineItem;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-3 rounded-[1.5rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+      <div className="min-w-0">
+        <p className="truncate text-sm font-semibold text-white">
+          {item.title}
+        </p>
+        <p className="mt-1 text-xs text-white/40">{daysText(item.days_of_week)}</p>
+        <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[0.7rem] text-white/55">
+          {item.duration_minutes != null ? (
+            <>
+              <Sparkles className="h-3 w-3 text-purple-200" />~
+              {item.duration_minutes} min · Axon decide
+            </>
+          ) : (
+            <>
+              <Clock className="h-3 w-3 text-purple-200" />
+              {item.start_time} – {item.end_time}
+            </>
+          )}
+        </div>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <button
+          onClick={onEdit}
+          className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/50 active:scale-[0.96]"
+          aria-label="Editar item"
+        >
+          <Pencil className="h-4 w-4" />
+        </button>
+        <button
+          onClick={onDelete}
+          className="flex h-9 w-9 items-center justify-center rounded-2xl border border-red-300/15 bg-red-500/[0.08] text-red-200/70 active:scale-[0.96]"
+          aria-label="Excluir item"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function Modal({
+  children,
+  onClose,
+}: {
+  children: React.ReactNode;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
+      <button
+        type="button"
+        aria-label="Fechar"
+        onClick={onClose}
+        className="absolute inset-0"
+      />
+      <div className="relative w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl">
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function DetailSkeleton() {
+  return (
+    <div className="space-y-5">
+      <div className="h-8 w-2/3 animate-pulse rounded-2xl bg-white/[0.06]" />
+      <div className="h-32 animate-pulse rounded-[1.7rem] bg-white/[0.05]" />
+      <div className="space-y-3">
+        {[0, 1].map((i) => (
+          <div
+            key={i}
+            className="h-24 animate-pulse rounded-[1.5rem] bg-white/[0.05]"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function daysText(days: number[]) {
+  if (days.length === 7) return "Todos os dias";
+  return days.map((d) => WEEKDAYS[d]?.label ?? d).join(" · ");
 }
