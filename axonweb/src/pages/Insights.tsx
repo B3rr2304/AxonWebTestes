@@ -219,7 +219,7 @@ export default function Insights() {
         prod_plot: prod != null ? prod * 20 : null,
       };
     });
-  }, [taskInsights, compareLogs]);
+  }, [compareTaskInsights, compareLogs]);
 
   // Maior volume de tarefas no período — escala as barras por volume real.
   const maxTaskTotal = Math.max(
@@ -943,7 +943,7 @@ export default function Insights() {
                       name="Tarefas %"
                       stroke="#c084fc"
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 3, fill: "#c084fc", strokeWidth: 0 }}
                       connectNulls={false}
                     />
                   )}
@@ -954,7 +954,7 @@ export default function Insights() {
                       name="Qualidade do sono"
                       stroke="#f472b6"
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 3, fill: "#f472b6", strokeWidth: 0 }}
                       connectNulls={false}
                     />
                   )}
@@ -965,7 +965,7 @@ export default function Insights() {
                       name="Humor"
                       stroke="#34d399"
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 3, fill: "#34d399", strokeWidth: 0 }}
                       connectNulls={false}
                     />
                   )}
@@ -976,7 +976,7 @@ export default function Insights() {
                       name="Produtividade"
                       stroke="#fbbf24"
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 3, fill: "#fbbf24", strokeWidth: 0 }}
                       connectNulls={false}
                     />
                   )}
@@ -987,7 +987,7 @@ export default function Insights() {
                       name="Sono"
                       stroke="#60a5fa"
                       strokeWidth={2}
-                      dot={false}
+                      dot={{ r: 3, fill: "#60a5fa", strokeWidth: 0 }}
                       connectNulls={false}
                     />
                   )}
