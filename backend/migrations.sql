@@ -376,3 +376,44 @@ alter table public.notifications
 create unique index if not exists notifications_one_open_improvement
   on public.notifications(user_id)
   where type = 'improvement' and status in ('unread', 'read') and expired_at is null;
+
+-- =============================================
+-- Migration 15: cache de "Descobertas do Axon" (correlações reais)
+-- ---------------------------------------------
+-- Card novo na aba Insights, separado do /insights/patterns existente.
+-- O BACKEND calcula as correlações (services/correlations_service.py —
+-- varredura genérica condição × métrica, mesmo dia e dia seguinte, com
+-- mínimo de 5 dias por grupo); o Claude só traduz os números já corretos em
+-- frases. Cache de 7 dias (correlação não muda de um dia para o outro) — TTL
+-- maior que o de axon_insights (24h). Mesmo padrão de axon_insights: só o
+-- backend (service_role) acessa, sem RLS.
+-- =============================================
+
+create table if not exists public.axon_discoveries (
+  user_id      uuid references auth.users(id) on delete cascade primary key,
+  findings     jsonb not null,
+  data_points  integer default 0 not null,
+  generated_at timestamp with time zone not null,
+  created_at   timestamp with time zone default now()
+);
+
+-- =============================================
+-- Migration 16: colunas de preferências de planejamento em profiles
+-- ---------------------------------------------
+-- Bug (2026-07-02): planning_scheduler.py e routers/profile.py já liam/gravavam
+-- estas 6 colunas (ver models/schemas.py:PlanningPreferences), mas a migration
+-- que as criava nunca foi escrita — a tabela profiles nunca teve essas colunas.
+-- Efeito: o scheduler (roda a cada minuto) falhava a query para TODOS os
+-- usuários de uma vez ("column profiles.daily_use_chronotype does not exist"),
+-- e GET/PATCH /profile/planning-preferences também deveria estar quebrado.
+-- Defaults idênticos aos do Pydantic (PlanningPreferences) para não mudar o
+-- comportamento de quem nunca configurou nada.
+-- =============================================
+
+alter table public.profiles
+  add column if not exists daily_planning_enabled  boolean not null default true,
+  add column if not exists daily_planning_time     text,
+  add column if not exists daily_use_chronotype    boolean not null default true,
+  add column if not exists weekly_planning_enabled boolean not null default true,
+  add column if not exists weekly_planning_day     integer,
+  add column if not exists weekly_use_chronotype    boolean not null default true;
