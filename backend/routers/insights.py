@@ -7,6 +7,7 @@ from services import user_tz, insights_service
 from services.chronotype import CHRONOTYPE_BLOCKS, BLOCK_LEVELS
 from services import calibration_service
 from services import daily_stats_service
+from services import correlations_service
 
 router = APIRouter(prefix="/insights", tags=["insights"])
 
@@ -288,6 +289,126 @@ def get_pattern_insights(
     return {
         "status": "ready",
         "insights": insights,
+        "generated_at": generated_at,
+        "data_points": data_points,
+        "cached": False,
+    }
+
+
+# Cache mais longo que /patterns: correlação estatística não muda de um dia
+# para o outro — só faz sentido recalcular quando dados novos se acumularam.
+_DISCOVERIES_CACHE_TTL_HOURS = 24 * 7
+_DISCOVERIES_MIN_DATA_POINTS = correlations_service.MIN_GROUP_SIZE * 2
+
+
+@router.get("/discoveries")
+def get_discoveries(
+    refresh: bool = Query(default=False),
+    x_timezone: str | None = Header(default=None),
+    current_user: dict = Depends(get_current_user),
+):
+    """
+    "O que você talvez não tenha percebido": correlações reais entre hábitos
+    (sono, exercício, humor, tags livres) e resultados (tarefas concluídas,
+    produtividade, humor), no mesmo dia e no dia seguinte. O BACKEND calcula
+    as diferenças (correlations_service.find_correlations); o Claude só
+    traduz os números já corretos em frases — nunca inventa magnitude.
+    Cache de 7 dias (refresh=true força recálculo).
+    """
+    user_id = current_user["id"]
+    tz = user_tz.zone(user_tz.resolve(user_id, x_timezone))
+    now = datetime.now(tz)
+    today = now.date()
+    since = str(today - timedelta(days=insights_service.LOOKBACK_DAYS - 1))
+    since_iso = f"{since}T00:00:00+00:00"
+
+    logs = (
+        supabase.table("daily_logs")
+        .select("*")
+        .eq("user_id", user_id)
+        .gte("date", since)
+        .order("date", desc=False)
+        .execute()
+    ).data or []
+
+    data_points = len(logs)
+
+    if data_points < _DISCOVERIES_MIN_DATA_POINTS:
+        return {
+            "status": "collecting",
+            "data_points": data_points,
+            "days_needed": _DISCOVERIES_MIN_DATA_POINTS,
+            "message": insights_service.collecting_message(data_points),
+        }
+
+    cached = (
+        supabase.table("axon_discoveries")
+        .select("findings, data_points, generated_at")
+        .eq("user_id", user_id)
+        .limit(1)
+        .execute()
+    ).data
+    cached_row = cached[0] if cached else None
+
+    if (
+        not refresh
+        and cached_row
+        and insights_service.is_fresh(
+            cached_row.get("generated_at"), now, ttl_hours=_DISCOVERIES_CACHE_TTL_HOURS
+        )
+    ):
+        return {
+            "status": "ready",
+            "findings": cached_row.get("findings") or [],
+            "generated_at": cached_row.get("generated_at"),
+            "data_points": cached_row.get("data_points", data_points),
+            "cached": True,
+        }
+
+    tasks = (
+        supabase.table("tasks")
+        .select("status, completed_at")
+        .eq("user_id", user_id)
+        .eq("status", "done")
+        .gte("completed_at", since_iso)
+        .execute()
+    ).data or []
+
+    rows = insights_service.aggregate_daily(logs, tasks, tz)
+    raw_findings = correlations_service.find_correlations(rows)
+    findings = correlations_service.write_findings(raw_findings)
+
+    if not findings:
+        if cached_row and cached_row.get("findings"):
+            return {
+                "status": "ready",
+                "findings": cached_row["findings"],
+                "generated_at": cached_row.get("generated_at"),
+                "data_points": cached_row.get("data_points", data_points),
+                "cached": True,
+            }
+        return {
+            "status": "ready",
+            "findings": [],
+            "generated_at": now.isoformat(),
+            "data_points": data_points,
+            "message": "O Axon ainda não encontrou um padrão forte o suficiente nos seus dados. Continue registrando os dias — quanto mais dados, melhores as descobertas.",
+        }
+
+    generated_at = now.isoformat()
+    supabase.table("axon_discoveries").upsert(
+        {
+            "user_id": user_id,
+            "findings": findings,
+            "data_points": data_points,
+            "generated_at": generated_at,
+        },
+        on_conflict="user_id",
+    ).execute()
+
+    return {
+        "status": "ready",
+        "findings": findings,
         "generated_at": generated_at,
         "data_points": data_points,
         "cached": False,
