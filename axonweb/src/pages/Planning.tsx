@@ -10,7 +10,6 @@ import {
   Edit3,
   ListTodo,
   Loader2,
-  Menu,
   Plus,
   Repeat,
   Sparkles,
@@ -26,6 +25,15 @@ import Routines from "./Routines";
 import Goals from "./Goals";
 import * as api from "../lib/api";
 import type { Task, TaskType, TaskStatus, Subtask, DailyStat } from "../lib/api";
+import AppBackground from "../components/layout/AppBackground";
+import PageHeader from "../components/layout/PageHeader";
+import BottomSheet from "../components/ui/BottomSheet";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import EmptyState from "../components/ui/EmptyState";
+
+// ===========================================================================
+// TIPOS E CONSTANTES GERAIS
+// ===========================================================================
 
 type ViewMode = "month" | "week";
 type DisplayStatus = "todo" | "progress" | "done" | "scheduled";
@@ -66,6 +74,10 @@ const weekdayShort = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 
 const CALENDAR_SETUP_STORAGE_KEY = "axon_calendar_setup_choice";
 type CalendarSetupChoice = "google" | "independent";
+
+// ===========================================================================
+// HELPERS DE DATA E STATUS
+// ===========================================================================
 
 function toISODate(d: Date): string {
   const y = d.getFullYear();
@@ -198,6 +210,10 @@ function weekDaysOf(selected: Date): Date[] {
   });
 }
 
+// ===========================================================================
+// CONFIGURAÇÃO DO HUB DE PLANEJAMENTO
+// ===========================================================================
+
 type View = "agenda" | "rotinas" | "objetivos";
 
 const TABS: { key: View; label: string; icon: typeof CalendarDays }[] = [
@@ -206,17 +222,22 @@ const TABS: { key: View; label: string; icon: typeof CalendarDays }[] = [
   { key: "objetivos", label: "Objetivos", icon: Target },
 ];
 
-// Hub de Planejamento: cabeçalho + Sidebar + seletor de abas. Cada aba renderiza
-// seu conteúdo em modo `embedded` (sem moldura própria), pois a moldura vem daqui.
+// ===========================================================================
+// HUB DE PLANEJAMENTO
+// ===========================================================================
+// Controla o cabeçalho, a sidebar e as abas Agenda, Rotinas e Objetivos.
 export default function Planning({
   initialView = "agenda",
 }: {
   initialView?: View;
 } = {}) {
   const navigate = useNavigate();
+
+  // Aba ativa do hub e estado da sidebar global.
   const [view, setView] = useState<View>(initialView);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Cronotipo usado para alimentar a sidebar.
   const resultKey: ChronotypeResultKey = (() => {
     const s = localStorage.getItem("axon_chronotype");
     return s && validKeys.includes(s as ChronotypeResultKey)
@@ -227,32 +248,15 @@ export default function Planning({
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-5 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-white">Planejamento</p>
-              <p className="text-xs text-white/40">Agenda, rotinas e objetivos</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-            aria-label="Abrir menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </header>
+        <PageHeader
+          title="Planejamento"
+          subtitle="Agenda, rotinas e objetivos"
+          onBack={() => navigate("/dashboard")}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
 
         {/* Seletor de visão */}
         <div className="mb-5 flex rounded-2xl border border-white/10 bg-black/20 p-1">
@@ -292,9 +296,14 @@ export default function Planning({
   );
 }
 
+// ===========================================================================
+// VISÃO DE AGENDA
+// ===========================================================================
+// Pode funcionar embutida no hub ou como página independente.
 function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
 
+  // Controles visuais da agenda.
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [viewMode, setViewMode] = useState<ViewMode>("week");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -322,9 +331,12 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
       return null;
     });
   const [isConnectingCalendar, setIsConnectingCalendar] = useState(false);
-  const [calendarConnectError, setCalendarConnectError] = useState<string | null>(null);
-  const [dailyStatsMap, setDailyStatsMap] = useState<Record<string, DailyStat>>({});
+  const [calendarConnectError, setCalendarConnectError] =
+    useState<string | null>(null);
+  const [dailyStatsMap, setDailyStatsMap] =
+    useState<Record<string, DailyStat>>({});
 
+  // Cronotipo local da agenda quando ela é renderizada fora do hub.
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
     if (stored && validKeys.includes(stored as ChronotypeResultKey)) {
@@ -335,6 +347,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
 
   const result = results[resultKey];
 
+  // Carrega todas as subtarefas e agrupa por task_id para renderização rápida.
   const loadSubtasks = useCallback(async () => {
     try {
       const all = await api.getSubtasks();
@@ -359,6 +372,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
     }
   }, []);
 
+  // Carrega tarefas e subtarefas em conjunto.
   const loadTasks = useCallback(async () => {
     setError(null);
     try {
@@ -385,6 +399,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
       });
   }, [loadTasks, loadSubtasks]);
 
+  // Datas com tarefas/eventos, usadas para desenhar indicadores no calendário.
   const taskDates = useMemo(() => {
     const dates = new Set<string>();
 
@@ -411,6 +426,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
     return dates;
   }, [tasks]);
 
+  // Dados derivados do dia selecionado.
   const selectedIso = toISODate(selectedDate);
   const dayTasks = useMemo(
     () =>
@@ -467,6 +483,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
     ? 0
     : Math.round((completedScore / totalItems) * 100);
 
+  // Estatísticas históricas usadas quando o usuário consulta dias anteriores.
   const loadDailyStats = useCallback(async () => {
     try {
       const { start, end } = monthRangeOf(selectedDate);
@@ -613,6 +630,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
     setCalendarConnectError(null);
   }
 
+  // Conteúdo principal da agenda, compartilhado entre modo embutido e página própria.
   const inner = (
     <>
       {carriedCount > 0 && (
@@ -790,11 +808,15 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
                         {error}
                       </div>
                     ) : dayTasks.length === 0 && undatedTasks.length === 0 ? (
-                      <EmptyState onCreate={() => setIsCreateModalOpen(true)} />
+                      <EmptyState
+                        icon={ListTodo}
+                        title="Nenhuma tarefa neste dia"
+                        description="Converse com o Axon para ele organizar sua rotina, ou crie manualmente."
+                        actionLabel="Criar tarefa"
+                        onAction={() => setIsCreateModalOpen(true)}
+                      />
                     ) : dayTasks.length === 0 ? (
-                      <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-8 text-center">
-                        <p className="text-sm text-white/38">Nenhuma tarefa neste dia.</p>
-                      </div>
+                      <EmptyState title="Nenhuma tarefa neste dia" />
                     ) : (
                       <div className="space-y-5">
                         {dayTasks.map((task) => (
@@ -837,6 +859,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
     </>
   );
 
+  // Modais e toasts ficam fora do conteúdo para manter a hierarquia visual fixa.
   const modals = (
     <>
       <CreatePlanningItemModal
@@ -902,32 +925,15 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-5 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-white">Planejamento</p>
-              <p className="text-xs text-white/40">Rotina e tarefas</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-            aria-label="Abrir menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </header>
+        <PageHeader
+          title="Planejamento"
+          subtitle="Rotina e tarefas"
+          onBack={() => navigate("/dashboard")}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
 
         {inner}
       </div>
@@ -943,6 +949,10 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
     </main>
   );
 }
+
+// ===========================================================================
+// CONFIGURAÇÃO INICIAL DO CALENDÁRIO
+// ===========================================================================
 
 function CalendarSetupCard({
   isConnecting,
@@ -1016,26 +1026,9 @@ function CalendarSetupCard({
   );
 }
 
-function EmptyState({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-6 py-10 text-center">
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/12 text-purple-200">
-        <ListTodo className="h-5 w-5" />
-      </div>
-      <p className="text-sm font-semibold text-white">Nenhuma tarefa neste dia</p>
-      <p className="mt-1 max-w-[18rem] text-xs leading-5 text-white/42">
-        Converse com o Axon para ele organizar sua rotina, ou crie manualmente.
-      </p>
-      <button
-        onClick={onCreate}
-        className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-purple-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.97]"
-      >
-        <Plus className="h-4 w-4" />
-        Criar tarefa
-      </button>
-    </div>
-  );
-}
+// ===========================================================================
+// ESTADOS VISUAIS E PROGRESSO
+// ===========================================================================
 
 function CircularProgress({ value }: { value: number }) {
   const radius = 58;
@@ -1102,6 +1095,10 @@ function LegendItem({ color, label }: { color: string; label: string }) {
     </div>
   );
 }
+
+// ===========================================================================
+// CALENDÁRIO MENSAL
+// ===========================================================================
 
 function MonthCalendar({
   selectedDate,
@@ -1304,6 +1301,10 @@ function isPastDate(isoDate: string) {
   return isoDate < toISODate(new Date());
 }
 
+// ===========================================================================
+// CALENDÁRIO SEMANAL
+// ===========================================================================
+
 function WeekCalendar({
   selectedDate,
   onSelect,
@@ -1382,6 +1383,10 @@ function WeekCalendar({
     </div>
   );
 }
+
+// ===========================================================================
+// ITEM DA LINHA DO TEMPO
+// ===========================================================================
 
 function TimelineItem({
   task,
@@ -1723,6 +1728,10 @@ function TimelineItem({
     </div>
   );
 }
+// ===========================================================================
+// PRÉVIA DE SUBTAREFAS NO CARD
+// ===========================================================================
+
 function SubtasksPreview({
   subtasks,
   completedSubtasks,
@@ -1783,6 +1792,10 @@ function SubtasksPreview({
   );
 }
 
+// ===========================================================================
+// MODAL DE CRIAÇÃO DE ITEM
+// ===========================================================================
+
 function CreatePlanningItemModal({
   isOpen,
   defaultDate,
@@ -1810,15 +1823,24 @@ function CreatePlanningItemModal({
   const [isKeyTask, setIsKeyTask] = useState(false);
 
   const [description, setDescription] = useState("");
-  const [draftSubtasks, setDraftSubtasks] = useState<{ key: string; title: string }[]>([]);
+  const [draftSubtasks, setDraftSubtasks] = useState<
+    { key: string; title: string }[]
+  >([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
   function addDraftSubtask() {
-    setDraftSubtasks((prev) => [...prev, { key: Math.random().toString(36).slice(2), title: "" }]);
+    setDraftSubtasks((prev) => [
+      ...prev,
+      { key: Math.random().toString(36).slice(2), title: "" },
+    ]);
   }
   function updateDraftSubtask(key: string, title: string) {
-    setDraftSubtasks((prev) => prev.map((s) => s.key === key ? { ...s, title } : s));
+    setDraftSubtasks((prev) =>
+      prev.map((subtask) =>
+        subtask.key === key ? { ...subtask, title } : subtask
+      )
+    );
   }
   function removeDraftSubtask(key: string) {
     setDraftSubtasks((prev) => prev.filter((s) => s.key !== key));
@@ -1843,8 +1865,6 @@ function CreatePlanningItemModal({
       setIsKeyTask(false);
     }
   }, [isOpen, defaultDate]);
-
-  if (!isOpen) return null;
 
   const titlePlaceholder =
     selectedType === "task"
@@ -1904,7 +1924,9 @@ function CreatePlanningItemModal({
       const validDrafts = draftSubtasks.filter((s) => s.title.trim());
       if (validDrafts.length > 0) {
         await Promise.all(
-          validDrafts.map((s) => api.createSubtask(task.id, { title: s.title.trim() }))
+          validDrafts.map((subtask) =>
+            api.createSubtask(task.id, { title: subtask.title.trim() })
+          )
         );
       }
       await onCreated();
@@ -1916,40 +1938,60 @@ function CreatePlanningItemModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative flex max-h-[88vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      closeOnOverlayClick={false}
+      ariaLabel="Adicionar ao planejamento"
+      maxHeightClassName="max-h-[88vh]"
+      surfaceClassName="bg-[#171720]/95"
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Criando…
+              </>
+            ) : (
+              <>
+                Criar {typeLabels[selectedType].toLowerCase()}
+                <Plus className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </button>
 
-        <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
-
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
-                <Plus className="h-3.5 w-3.5" />
-                Novo item
-              </div>
-
-              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
-                Adicionar ao planejamento
-              </h2>
-
-              <p className="mt-2 text-xs leading-5 text-white/45">
-                {description_text}
-              </p>
-            </div>
-
-            <button
-              onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
-              aria-label="Fechar"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]"
+          >
+            Cancelar
+          </button>
+        </>
+      }
+    >
+      {/* Cabeçalho mantido no conteúdo para preservar o visual. */}
+      <div className="mb-4">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+          <Plus className="h-3.5 w-3.5" />
+          Novo item
         </div>
 
-        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+          Adicionar ao planejamento
+        </h2>
+
+        <p className="mt-2 text-xs leading-5 text-white/45">
+          {description_text}
+        </p>
+      </div>
+
           <div className="mb-4 grid grid-cols-3 gap-2">
             <TypeButton
               active={selectedType === "task"}
@@ -2278,38 +2320,7 @@ function CreatePlanningItemModal({
               <p className="text-xs font-medium text-rose-300">{formError}</p>
             )}
           </div>
-        </div>
-
-        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Criando…
-              </>
-            ) : (
-              <>
-                Criar {typeLabels[selectedType].toLowerCase()}
-                <Plus className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
+    </BottomSheet>
   );
 }
 
@@ -2341,6 +2352,10 @@ function TypeButton({
 }
 
 
+// ===========================================================================
+// MODAL DE EXCLUSÃO DE ITEM
+// ===========================================================================
+
 function DeletePlanningItemModal({
   task,
   isDeleting,
@@ -2357,69 +2372,45 @@ function DeletePlanningItemModal({
   const itemLabel = typeLabels[task.task_type].toLowerCase();
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
-          <Trash2 className="h-6 w-6" />
-        </div>
-
-        <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
-          Remover {itemLabel}?
-        </h2>
-
-        <p className="mt-3 text-sm leading-6 text-white/45">
-          Essa ação vai excluir{" "}
-          <span className="font-semibold text-white/75">"{task.title}"</span>{" "}
-          do seu planejamento.
-        </p>
-
-        <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
-            Item selecionado
+    <ConfirmDialog
+      isOpen
+      title={`Remover ${itemLabel}?`}
+      description={
+        <>
+          <p>
+            Essa ação vai excluir{" "}
+            <span className="font-semibold text-white/75">"{task.title}"</span>{" "}
+            do seu planejamento.
           </p>
 
-          <p className="mt-2 truncate text-sm font-semibold text-white">
-            {task.title}
-          </p>
+          <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+              Item selecionado
+            </p>
 
-          <p className="mt-1 text-xs text-white/38">
-            {typeLabels[task.task_type]} · {statusLabels[task.status]}
-          </p>
-        </div>
+            <p className="mt-2 truncate text-sm font-semibold text-white">
+              {task.title}
+            </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isDeleting}
-            className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {isDeleting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Excluindo
-              </>
-            ) : (
-              <>
-                Excluir
-                <Trash2 className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+            <p className="mt-1 text-xs text-white/38">
+              {typeLabels[task.task_type]} · {statusLabels[task.status]}
+            </p>
+          </div>
+        </>
+      }
+      confirmLabel="Excluir"
+      variant="danger"
+      icon={Trash2}
+      loading={isDeleting}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    />
   );
 }
+
+// ===========================================================================
+// MODAL DE EDIÇÃO DE ITEM
+// ===========================================================================
 
 function EditPlanningItemModal({
   task,
@@ -2522,41 +2513,62 @@ function EditPlanningItemModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative flex max-h-[88vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+    <BottomSheet
+      isOpen
+      onClose={onClose}
+      closeOnOverlayClick={false}
+      dismissDisabled={submitting}
+      ariaLabel="Ajustar planejamento"
+      maxHeightClassName="max-h-[88vh]"
+      surfaceClassName="bg-[#171720]/95"
+      footer={
+        <>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={submitting}
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Salvando…
+              </>
+            ) : (
+              <>
+                Salvar alterações
+                <CheckCircle2 className="ml-2 h-4 w-4" />
+              </>
+            )}
+          </button>
 
-        <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
-
-          <div className="flex items-start justify-between gap-4">
-            <div className="min-w-0 flex-1">
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
-                <Edit3 className="h-3.5 w-3.5" />
-                Editar {typeLabels[task.task_type].toLowerCase()}
-              </div>
-
-              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
-                Ajustar planejamento
-              </h2>
-
-              <p className="mt-2 text-xs leading-5 text-white/45">
-                {descriptionText}
-              </p>
-            </div>
-
-            <button
-              onClick={onClose}
-              disabled={submitting}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96] disabled:opacity-50"
-              aria-label="Fechar"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={submitting}
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+        </>
+      }
+    >
+      {/* Cabeçalho mantido no conteúdo para preservar o visual. */}
+      <div className="mb-4">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+          <Edit3 className="h-3.5 w-3.5" />
+          Editar {typeLabels[task.task_type].toLowerCase()}
         </div>
 
-        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+          Ajustar planejamento
+        </h2>
+
+        <p className="mt-2 text-xs leading-5 text-white/45">
+          {descriptionText}
+        </p>
+      </div>
+
           <div className="mb-4 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3">
             <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
               Tipo de item
@@ -2789,42 +2801,20 @@ function EditPlanningItemModal({
               <p className="text-xs font-medium text-rose-300">{formError}</p>
             )}
           </div>
-        </div>
-
-        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
-          <button
-            type="button"
-            onClick={handleSubmit}
-            disabled={submitting}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
-          >
-            {submitting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Salvando…
-              </>
-            ) : (
-              <>
-                Salvar alterações
-                <CheckCircle2 className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={submitting}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-        </div>
-      </div>
-    </div>
+    </BottomSheet>
   );
 }
-function SubtaskEditor({ taskId, onSubtaskChange }: { taskId: string; onSubtaskChange?: () => void }) {
+// ===========================================================================
+// EDITOR DE SUBTAREFAS DO MODAL DE EDIÇÃO
+// ===========================================================================
+
+function SubtaskEditor({
+  taskId,
+  onSubtaskChange,
+}: {
+  taskId: string;
+  onSubtaskChange?: () => void;
+}) {
   const [subtasks, setSubtasks] = useState<api.Subtask[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTitle, setNewTitle] = useState("");
@@ -2840,9 +2830,15 @@ function SubtaskEditor({ taskId, onSubtaskChange }: { taskId: string; onSubtaskC
   async function handleToggle(s: api.Subtask) {
     try {
       const updated = await api.updateSubtask(s.id, { done: !s.done });
-      setSubtasks((prev) => prev.map((x) => x.id === updated.id ? updated : x));
+      setSubtasks((prev) =>
+        prev.map((subtask) =>
+          subtask.id === updated.id ? updated : subtask
+        )
+      );
       onSubtaskChange?.();
-    } catch { /* silent */ }
+    } catch {
+      // Mantém o estado atual em caso de erro.
+    }
   }
 
   async function handleDelete(subtaskId: string) {
@@ -2850,7 +2846,9 @@ function SubtaskEditor({ taskId, onSubtaskChange }: { taskId: string; onSubtaskC
       await api.deleteSubtask(subtaskId);
       setSubtasks((prev) => prev.filter((x) => x.id !== subtaskId));
       onSubtaskChange?.();
-    } catch { /* silent */ }
+    } catch {
+      // Mantém o estado atual em caso de erro.
+    }
   }
 
   async function handleAdd() {
@@ -2862,7 +2860,9 @@ function SubtaskEditor({ taskId, onSubtaskChange }: { taskId: string; onSubtaskC
       setNewTitle("");
       setAdding(false);
       onSubtaskChange?.();
-    } catch { /* silent */ }
+    } catch {
+      // Mantém o estado atual em caso de erro.
+    }
   }
 
   return (
@@ -2941,6 +2941,10 @@ function SubtaskEditor({ taskId, onSubtaskChange }: { taskId: string; onSubtaskC
   );
 }
 
+// ===========================================================================
+// FILA DE TAREFAS SEM DATA
+// ===========================================================================
+
 const PRIORITY_META_QUEUE = {
   high: { label: "Alta", dot: "bg-rose-400", badge: "border-rose-300/25 bg-rose-500/10 text-rose-200" },
   medium: { label: "Média", dot: "bg-amber-400", badge: "border-amber-300/25 bg-amber-500/10 text-amber-200" },
@@ -2967,50 +2971,29 @@ function UndatedTasksSheet({
   const hidden = tasks.length - QUEUE_PAGE_SIZE;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      {/* Backdrop clicável */}
-      <button
-        type="button"
-        aria-label="Fechar fila"
-        onClick={onClose}
-        className="absolute inset-0"
-      />
-
-      <div className="relative flex max-h-[82vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        {/* Handle */}
-        <div className="shrink-0 pt-4 px-5">
-          <div className="mx-auto h-1.5 w-11 rounded-full bg-white/18" />
+    <BottomSheet
+      isOpen
+      onClose={onClose}
+      ariaLabel="Tarefas sem data"
+      maxHeightClassName="max-h-[82vh]"
+      surfaceClassName="bg-[#171720]/95"
+    >
+      {/* Cabeçalho da fila mantido no conteúdo para preservar o visual. */}
+      <div className="mb-4">
+        <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-indigo-300/20 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-100">
+          <ListTodo className="h-3.5 w-3.5" />
+          Fila · {tasks.length} {tasks.length === 1 ? "tarefa" : "tarefas"}
         </div>
+        <h2 className="text-[1.35rem] font-semibold leading-tight tracking-[-0.04em] text-white">
+          Tarefas sem data
+        </h2>
+        <p className="mt-1 text-xs text-white/38">
+          Ordenadas por prioridade. Toque no lápis para atribuir uma data.
+        </p>
+      </div>
 
-        {/* Cabeçalho */}
-        <div className="shrink-0 border-b border-white/10 px-5 pb-4 pt-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-indigo-300/20 bg-indigo-500/10 px-3 py-1 text-xs font-medium text-indigo-100">
-                <ListTodo className="h-3.5 w-3.5" />
-                Fila · {tasks.length} {tasks.length === 1 ? "tarefa" : "tarefas"}
-              </div>
-              <h2 className="text-[1.35rem] font-semibold leading-tight tracking-[-0.04em] text-white">
-                Tarefas sem data
-              </h2>
-              <p className="mt-1 text-xs text-white/38">
-                Ordenadas por prioridade. Toque no lápis para atribuir uma data.
-              </p>
-            </div>
-            <button
-              onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
-              aria-label="Fechar"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          </div>
-        </div>
-
-        {/* Lista */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
-          {tasks.length === 0 ? (
-            <p className="py-8 text-center text-sm text-white/38">Fila vazia.</p>
+      {tasks.length === 0 ? (
+            <EmptyState icon={ListTodo} title="Fila vazia" />
           ) : (
             <div className="space-y-2">
               {visible.map((task) => {
@@ -3090,20 +3073,6 @@ function UndatedTasksSheet({
               )}
             </div>
           )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
-      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
-      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
-    </div>
+    </BottomSheet>
   );
 }

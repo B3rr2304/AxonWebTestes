@@ -1,7 +1,9 @@
 import { useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Check, Loader2, Plus, RefreshCcw, X } from "lucide-react";
+import { motion } from "framer-motion";
+import { Check, Loader2, Plus, RefreshCcw, Tag, X } from "lucide-react";
 
+import BottomSheet from "../ui/BottomSheet";
+import EmptyState from "../ui/EmptyState";
 import * as api from "../../lib/api";
 import type { TagPreferences } from "../../lib/api";
 import {
@@ -184,109 +186,48 @@ export default function TagEditorSheet({ isOpen, onClose }: Props) {
   }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Overlay fecha a sheet e descarta alterações não salvas. */}
-          <motion.button
-            type="button"
-            aria-label="Fechar"
-            onClick={onClose}
-            className="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          />
-
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 260, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 z-[110] max-h-[88vh] overflow-y-auto rounded-t-[2rem] border-t border-white/10 bg-[#15141f]/97 pb-10 backdrop-blur-2xl"
-          >
-            <SheetHeader
-              activeTab={activeTab}
-              onClose={onClose}
-              onChangeTab={changeTab}
-            />
-
-            <div className="px-5 pt-2">
-              {loading ? (
-                <LoadingState />
-              ) : (
-                <>
-                  <TagList tags={currentTags} onRemove={removeTag} />
-
-                  <AddTagControl
-                    inputRef={inputRef}
-                    value={inputValue}
-                    error={error}
-                    onChange={(value) => {
-                      setInputValue(value);
-                      setError(null);
-                    }}
-                    onAdd={addTag}
-                  />
-
-                  <ResetCategoryButton
-                    activeTab={activeTab}
-                    onReset={resetCategory}
-                  />
-
-                  <SaveButton saving={saving} onSave={handleSave} />
-                </>
-              )}
-            </div>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ===========================================================================
-// HEADER E ABAS
-// ===========================================================================
-
-function SheetHeader({
-  activeTab,
-  onClose,
-  onChangeTab,
-}: {
-  activeTab: Category;
-  onClose: () => void;
-  onChangeTab: (category: Category) => void;
-}) {
-  return (
-    <div className="sticky top-0 z-10 bg-[#15141f]/97 px-5 pb-3 pt-4 backdrop-blur-xl">
-      <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-white/15" />
-
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-white">
-            Tags da análise diária
-          </h2>
-
-          <p className="mt-0.5 text-xs text-white/40">
-            Personalize as opções que aparecem ao registrar seu dia
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/55 active:scale-[0.96]"
-          aria-label="Fechar editor de tags"
-        >
-          <X className="h-5 w-5" />
-        </button>
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={onClose}
+      title="Tags da análise diária"
+      subtitle="Personalize as opções que aparecem ao registrar seu dia"
+      ariaLabel="Editor de tags"
+      maxHeightClassName="max-h-[88vh]"
+    >
+      {/* Abas de categoria fixas no topo do conteúdo rolável. */}
+      <div className="sticky -top-4 z-10 -mx-5 mb-4 bg-[#15141f]/97 px-5 pb-3 pt-1 backdrop-blur-xl">
+        <CategoryTabs activeTab={activeTab} onChangeTab={changeTab} />
       </div>
 
-      <CategoryTabs activeTab={activeTab} onChangeTab={onChangeTab} />
-    </div>
+      {loading ? (
+        <LoadingState />
+      ) : (
+        <>
+          <TagList tags={currentTags} onRemove={removeTag} />
+
+          <AddTagControl
+            inputRef={inputRef}
+            value={inputValue}
+            error={error}
+            onChange={(value) => {
+              setInputValue(value);
+              setError(null);
+            }}
+            onAdd={addTag}
+          />
+
+          <ResetCategoryButton activeTab={activeTab} onReset={resetCategory} />
+
+          <SaveButton saving={saving} onSave={handleSave} />
+        </>
+      )}
+    </BottomSheet>
   );
 }
+
+// ===========================================================================
+// ABAS
+// ===========================================================================
 
 function CategoryTabs({
   activeTab,
@@ -329,9 +270,11 @@ function TagList({
   return (
     <div className="mb-4 min-h-[80px]">
       {tags.length === 0 ? (
-        <p className="py-6 text-center text-sm text-white/30">
-          Nenhuma tag nesta categoria. Adicione uma abaixo.
-        </p>
+        <EmptyState
+          icon={Tag}
+          title="Nenhuma tag nesta categoria"
+          description="Adicione uma abaixo."
+        />
       ) : (
         <div className="flex flex-wrap gap-2 py-2">
           {tags.map((tag) => (

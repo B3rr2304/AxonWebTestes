@@ -14,6 +14,7 @@ import {
 
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
+import AppBackground from "../components/layout/AppBackground";
 
 type FocusStatus = "ready" | "running" | "paused";
 
@@ -72,7 +73,7 @@ export default function Focus() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#0f1018] text-white">
-      <Background isRunning={isRunning} />
+      <AppBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
         <header className="mb-4 flex shrink-0 items-center justify-between">
@@ -358,27 +359,6 @@ function EndFocusModal({
           </button>
         </div>
       </div>
-    </div>
-  );
-}
-
-function Background({ isRunning }: { isRunning: boolean }) {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#0f1018_48%,#12121c_100%)]" />
-
-      <div
-        className={`absolute left-1/2 top-[14rem] h-[28rem] w-[28rem] -translate-x-1/2 rounded-full bg-purple-700/20 blur-[120px] transition duration-700 ${
-          isRunning ? "scale-110 opacity-100" : "scale-100 opacity-70"
-        }`}
-      />
-
-      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.08]" />
-
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent_0%,rgba(15,16,24,0.72)_86%)]" />
     </div>
   );
 }

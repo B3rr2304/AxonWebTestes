@@ -8,7 +8,6 @@ import {
   ChevronUp,
   Clock3,
   Focus,
-  Menu,
   MessageCircle,
   Moon,
   Plus,
@@ -24,6 +23,9 @@ import DayReview from "./DayReview";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 import type { DashboardData, FocusBlock, BlockTask, Task, Subtask } from "../lib/api";
+import AppBackground from "../components/layout/AppBackground";
+import PageHeader from "../components/layout/PageHeader";
+import EmptyState from "../components/ui/EmptyState";
 
 // ============================================================================
 // Tipos locais
@@ -272,30 +274,16 @@ export default function Dashboard() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
         {/* Header fixo: acesso ao dashboard, central de notificações e sidebar. */}
-        <header className="mb-5 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img
-                src="/axon-logo.svg"
-                alt="Axon"
-                className="h-8 w-8 object-contain"
-              />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-white">Dashboard</p>
-              <p className="text-xs text-white/40">Seu dia agora</p>
-            </div>
-          </button>
-
-          <div className="flex items-center gap-2">
+        <PageHeader
+          title="Dashboard"
+          subtitle="Seu dia agora"
+          onBack={() => navigate("/dashboard")}
+          onMenuClick={() => setIsSidebarOpen(true)}
+          rightSlot={
             <button
               onClick={() => setIsNotificationsOpen(true)}
               className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
@@ -307,16 +295,8 @@ export default function Dashboard() {
                 <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
               )}
             </button>
-
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-              aria-label="Abrir menu"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
-        </header>
+          }
+        />
 
         {/* Bloco “Agora”: resume a janela de foco atual e o próximo bloco do dia. */}
         <section className="mb-4">
@@ -506,22 +486,13 @@ export default function Dashboard() {
 
             if (flatTasks.length === 0) {
               return (
-                <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-5 py-8 text-center">
-                  <p className="text-sm font-semibold text-white">
-                    Nenhuma tarefa para hoje
-                  </p>
-                  <p className="mt-1 text-xs leading-5 text-white/42">
-                    Converse com o Axon para organizar seu dia ou adicione
-                    tarefas no Planejamento.
-                  </p>
-                  <button
-                    onClick={() => navigate("/planning")}
-                    className="mt-4 inline-flex items-center gap-2 rounded-2xl bg-purple-500 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.97]"
-                  >
-                    <Plus className="h-4 w-4" />
-                    Adicionar tarefa
-                  </button>
-                </div>
+                <EmptyState
+                  icon={CalendarDays}
+                  title="Nenhuma tarefa para hoje"
+                  description="Converse com o Axon para organizar seu dia ou adicione tarefas no Planejamento."
+                  actionLabel="Adicionar tarefa"
+                  onAction={() => navigate("/planning")}
+                />
               );
             }
 
@@ -879,26 +850,6 @@ function getCurrentBlockProgress(block: FocusBlock) {
 function clampPercent(value: number) {
   return Math.min(Math.max(value, 0), 100);
 }
-
-// ============================================================================
-// Background
-// Camadas decorativas do visual dark premium.
-// ============================================================================
-
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
-
-      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
-      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
-    </div>
-  );
-}
-
 
 // ============================================================================
 // Central de notificações
@@ -1366,21 +1317,19 @@ function NotificationsSheet({
               Carregando...
             </div>
           ) : filteredNotifications.length === 0 ? (
-            <div className="py-8 text-center">
-              <Bell className="mx-auto mb-3 h-6 w-6 text-purple-200/40" />
-
-              <p className="text-sm font-semibold text-white/55">
-                {notificationView === "unread"
+            <EmptyState
+              icon={Bell}
+              title={
+                notificationView === "unread"
                   ? "Nenhuma notificação não lida"
-                  : "Nenhuma notificação lida"}
-              </p>
-
-              <p className="mt-1 text-xs leading-5 text-white/30">
-                {notificationView === "unread"
+                  : "Nenhuma notificação lida"
+              }
+              description={
+                notificationView === "unread"
                   ? "Quando houver novos avisos ou sugestões, eles aparecerão aqui."
-                  : "Notificações já lidas, aceitas ou recusadas aparecerão nesta aba."}
-              </p>
-            </div>
+                  : "Notificações já lidas, aceitas ou recusadas aparecerão nesta aba."
+              }
+            />
           ) : (
             <div className="space-y-3">
               {filteredNotifications.map((notification) => (

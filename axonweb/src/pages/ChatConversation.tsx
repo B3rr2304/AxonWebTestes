@@ -27,6 +27,9 @@ import {
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
+import AppBackground from "../components/layout/AppBackground";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import EmptyState from "../components/ui/EmptyState";
 
 // ============================================================================
 // Tipos e contratos locais
@@ -59,6 +62,34 @@ type NotificationItem = {
 };
 
 type ConfirmAction = "clear" | "archive" | "delete" | null;
+
+// Configuração dinâmica por ação para o modal de confirmação da conversa.
+const CONVERSATION_ACTION_CONFIG = {
+  clear: {
+    title: "Limpar conversa?",
+    description:
+      "As mensagens desta conversa serão removidas, mas a aba continuará existindo.",
+    confirmLabel: "Limpar",
+    variant: "default" as const,
+    icon: Eraser,
+  },
+  archive: {
+    title: "Arquivar conversa?",
+    description:
+      "Esta conversa sairá da lista principal. Você poderá recuperá-la futuramente.",
+    confirmLabel: "Arquivar",
+    variant: "default" as const,
+    icon: Archive,
+  },
+  delete: {
+    title: "Excluir conversa?",
+    description:
+      "Esta ação remove a aba inteira. Depois, essa conversa não poderá ser acessada.",
+    confirmLabel: "Excluir",
+    variant: "danger" as const,
+    icon: Trash2,
+  },
+};
 
 // Cronotipos aceitos para preencher a Sidebar sem depender de dados externos.
 const validKeys: ChronotypeResultKey[] = [
@@ -130,6 +161,7 @@ export default function ChatConversation() {
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
+  const [actionLoading, setActionLoading] = useState(false);
   const [isProjectSheetOpen, setIsProjectSheetOpen] = useState(false);
 
   // Mensagem digitada, histórico renderizado e estado de envio para o composer.
@@ -337,31 +369,38 @@ export default function ChatConversation() {
 
   // Executa ações destrutivas após confirmação no modal.
   async function handleConfirmAction() {
-    if (!conversationId) {
+    if (!conversationId || !confirmAction) {
       setConfirmAction(null);
       return;
     }
 
-    if (confirmAction === "clear") {
-      await api.clearConversationMessages(conversationId).catch(() => null);
-      setMessages([]);
-      historyRef.current = [];
-      setConfirmAction(null);
-      return;
-    }
+    setActionLoading(true);
+    try {
+      if (confirmAction === "clear") {
+        await api.clearConversationMessages(conversationId).catch(() => null);
+        setMessages([]);
+        historyRef.current = [];
+        setConfirmAction(null);
+        return;
+      }
 
-    if (confirmAction === "archive") {
-      await api.updateConversation(conversationId, { archived: true }).catch(() => null);
-      setConfirmAction(null);
-      navigate("/chat");
-      return;
-    }
+      if (confirmAction === "archive") {
+        await api
+          .updateConversation(conversationId, { archived: true })
+          .catch(() => null);
+        setConfirmAction(null);
+        navigate("/chat");
+        return;
+      }
 
-    if (confirmAction === "delete") {
-      await api.deleteConversation(conversationId).catch(() => null);
-      setConfirmAction(null);
-      navigate("/chat");
-      return;
+      if (confirmAction === "delete") {
+        await api.deleteConversation(conversationId).catch(() => null);
+        setConfirmAction(null);
+        navigate("/chat");
+        return;
+      }
+    } finally {
+      setActionLoading(false);
     }
   }
 
@@ -411,7 +450,7 @@ export default function ChatConversation() {
   // Layout principal: header fixo, histórico scrollável, composer e modais globais.
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
         <header className="mb-4 shrink-0">
@@ -582,11 +621,19 @@ export default function ChatConversation() {
         energyPeak={result.energyPeak}
       />
 
-      <ConfirmActionModal
-        action={confirmAction}
-        onClose={() => setConfirmAction(null)}
-        onConfirm={handleConfirmAction}
-      />
+      {confirmAction && (
+        <ConfirmDialog
+          isOpen={!!confirmAction}
+          title={CONVERSATION_ACTION_CONFIG[confirmAction].title}
+          description={CONVERSATION_ACTION_CONFIG[confirmAction].description}
+          confirmLabel={CONVERSATION_ACTION_CONFIG[confirmAction].confirmLabel}
+          variant={CONVERSATION_ACTION_CONFIG[confirmAction].variant}
+          icon={CONVERSATION_ACTION_CONFIG[confirmAction].icon}
+          loading={actionLoading}
+          onConfirm={handleConfirmAction}
+          onClose={() => setConfirmAction(null)}
+        />
+      )}
 
       <MoveConversationProjectSheet
         isOpen={isProjectSheetOpen}
@@ -865,92 +912,6 @@ function ContextRow({ label, value }: { label: string; value: string }) {
     <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
       <p className="text-xs text-white/35">{label}</p>
       <p className="mt-1 text-sm font-semibold text-white/75">{value}</p>
-    </div>
-  );
-}
-
-// Confirma ações que podem remover mensagens, arquivar ou excluir a conversa.
-function ConfirmActionModal({
-  action,
-  onClose,
-  onConfirm,
-}: {
-  action: ConfirmAction;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  if (!action) return null;
-
-  const config = {
-    clear: {
-      title: "Limpar mensagens?",
-      description:
-        "As mensagens desta conversa serão removidas, mas a aba continuará existindo.",
-      button: "Sim, limpar mensagens",
-      icon: Eraser,
-      danger: false,
-    },
-    archive: {
-      title: "Arquivar conversa?",
-      description:
-        "Esta conversa sairá da lista principal. Você poderá recuperá-la futuramente.",
-      button: "Sim, arquivar",
-      icon: Archive,
-      danger: false,
-    },
-    delete: {
-      title: "Excluir conversa?",
-      description:
-        "Esta ação remove a aba inteira. Depois, essa conversa não poderá ser acessada.",
-      button: "Sim, excluir conversa",
-      icon: Trash2,
-      danger: true,
-    },
-  }[action];
-
-  const Icon = config.icon;
-
-  return (
-    <div className="fixed inset-0 z-[140] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="w-full max-w-[430px] rounded-[2rem] border border-white/10 bg-[#171720]/95 p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
-
-        <div
-          className={`mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border ${
-            config.danger
-              ? "border-red-300/20 bg-red-500/10 text-red-100"
-              : "border-purple-300/20 bg-purple-500/10 text-purple-100"
-          }`}
-        >
-          <Icon className="h-5 w-5" />
-        </div>
-
-        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
-          {config.title}
-        </h2>
-
-        <p className="mt-3 text-sm leading-6 text-white/48">
-          {config.description}
-        </p>
-
-        <button
-          onClick={onConfirm}
-          className={`mt-6 inline-flex min-h-14 w-full items-center justify-center rounded-2xl px-6 text-sm font-semibold text-white shadow-xl active:scale-[0.98] ${
-            config.danger
-              ? "bg-red-500 shadow-red-950/30"
-              : "bg-purple-500 shadow-purple-950/35"
-          }`}
-        >
-          {config.button}
-        </button>
-
-        <button
-          onClick={onClose}
-          className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]"
-        >
-          Cancelar
-        </button>
-      </div>
     </div>
   );
 }
@@ -1340,14 +1301,10 @@ function MoveConversationProjectSheet({
               })}
 
               {projects.length === 0 && (
-                <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-5 text-center">
-                  <p className="text-sm font-semibold text-white">
-                    Nenhum projeto criado
-                  </p>
-                  <p className="mt-2 text-xs leading-5 text-white/40">
-                    Crie um projeto na tela de Chat para mover esta conversa.
-                  </p>
-                </div>
+                <EmptyState
+                  title="Nenhum projeto criado"
+                  description="Crie um projeto na tela de Chat para mover esta conversa."
+                />
               )}
             </div>
           )}
@@ -1391,7 +1348,7 @@ function MoveConversationProjectSheet({
 }
 
 // ============================================================================
-// Helpers e background
+// Helpers
 // ============================================================================
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -1406,21 +1363,6 @@ function formatChatTitle(chatId?: string) {
     .split("-")
     .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
     .join(" ");
-}
-
-// Camada visual compartilhada pelas telas de conversa e notificações.
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
-
-      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
-      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
-    </div>
-  );
 }
 
 // ============================================================================
@@ -1450,7 +1392,7 @@ function NotificationsConversation({
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
         <header className="mb-4 flex items-center justify-between">
