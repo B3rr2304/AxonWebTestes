@@ -16,6 +16,8 @@ import {
   Zap,
 } from "lucide-react";
 
+import OnboardingBackground from "../components/layout/OnboardingBackground";
+
 // ===========================================================================
 // TIPOS DO QUESTIONÁRIO
 // ===========================================================================
@@ -460,7 +462,7 @@ export default function Questionnaire() {
 
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[#05050b] px-4 py-5 text-white">
-      <Background />
+      <OnboardingBackground />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col">
         <Header />
@@ -592,18 +594,5 @@ function Header() {
         </div>
       </div>
     </header>
-  );
-}
-
-// Background da etapa de onboarding, alinhado ao visual dark premium do app.
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute left-1/2 top-[-16rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-purple-700/25 blur-[120px]" />
-      <div className="absolute right-[-14rem] top-[16rem] h-[28rem] w-[28rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-10rem] h-[28rem] w-[28rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-20" />
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,11,0.08),#05050b_88%)]" />
-    </div>
   );
 }

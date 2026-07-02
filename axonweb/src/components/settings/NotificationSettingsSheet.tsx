@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Bell, CalendarDays, Clock, X, Zap } from "lucide-react";
+import { Bell, CalendarDays, Clock, Zap } from "lucide-react";
 
+import BottomSheet from "../ui/BottomSheet";
 import * as api from "../../lib/api";
 
 // ===========================================================================
@@ -126,76 +126,28 @@ export default function NotificationSettingsSheet({ isOpen, onClose }: Props) {
   );
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Overlay fecha a sheet ao tocar fora do painel. */}
-          <motion.button
-            type="button"
-            aria-label="Fechar"
-            onClick={handleClose}
-            className="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          />
-
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 260, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 z-[110] max-h-[90vh] overflow-y-auto rounded-t-[2rem] border-t border-white/10 bg-[#15141f]/97 pb-12 backdrop-blur-2xl"
-          >
-            <SheetHeader onClose={handleClose} />
-
-            {loading ? (
-              <LoadingState />
-            ) : (
-              <div className="space-y-6 px-5 pt-2">
-                <DailyPlanningSection prefs={prefs} onUpdate={update} />
-                <WeeklyPlanningSection prefs={prefs} onUpdate={update} />
-              </div>
-            )}
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ===========================================================================
-// HEADER E ESTADOS DA SHEET
-// ===========================================================================
-
-function SheetHeader({ onClose }: { onClose: () => void }) {
-  return (
-    <div className="sticky top-0 z-10 bg-[#15141f]/97 px-5 pb-3 pt-4 backdrop-blur-xl">
-      <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-white/15" />
-
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold tracking-tight text-white">
-            Notificações
-          </h2>
-
-          <p className="mt-0.5 text-xs text-white/40">
-            Configure seus lembretes de planejamento
-          </p>
+    <BottomSheet
+      isOpen={isOpen}
+      onClose={handleClose}
+      title="Notificações"
+      subtitle="Configure seus lembretes de planejamento"
+      ariaLabel="Configurações de notificações"
+    >
+      {loading ? (
+        <LoadingState />
+      ) : (
+        <div className="space-y-6">
+          <DailyPlanningSection prefs={prefs} onUpdate={update} />
+          <WeeklyPlanningSection prefs={prefs} onUpdate={update} />
         </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/55 active:scale-[0.96]"
-          aria-label="Fechar configurações de notificações"
-        >
-          <X className="h-4 w-4" />
-        </button>
-      </div>
-    </div>
+      )}
+    </BottomSheet>
   );
 }
+
+// ===========================================================================
+// ESTADOS DA SHEET
+// ===========================================================================
 
 function LoadingState() {
   return (

@@ -1,16 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import type { ElementType, ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { AnimatePresence, motion } from "framer-motion";
 import {
-  AlertTriangle,
   Bell,
   ChevronRight,
   Download,
   Link2,
   LogOut,
   Mail,
-  Menu,
   Moon,
   Palette,
   Settings as SettingsIcon,
@@ -24,6 +21,9 @@ import Sidebar from "../components/layout/Sidebar";
 import TagEditorSheet from "../components/settings/TagEditorSheet";
 import NotificationSettingsSheet from "../components/settings/NotificationSettingsSheet";
 import * as api from "../lib/api";
+import AppBackground from "../components/layout/AppBackground";
+import PageHeader from "../components/layout/PageHeader";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
 
 // ===========================================================================
 // TIPOS DA TELA
@@ -142,37 +142,16 @@ export default function Settings() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
         {/* Header: volta ao Dashboard e abre o menu lateral global. */}
-        <header className="mb-5 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img
-                src="/axon-logo.svg"
-                alt="Axon"
-                className="h-8 w-8 object-contain"
-              />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-white">Configurações</p>
-              <p className="text-xs text-white/40">Conta e preferências</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-            aria-label="Abrir menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </header>
+        <PageHeader
+          title="Configurações"
+          subtitle="Conta e preferências"
+          onBack={() => navigate("/dashboard")}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
 
         {/* Hero: explica o objetivo da central de configurações. */}
         <section className="mb-4">
@@ -310,27 +289,55 @@ export default function Settings() {
       />
 
       {/* Confirmação simples de logout. */}
-      <LogoutConfirmModal
+      <ConfirmDialog
         isOpen={showLogoutModal}
-        onClose={() => setShowLogoutModal(false)}
+        title="Deseja sair da sua conta?"
+        description="Você será desconectado do Axon e precisará fazer login novamente para acessar seu ambiente."
+        confirmLabel="Sair"
+        variant="danger"
+        icon={LogOut}
         onConfirm={handleLogout}
+        onClose={() => setShowLogoutModal(false)}
       />
 
       {/* Fluxo em duas etapas para reduzir exclusão acidental da conta. */}
-      <DeleteAccountFirstModal
+      <ConfirmDialog
         isOpen={showDeleteFirstModal}
-        onClose={() => setShowDeleteFirstModal(false)}
+        title="Excluir sua conta?"
+        description="Essa ação é permanente e removerá seu acesso ao Axon."
+        confirmLabel="Continuar"
+        variant="danger"
+        icon={Trash2}
         onConfirm={() => {
           setShowDeleteFirstModal(false);
           setShowDeleteFinalModal(true);
         }}
+        onClose={() => setShowDeleteFirstModal(false)}
       />
 
-      <DeleteAccountFinalModal
+      <ConfirmDialog
         isOpen={showDeleteFinalModal}
-        email={userEmail}
-        onClose={() => setShowDeleteFinalModal(false)}
+        title="Confirmação final"
+        description={
+          <>
+            <p>
+              O e-mail abaixo não poderá ser usado para criar outra conta no
+              Axon pelos próximos{" "}
+              <span className="font-semibold text-white">60 dias</span>.
+            </p>
+
+            <div className="mt-5 flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
+              <Mail className="h-4 w-4 shrink-0 text-red-200" />
+              <p className="min-w-0 truncate text-sm font-semibold text-white/75">
+                {userEmail || "E-mail da conta"}
+              </p>
+            </div>
+          </>
+        }
+        confirmLabel="Sim, excluir"
+        variant="danger"
         onConfirm={handleDeleteAccount}
+        onClose={() => setShowDeleteFinalModal(false)}
       />
 
       {/* Sheets de configuração específicos. */}
@@ -463,223 +470,3 @@ function ToggleItem({
   );
 }
 
-// ===========================================================================
-// MODAL DE LOGOUT
-// ===========================================================================
-
-function LogoutConfirmModal({
-  isOpen,
-  onClose,
-  onConfirm,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 18, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 18, scale: 0.96 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
-          >
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
-              <LogOut className="h-6 w-6" />
-            </div>
-
-            <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
-              Deseja sair da sua conta?
-            </h2>
-
-            <p className="mt-3 text-sm leading-6 text-white/45">
-              Você será desconectado do Axon e precisará fazer login novamente
-              para acessar seu ambiente.
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
-              >
-                Sair
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ===========================================================================
-// MODAIS DE EXCLUSÃO DE CONTA
-// ===========================================================================
-
-function DeleteAccountFirstModal({
-  isOpen,
-  onClose,
-  onConfirm,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 18, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 18, scale: 0.96 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
-          >
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
-              <Trash2 className="h-6 w-6" />
-            </div>
-
-            <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
-              Excluir sua conta?
-            </h2>
-
-            <p className="mt-3 text-sm leading-6 text-white/45">
-              Essa ação é permanente e removerá seu acesso ao Axon.
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
-              >
-                Continuar
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-function DeleteAccountFinalModal({
-  isOpen,
-  email,
-  onClose,
-  onConfirm,
-}: {
-  isOpen: boolean;
-  email: string;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 18, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 18, scale: 0.96 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="w-full max-w-[380px] overflow-hidden rounded-[2rem] border border-red-300/15 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
-          >
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
-              <AlertTriangle className="h-6 w-6" />
-            </div>
-
-            <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
-              Confirmação final
-            </h2>
-
-            <p className="mt-3 text-sm leading-6 text-white/45">
-              O e-mail abaixo não poderá ser usado para criar outra conta no
-              Axon pelos próximos{" "}
-              <span className="font-semibold text-white">60 dias</span>.
-            </p>
-
-            <div className="mt-5 flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
-              <Mail className="h-4 w-4 shrink-0 text-red-200" />
-              <p className="min-w-0 truncate text-sm font-semibold text-white/75">
-                {email || "E-mail da conta"}
-              </p>
-            </div>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={onClose}
-                className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98]"
-              >
-                Sim, excluir
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ===========================================================================
-// BACKGROUND VISUAL
-// ===========================================================================
-
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
-
-      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
-      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
-    </div>
-  );
-}

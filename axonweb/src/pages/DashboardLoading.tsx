@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 import favicon from "../assets/favicon.svg";
 
+import OnboardingBackground from "../components/layout/OnboardingBackground";
+
 // Mensagens exibidas durante a preparação inicial do Dashboard.
 const loadingTexts = [
   "Lendo seu perfil produtivo...",
@@ -34,7 +36,7 @@ export default function DashboardLoading() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0f1018] px-4 text-white">
-      <Background />
+      <OnboardingBackground />
 
       <section className="relative z-10 flex w-full max-w-[360px] flex-col items-center text-center">
         {/* Marca central: reforça a transição entre resultado e Dashboard. */}
@@ -128,20 +130,5 @@ export default function DashboardLoading() {
         </div>
       </section>
     </main>
-  );
-}
-
-// Background premium usado apenas para profundidade visual da tela de loading.
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#0f1018_48%,#12121c_100%)]" />
-
-      <div className="absolute left-1/2 top-[18%] h-[28rem] w-[28rem] -translate-x-1/2 rounded-full bg-purple-700/24 blur-[120px]" />
-      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.05)_1px,transparent_1px)] [background-size:32px_32px] opacity-[0.08]" />
-    </div>
   );
 }

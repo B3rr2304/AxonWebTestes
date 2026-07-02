@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
 
+import OnboardingBackground from "../components/layout/OnboardingBackground";
+
 export default function AppLoading() {
   const navigate = useNavigate();
 
@@ -18,7 +20,7 @@ export default function AppLoading() {
 
   return (
     <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0f1018] text-white">
-      <Background />
+      <OnboardingBackground />
 
       {/* Vinheta central da marca exibida entre login e dashboard. */}
       <section className="relative z-10 flex h-full w-full items-center justify-center px-4">
@@ -92,28 +94,5 @@ export default function AppLoading() {
         </div>
       </section>
     </main>
-  );
-}
-
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      {/* Base escura premium usada nas telas de transição do app. */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#0f1018_50%,#11111a_100%)]" />
-
-      {/* Luz principal centralizada atrás da marca. */}
-      <div className="absolute left-1/2 top-1/2 h-[28rem] w-[28rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-700/22 blur-[130px]" />
-
-      {/* Luzes secundárias para profundidade sem competir com o logo. */}
-      <div className="absolute right-[-10rem] top-[18%] h-[22rem] w-[22rem] rounded-full bg-fuchsia-500/8 blur-[110px]" />
-
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[24rem] w-[24rem] rounded-full bg-indigo-500/8 blur-[120px]" />
-
-      {/* Textura sutil para evitar um fundo chapado. */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.045)_1px,transparent_1px)] [background-size:34px_34px] opacity-[0.055]" />
-
-      {/* Vinheta final que concentra a atenção no centro da tela. */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_0%,rgba(15,16,24,0.45)_68%,rgba(15,16,24,0.92)_100%)]" />
-    </div>
   );
 }

@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 import { results, type ChronotypeResultKey } from "../data/results";
+import AppBackground from "../components/layout/AppBackground";
 
 // ===========================================================================
 // CHAVES VÁLIDAS DE CRONOTIPO
@@ -76,7 +77,7 @@ export default function Result() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
         {/* Header: identifica o contexto do resultado. */}
@@ -426,24 +427,6 @@ function ListItem({
       </div>
 
       <p className="text-sm leading-6 text-white/50">{text}</p>
-    </div>
-  );
-}
-
-// ===========================================================================
-// BACKGROUND VISUAL
-// ===========================================================================
-
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
-
-      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
-      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
     </div>
   );
 }

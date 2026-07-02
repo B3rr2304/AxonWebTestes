@@ -1,11 +1,9 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
-  ArrowLeft,
   Check,
   Clock,
   ListChecks,
-  Menu,
   Pause,
   Pencil,
   Play,
@@ -30,9 +28,23 @@ import {
 } from "../components/routines/RoutineItem";
 import * as api from "../lib/api";
 import type { Routine, RoutineDetail, RoutineItem } from "../lib/api";
+import AppBackground from "../components/layout/AppBackground";
+import PageHeader from "../components/layout/PageHeader";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import EmptyState from "../components/ui/EmptyState";
 
-export default function Routines({ embedded = false }: { embedded?: boolean } = {}) {
+// ===========================================================================
+// LISTA DE ROTINAS
+// ===========================================================================
+// Renderiza a aba/página de rotinas e abre o fluxo de criação de nova rotina.
+export default function Routines({
+  embedded = false,
+}: {
+  embedded?: boolean;
+} = {}) {
   const navigate = useNavigate();
+
+  // Controles visuais da página/lista.
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [routines, setRoutines] = useState<Routine[] | null>(null);
@@ -40,6 +52,7 @@ export default function Routines({ embedded = false }: { embedded?: boolean } = 
   const [error, setError] = useState<string | null>(null);
   const [actioningId, setActioningId] = useState<string | null>(null);
 
+  // Carrega a lista de rotinas do usuário.
   function load() {
     setLoading(true);
     api
@@ -59,6 +72,7 @@ export default function Routines({ embedded = false }: { embedded?: boolean } = 
     load();
   }, []);
 
+  // Pausa ou retoma uma rotina diretamente pelo card.
   async function toggleStatus(routine: Routine) {
     if (actioningId) return;
     setActioningId(routine.id);
@@ -87,37 +101,45 @@ export default function Routines({ embedded = false }: { embedded?: boolean } = 
 
   const isEmpty = !loading && routines !== null && routines.length === 0;
 
+  // Conteúdo compartilhado entre a rota própria e a aba embedded do Planning.
   const inner = (
     <>
       <section className="mb-5 flex items-end justify-between gap-3">
-          <div>
-            <h1 className="text-[1.7rem] font-semibold leading-tight tracking-[-0.04em] text-white">
-              Minhas Rotinas
-            </h1>
-            <p className="mt-1 text-sm text-white/45">
-              Hábitos que o Axon agenda por você.
-            </p>
-          </div>
+        <div>
+          <h1 className="text-[1.7rem] font-semibold leading-tight tracking-[-0.04em] text-white">
+            Minhas Rotinas
+          </h1>
 
-          <button
+          <p className="mt-1 text-sm text-white/45">
+            Hábitos que o Axon agenda por você.
+          </p>
+        </div>
+
+        <button
             onClick={goCreate}
             className="flex shrink-0 items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/20 px-4 py-2.5 text-sm font-semibold text-purple-100 shadow-lg shadow-purple-950/20 active:scale-[0.97]"
           >
             <Plus className="h-4 w-4" />
-            Nova Rotina
-          </button>
-        </section>
+          Nova Rotina
+        </button>
+      </section>
 
-        {error && (
+      {error && (
           <div className="mb-4 rounded-[1.4rem] border border-red-300/20 bg-red-500/10 p-4 text-sm leading-6 text-red-100/80">
             {error}
           </div>
-        )}
+      )}
 
-        {loading ? (
+      {loading ? (
           <RoutinesSkeleton />
         ) : isEmpty ? (
-          <EmptyState onCreate={goCreate} />
+          <EmptyState
+            icon={Repeat}
+            title="Nenhuma rotina por aqui ainda"
+            description="Crie sua primeira rotina e deixe o Axon encaixar os hábitos nos seus melhores horários de energia."
+            actionLabel="Criar primeira rotina"
+            onAction={goCreate}
+          />
         ) : (
           <div className="space-y-3">
             {routines!.map((routine) => (
@@ -131,10 +153,11 @@ export default function Routines({ embedded = false }: { embedded?: boolean } = 
               />
             ))}
           </div>
-        )}
+      )}
     </>
   );
 
+  // Sheet de criação fica fora do conteúdo para preservar o empilhamento visual.
   const modals = (
     <NewRoutineSheet
       isOpen={isCreateOpen}
@@ -154,36 +177,15 @@ export default function Routines({ embedded = false }: { embedded?: boolean } = 
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-6 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img
-                src="/axon-logo.svg"
-                alt="Axon"
-                className="h-8 w-8 object-contain"
-              />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-white">Rotinas</p>
-              <p className="text-xs text-white/40">Hábitos recorrentes</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 backdrop-blur-2xl active:scale-[0.96]"
-            aria-label="Abrir menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </header>
+        <PageHeader
+          title="Rotinas"
+          subtitle="Hábitos recorrentes"
+          onBack={() => navigate("/dashboard")}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
 
         {inner}
       </div>
@@ -194,6 +196,10 @@ export default function Routines({ embedded = false }: { embedded?: boolean } = 
     </main>
   );
 }
+
+// ===========================================================================
+// CARD RESUMIDO DA ROTINA
+// ===========================================================================
 
 function RoutineCard({
   routine,
@@ -250,6 +256,7 @@ function RoutineCard({
         </div>
 
         <button
+          type="button"
           onClick={(e) => {
             e.stopPropagation();
             onToggle();
@@ -298,6 +305,10 @@ function RoutineCard({
   );
 }
 
+// ===========================================================================
+// BADGES, ESTADOS VISUAIS E HELPERS DA LISTA
+// ===========================================================================
+
 function StatusBadge({ status }: { status: Routine["status"] }) {
   const active = status === "active";
   return (
@@ -315,33 +326,6 @@ function StatusBadge({ status }: { status: Routine["status"] }) {
       />
       {active ? "Ativa" : "Pausada"}
     </span>
-  );
-}
-
-function EmptyState({ onCreate }: { onCreate: () => void }) {
-  return (
-    <div className="flex flex-col items-center rounded-[2rem] border border-dashed border-white/12 bg-white/[0.03] px-6 py-12 text-center">
-      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-3xl border border-purple-300/20 bg-purple-500/10 text-purple-200">
-        <Repeat className="h-7 w-7" />
-      </div>
-
-      <h2 className="text-lg font-semibold text-white">
-        Nenhuma rotina por aqui ainda
-      </h2>
-
-      <p className="mt-2 max-w-[18rem] text-sm leading-6 text-white/45">
-        Crie sua primeira rotina e deixe o Axon encaixar os hábitos nos seus
-        melhores horários de energia.
-      </p>
-
-      <button
-        onClick={onCreate}
-        className="mt-6 flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/20 px-5 py-3 text-sm font-semibold text-purple-100 shadow-lg shadow-purple-950/20 active:scale-[0.97]"
-      >
-        <Plus className="h-4 w-4" />
-        Criar primeira rotina
-      </button>
-    </div>
   );
 }
 
@@ -373,59 +357,46 @@ function formatDate(iso: string) {
   return d.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
 }
 
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute left-1/2 top-[-16rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-purple-700/25 blur-[120px]" />
-      <div className="absolute right-[-14rem] top-[14rem] h-[26rem] w-[26rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:28px_28px] opacity-20" />
-
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,11,0.05),#05050b_88%)]" />
-    </div>
-  );
-}
-
-// =====================================================================
-// Detalhe de uma rotina (rota /rotinas/:id). Reutiliza Background,
-// formatDate e StatusBadge definidos acima.
-// =====================================================================
-
+// ===========================================================================
+// DETALHE DE UMA ROTINA
+// ===========================================================================
+// Rota /rotinas/:id. Permite renomear, pausar, retomar, excluir e editar itens.
 export function RoutineDetailPage() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
 
+  // Estado principal da página de detalhe.
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [routine, setRoutine] = useState<RoutineDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Edição do nome
+  // Edição inline do nome da rotina.
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState("");
   const [savingName, setSavingName] = useState(false);
 
-  // Edição de item
+  // Edição de item existente.
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [itemDraft, setItemDraft] = useState<DraftItem | null>(null);
   const [savingItem, setSavingItem] = useState(false);
 
-  // Adicionar item
+  // Criação de novo item dentro da rotina.
   const [newItemDraft, setNewItemDraft] = useState<DraftItem | null>(null);
   const [savingNewItem, setSavingNewItem] = useState(false);
 
-  // Excluir item
+  // Confirmação de exclusão de item.
   const [deletingItemId, setDeletingItemId] = useState<string | null>(null);
   const [busyDeleteItem, setBusyDeleteItem] = useState(false);
 
-  // Pausa / retomada / exclusão
+  // Pausa, retomada e exclusão da rotina inteira.
   const [showPause, setShowPause] = useState(false);
   const [pauseUntil, setPauseUntil] = useState("");
   const [busyStatus, setBusyStatus] = useState(false);
   const [showDelete, setShowDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
+  // Carrega a rotina selecionada pelo id da rota.
   function load() {
     setLoading(true);
     api
@@ -446,6 +417,7 @@ export function RoutineDetailPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
+  // Inicia a edição inline do nome usando o valor atual da rotina.
   function startEditName() {
     if (!routine) return;
     setNameDraft(routine.name);
@@ -469,6 +441,7 @@ export function RoutineDetailPage() {
     }
   }
 
+  // Converte o item salvo para o draft usado pelo RoutineItemEditor.
   function startEditItem(item: RoutineItem) {
     setItemDraft(itemToDraft(item));
     setEditingItemId(item.id);
@@ -479,6 +452,7 @@ export function RoutineDetailPage() {
     setItemDraft(null);
   }
 
+  // Salva alterações de um item existente e recarrega a rotina.
   async function saveItem() {
     if (!routine || !itemDraft || !editingItemId) return;
     setSavingItem(true);
@@ -500,6 +474,7 @@ export function RoutineDetailPage() {
     }
   }
 
+  // Adiciona um novo item à rotina atual.
   async function saveNewItem() {
     if (!routine || !newItemDraft) return;
     setSavingNewItem(true);
@@ -516,6 +491,7 @@ export function RoutineDetailPage() {
     }
   }
 
+  // Exclui um item; se for o último, a rotina inteira é removida.
   async function confirmDeleteItem() {
     if (!routine || !deletingItemId) return;
     setBusyDeleteItem(true);
@@ -539,6 +515,7 @@ export function RoutineDetailPage() {
     }
   }
 
+  // Pausa a rotina, com ou sem data automática de retomada.
   async function confirmPause() {
     if (!routine) return;
     setBusyStatus(true);
@@ -555,6 +532,7 @@ export function RoutineDetailPage() {
     }
   }
 
+  // Retoma uma rotina pausada.
   async function resume() {
     if (!routine) return;
     setBusyStatus(true);
@@ -569,6 +547,7 @@ export function RoutineDetailPage() {
     }
   }
 
+  // Exclui a rotina inteira e retorna para a lista.
   async function confirmDelete() {
     if (!routine) return;
     setDeleting(true);
@@ -583,26 +562,14 @@ export function RoutineDetailPage() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-6 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/rotinas")}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 active:scale-[0.96]"
-            aria-label="Voltar para rotinas"
-          >
-            <ArrowLeft className="h-5 w-5" />
-          </button>
-
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 backdrop-blur-2xl active:scale-[0.96]"
-            aria-label="Abrir menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </header>
+        <PageHeader
+          leadingVariant="back"
+          onLeadingClick={() => navigate("/rotinas")}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
 
         {loading ? (
           <DetailSkeleton />
@@ -711,7 +678,11 @@ export function RoutineDetailPage() {
                         item={itemDraft}
                         canRemove={false}
                         onChange={(patch) =>
-                          setItemDraft((cur) => (cur ? { ...cur, ...patch } : cur))
+                          setItemDraft((currentDraft) =>
+                            currentDraft
+                              ? { ...currentDraft, ...patch }
+                              : currentDraft
+                          )
                         }
                         onToggleDay={(day) =>
                           setItemDraft((cur) => {
@@ -844,141 +815,90 @@ export function RoutineDetailPage() {
       <Sidebar isOpen={isSidebarOpen} onClose={() => setIsSidebarOpen(false)} />
 
       {/* Modal: pausar rotina */}
-      {showPause && (
-        <Modal onClose={() => !busyStatus && setShowPause(false)}>
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/10 text-purple-200">
-            <Pause className="h-6 w-6" />
-          </div>
-          <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">
-            Pausar rotina
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-white/45">
-            As tarefas futuras serão removidas. Você pode definir uma data para o
-            Axon retomar automaticamente — ou deixar em branco para pausar
-            indefinidamente.
-          </p>
+      <ConfirmDialog
+        isOpen={showPause}
+        title="Pausar rotina"
+        description={
+          <>
+            <p>
+              As tarefas futuras serão removidas. Você pode definir uma data para
+              o Axon retomar automaticamente — ou deixar em branco para pausar
+              indefinidamente.
+            </p>
 
-          <div className="mt-5 text-left">
-            <label className="text-sm font-medium text-white/70">
-              Retomar em <span className="text-white/35">(opcional)</span>
-            </label>
-            <input
-              type="date"
-              value={pauseUntil}
-              min={new Date().toLocaleDateString("en-CA")}
-              onChange={(e) => setPauseUntil(e.target.value)}
-              className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none focus:border-purple-300/40 [color-scheme:dark]"
-            />
-          </div>
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setShowPause(false)}
-              disabled={busyStatus}
-              className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:opacity-40"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={confirmPause}
-              disabled={busyStatus}
-              className="min-h-12 rounded-2xl bg-purple-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98] disabled:opacity-60"
-            >
-              {busyStatus ? "Pausando..." : "Confirmar"}
-            </button>
-          </div>
-        </Modal>
-      )}
+            <div className="mt-5 text-left">
+              <label className="text-sm font-medium text-white/70">
+                Retomar em <span className="text-white/35">(opcional)</span>
+              </label>
+              <input
+                type="date"
+                value={pauseUntil}
+                min={new Date().toLocaleDateString("en-CA")}
+                onChange={(e) => setPauseUntil(e.target.value)}
+                className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none focus:border-purple-300/40 [color-scheme:dark]"
+              />
+            </div>
+          </>
+        }
+        confirmLabel="Confirmar"
+        icon={Pause}
+        loading={busyStatus}
+        onConfirm={confirmPause}
+        onClose={() => setShowPause(false)}
+      />
 
       {/* Modal: excluir item */}
-      {deletingItemId && (
-        <Modal onClose={() => !busyDeleteItem && setDeletingItemId(null)}>
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
-            <Trash2 className="h-6 w-6" />
-          </div>
-          {routine && routine.items.length === 1 ? (
-            <>
-              <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">
-                Excluir o último item?
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-white/45">
-                Este é o único item da rotina. Ao confirmar, a{" "}
-                <span className="font-semibold text-white/70">rotina inteira</span>{" "}
-                também será excluída. As tarefas futuras serão removidas; as já
-                concluídas permanecem no seu histórico.
-              </p>
-            </>
+      <ConfirmDialog
+        isOpen={!!deletingItemId}
+        title={
+          routine && routine.items.length === 1
+            ? "Excluir o último item?"
+            : "Excluir este item?"
+        }
+        description={
+          routine && routine.items.length === 1 ? (
+            <p>
+              Este é o único item da rotina. Ao confirmar, a{" "}
+              <span className="font-semibold text-white/70">rotina inteira</span>{" "}
+              também será excluída. As tarefas futuras serão removidas; as já
+              concluídas permanecem no seu histórico.
+            </p>
           ) : (
-            <>
-              <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">
-                Excluir este item?
-              </h2>
-              <p className="mt-3 text-sm leading-6 text-white/45">
-                As tarefas futuras geradas por este item serão removidas. As já
-                concluídas permanecem no seu histórico.
-              </p>
-            </>
-          )}
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setDeletingItemId(null)}
-              disabled={busyDeleteItem}
-              className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:opacity-40"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={confirmDeleteItem}
-              disabled={busyDeleteItem}
-              className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98] disabled:opacity-60"
-            >
-              {busyDeleteItem
-                ? "Excluindo..."
-                : routine && routine.items.length === 1
-                ? "Excluir rotina"
-                : "Excluir"}
-            </button>
-          </div>
-        </Modal>
-      )}
+            <p>
+              As tarefas futuras geradas por este item serão removidas. As já
+              concluídas permanecem no seu histórico.
+            </p>
+          )
+        }
+        confirmLabel={
+          routine && routine.items.length === 1 ? "Excluir rotina" : "Excluir"
+        }
+        variant="danger"
+        icon={Trash2}
+        loading={busyDeleteItem}
+        onConfirm={confirmDeleteItem}
+        onClose={() => setDeletingItemId(null)}
+      />
 
       {/* Modal: excluir rotina */}
-      {showDelete && (
-        <Modal onClose={() => !deleting && setShowDelete(false)}>
-          <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
-            <Trash2 className="h-6 w-6" />
-          </div>
-          <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">
-            Excluir esta rotina?
-          </h2>
-          <p className="mt-3 text-sm leading-6 text-white/45">
-            As tarefas futuras geradas por ela serão removidas. As tarefas já
-            concluídas permanecem no seu histórico. Esta ação não pode ser
-            desfeita.
-          </p>
-
-          <div className="mt-6 grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setShowDelete(false)}
-              disabled={deleting}
-              className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:opacity-40"
-            >
-              Cancelar
-            </button>
-            <button
-              onClick={confirmDelete}
-              disabled={deleting}
-              className="min-h-12 rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98] disabled:opacity-60"
-            >
-              {deleting ? "Excluindo..." : "Excluir"}
-            </button>
-          </div>
-        </Modal>
-      )}
+      <ConfirmDialog
+        isOpen={showDelete}
+        title="Excluir esta rotina?"
+        description="As tarefas futuras geradas por ela serão removidas. As tarefas já concluídas permanecem no seu histórico. Esta ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        variant="danger"
+        icon={Trash2}
+        loading={deleting}
+        onConfirm={confirmDelete}
+        onClose={() => setShowDelete(false)}
+      />
     </main>
   );
 }
+
+// ===========================================================================
+// LINHA DE ITEM DA ROTINA
+// ===========================================================================
 
 function ItemRow({
   item,
@@ -1013,6 +933,7 @@ function ItemRow({
 
       <div className="flex shrink-0 items-center gap-2">
         <button
+          type="button"
           onClick={onEdit}
           className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/50 active:scale-[0.96]"
           aria-label="Editar item"
@@ -1020,6 +941,7 @@ function ItemRow({
           <Pencil className="h-4 w-4" />
         </button>
         <button
+          type="button"
           onClick={onDelete}
           className="flex h-9 w-9 items-center justify-center rounded-2xl border border-red-300/15 bg-red-500/[0.08] text-red-200/70 active:scale-[0.96]"
           aria-label="Excluir item"
@@ -1031,27 +953,9 @@ function ItemRow({
   );
 }
 
-function Modal({
-  children,
-  onClose,
-}: {
-  children: React.ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-      <button
-        type="button"
-        aria-label="Fechar"
-        onClick={onClose}
-        className="absolute inset-0"
-      />
-      <div className="relative w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        {children}
-      </div>
-    </div>
-  );
-}
+// ===========================================================================
+// MODAL BASE E SKELETON DO DETALHE
+// ===========================================================================
 
 function DetailSkeleton() {
   return (
@@ -1069,6 +973,10 @@ function DetailSkeleton() {
     </div>
   );
 }
+
+// ===========================================================================
+// HELPERS DE FORMATAÇÃO
+// ===========================================================================
 
 function daysText(days: number[]) {
   if (days.length === 7) return "Todos os dias";

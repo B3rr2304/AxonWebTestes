@@ -7,7 +7,6 @@ import {
   ChevronUp,
   Edit3,
   Loader2,
-  Menu,
   Plus,
   Target,
   Trash2,
@@ -18,23 +17,42 @@ import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 import type { Objective } from "../lib/api";
 import { results, type ChronotypeResultKey } from "../data/results";
+import AppBackground from "../components/layout/AppBackground";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import PageHeader from "../components/layout/PageHeader";
+import EmptyState from "../components/ui/EmptyState";
 
-const validKeys: ChronotypeResultKey[] = ["Matutino", "Vespertino", "Noturno", "Misto", "Bimodal"];
+// ===========================================================================
+// TIPOS E CONSTANTES GERAIS
+// ===========================================================================
+
+const validKeys: ChronotypeResultKey[] = [
+  "Matutino",
+  "Vespertino",
+  "Noturno",
+  "Misto",
+  "Bimodal",
+];
 
 const STATUS_TASK: Record<string, string> = {
-  todo: "A fazer", progress: "Em andamento", done: "Concluída", scheduled: "Agendada",
+  todo: "A fazer",
+  progress: "Em andamento",
+  done: "Concluída",
+  scheduled: "Agendada",
 };
 
-const INPUT_CLS = "min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35";
+const INPUT_CLS =
+  "min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35";
 
 
-// ──────────────────────────────────────────────────────────────────────────────
-// PÁGINA PRINCIPAL
-// ──────────────────────────────────────────────────────────────────────────────
-
+// ===========================================================================
+// PÁGINA DE OBJETIVOS
+// ===========================================================================
+// Lista objetivos de longo prazo, permite expandir etapas e abre modais de edição.
 export default function Goals({ embedded = false }: { embedded?: boolean } = {}) {
   const navigate = useNavigate();
 
+  // Estado principal da página e da sidebar.
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [objectives, setObjectives] = useState<Objective[]>([]);
   const [loading, setLoading] = useState(true);
@@ -44,74 +62,125 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [editingObjective, setEditingObjective] = useState<Objective | null>(null);
   const [addingStepTo, setAddingStepTo] = useState<Objective | null>(null);
-  const [editingStep, setEditingStep] = useState<{ task: api.Task; objectiveId: string } | null>(null);
+  const [editingStep, setEditingStep] = useState<{
+    task: api.Task;
+    objectiveId: string;
+  } | null>(null);
   const [togglingStepId, setTogglingStepId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [objectiveToDelete, setObjectiveToDelete] = useState<Objective | null>(
+    null
+  );
 
+  // Cronotipo usado para alimentar a sidebar quando a página não está embutida.
   const resultKey: ChronotypeResultKey = (() => {
-    const s = localStorage.getItem("axon_chronotype");
-    return s && validKeys.includes(s as ChronotypeResultKey) ? (s as ChronotypeResultKey) : "Misto";
+    const stored = localStorage.getItem("axon_chronotype");
+
+    return stored && validKeys.includes(stored as ChronotypeResultKey)
+      ? (stored as ChronotypeResultKey)
+      : "Misto";
   })();
   const result = results[resultKey];
 
+  // Carrega objetivos do usuário.
   async function loadObjectives() {
     try {
       const data = await api.getObjectives();
       setObjectives(data);
-    } catch { /* silencioso */ }
-    finally { setLoading(false); }
+    } catch {
+      // Mantém a página vazia em caso de erro inicial.
+    } finally {
+      setLoading(false);
+    }
   }
 
   useEffect(() => {
-    if (!api.isLoggedIn()) { navigate("/login"); return; }
+    if (!api.isLoggedIn()) {
+      navigate("/login");
+      return;
+    }
+
     loadObjectives();
   }, [navigate]);
 
+  // Expande o objetivo e carrega suas etapas sob demanda.
   async function toggleExpand(id: string) {
-    if (expandedId === id) { setExpandedId(null); return; }
+    if (expandedId === id) {
+      setExpandedId(null);
+      return;
+    }
+
     setExpandedId(id);
+
     if (!subtasks[id]) {
       setLoadingSubtasks(id);
       try {
         const obj = await api.getObjective(id);
         setSubtasks((prev) => ({ ...prev, [id]: obj.subtasks ?? [] }));
-      } catch { /* silent */ }
-      finally { setLoadingSubtasks(null); }
+      } catch {
+        // Se falhar, mantém o objetivo aberto sem etapas.
+      } finally {
+        setLoadingSubtasks(null);
+      }
     }
   }
 
+  // Atualiza etapas e progresso do objetivo depois de criar/editar/concluir etapas.
   async function refreshSubtasks(objectiveId: string) {
     try {
       const obj = await api.getObjective(objectiveId);
       setSubtasks((prev) => ({ ...prev, [objectiveId]: obj.subtasks ?? [] }));
       setObjectives((prev) =>
-        prev.map((o) => o.id === objectiveId ? { ...o, subtask_count: obj.subtask_count, done_count: obj.done_count, progress: obj.progress, status: obj.status } : o)
+        prev.map((objective) =>
+          objective.id === objectiveId
+            ? {
+                ...objective,
+                subtask_count: obj.subtask_count,
+                done_count: obj.done_count,
+                progress: obj.progress,
+                status: obj.status,
+              }
+            : objective
+        )
       );
-    } catch { /* silent */ }
+    } catch {
+      // Mantém os dados atuais em caso de erro.
+    }
   }
 
+  // Remove o objetivo e limpa a expansão local caso ele estivesse aberto.
   async function handleDelete(id: string) {
     setDeletingId(id);
     try {
       await api.deleteObjective(id);
       setObjectives((prev) => prev.filter((o) => o.id !== id));
       if (expandedId === id) setExpandedId(null);
-    } catch { /* silent */ }
-    finally { setDeletingId(null); }
+    } catch {
+      // Mantém o objetivo na lista em caso de erro.
+    } finally {
+      setDeletingId(null);
+      setObjectiveToDelete(null);
+    }
   }
 
+  // Marca/desmarca uma etapa e recalcula o progresso do objetivo.
   async function handleToggleStep(objectiveId: string, task: api.Task) {
     setTogglingStepId(task.id);
-    const next = task.status === "done"
-      ? { status: "todo" as api.TaskStatus, progress: 0 }
-      : { status: "done" as api.TaskStatus, progress: 100 };
+    const next =
+      task.status === "done"
+        ? { status: "todo" as api.TaskStatus, progress: 0 }
+        : { status: "done" as api.TaskStatus, progress: 100 };
     try {
       await api.updateTask(task.id, next);
       await refreshSubtasks(objectiveId);
-    } catch { /* silent */ }
-    finally { setTogglingStepId(null); }
+    } catch {
+      // Mantém a etapa no estado atual em caso de erro.
+    } finally {
+      setTogglingStepId(null);
+    }
   }
 
+  // Conteúdo compartilhado entre a página própria e o modo embedded no Planning.
   const inner = (
     <>
       {embedded && (
@@ -140,22 +209,13 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
             Carregando objetivos…
           </div>
         ) : objectives.length === 0 ? (
-          <div className="flex flex-col items-center rounded-[2rem] border border-dashed border-white/12 bg-black/15 px-6 py-14 text-center">
-            <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/10 text-purple-200">
-              <Target className="h-6 w-6" />
-            </div>
-            <p className="text-base font-semibold text-white">Nenhum objetivo ainda</p>
-            <p className="mt-2 max-w-[260px] text-sm leading-6 text-white/42">
-              Crie seu primeiro objetivo e adicione as etapas que vão te levar até ele.
-            </p>
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="mt-5 inline-flex items-center gap-2 rounded-2xl bg-purple-500 px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.97]"
-            >
-              <Plus className="h-4 w-4" />
-              Criar objetivo
-            </button>
-          </div>
+          <EmptyState
+            icon={Target}
+            title="Nenhum objetivo ainda"
+            description="Crie seu primeiro objetivo e adicione as etapas que vão te levar até ele."
+            actionLabel="Criar objetivo"
+            onAction={() => setIsCreateOpen(true)}
+          />
         ) : (
           <div className="space-y-3">
             {objectives.map((obj) => (
@@ -172,7 +232,7 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
                 onAddStep={() => setAddingStepTo(obj)}
                 onToggleStep={(task) => handleToggleStep(obj.id, task)}
                 onEditStep={(task) => setEditingStep({ task, objectiveId: obj.id })}
-                onDelete={() => handleDelete(obj.id)}
+                onDelete={() => setObjectiveToDelete(obj)}
               />
             ))}
           </div>
@@ -180,8 +240,26 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
     </>
   );
 
+  // Modais ficam fora do conteúdo para preservar o empilhamento visual.
   const modals = (
     <>
+      <ConfirmDialog
+        isOpen={!!objectiveToDelete}
+        title="Remover objetivo?"
+        description={
+          objectiveToDelete
+            ? `Isso vai excluir "${objectiveToDelete.title}" e todas as suas etapas. Esta ação não pode ser desfeita.`
+            : undefined
+        }
+        confirmLabel="Excluir"
+        variant="danger"
+        icon={Trash2}
+        loading={!!objectiveToDelete && deletingId === objectiveToDelete.id}
+        onConfirm={() =>
+          objectiveToDelete && handleDelete(objectiveToDelete.id)
+        }
+        onClose={() => setObjectiveToDelete(null)}
+      />
       {isCreateOpen && (
         <CreateObjectiveModal
           onClose={() => setIsCreateOpen(false)}
@@ -245,21 +323,16 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-5 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
-              <Target className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white">Objetivos</p>
-              <p className="text-xs text-white/40">Suas metas de longo prazo</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
+        <PageHeader
+          leadingVariant="icon"
+          leadingIcon={Target}
+          title="Objetivos"
+          subtitle="Suas metas de longo prazo"
+          onMenuClick={() => setIsSidebarOpen(true)}
+          rightSlot={
             <button
               onClick={() => setIsCreateOpen(true)}
               className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 active:scale-[0.96]"
@@ -267,14 +340,8 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
             >
               <Plus className="h-5 w-5" />
             </button>
-            <button
-              onClick={() => setIsSidebarOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 active:scale-[0.96]"
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-          </div>
-        </header>
+          }
+        />
 
         {inner}
       </div>
@@ -291,10 +358,10 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
+// ===========================================================================
 // CARD DE OBJETIVO
-// ──────────────────────────────────────────────────────────────────────────────
-
+// ===========================================================================
+// Exibe progresso, prazo, ações rápidas e etapas vinculadas ao objetivo.
 function ObjectiveCard({
   objective,
   isExpanded,
@@ -466,10 +533,10 @@ function ObjectiveCard({
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// MODAL DE CRIAÇÃO — 2 passos
-// ──────────────────────────────────────────────────────────────────────────────
-
+// ===========================================================================
+// MODAL DE CRIAÇÃO DE OBJETIVO
+// ===========================================================================
+// Passo 1 cria o objetivo; passo 2 permite adicionar etapas iniciais.
 type DraftStep = { key: string; title: string; date: string; time: string };
 
 function CreateObjectiveModal({
@@ -493,17 +560,29 @@ function CreateObjectiveModal({
   const [submitError, setSubmitError] = useState<string | null>(null);
 
   function addStep() {
-    setSteps((prev) => [...prev, { key: Math.random().toString(36).slice(2), title: "", date: "", time: "" }]);
+    setSteps((prev) => [
+      ...prev,
+      { key: Math.random().toString(36).slice(2), title: "", date: "", time: "" },
+    ]);
   }
+
   function updateStep(key: string, patch: Partial<DraftStep>) {
-    setSteps((prev) => prev.map((s) => s.key === key ? { ...s, ...patch } : s));
+    setSteps((prev) =>
+      prev.map((stepItem) =>
+        stepItem.key === key ? { ...stepItem, ...patch } : stepItem
+      )
+    );
   }
   function removeStep(key: string) {
     setSteps((prev) => prev.filter((s) => s.key !== key));
   }
 
   function handleNextStep() {
-    if (!title.trim()) { setStep1Error("Dê um nome ao objetivo."); return; }
+    if (!title.trim()) {
+      setStep1Error("Dê um nome ao objetivo.");
+      return;
+    }
+
     setStep1Error(null);
     setStep(2);
   }
@@ -692,6 +771,10 @@ function CreateObjectiveModal({
 // MODAL DE EDIÇÃO (com etapas existentes + adicionar novas)
 // ──────────────────────────────────────────────────────────────────────────────
 
+// ===========================================================================
+// MODAL DE EDIÇÃO DE OBJETIVO
+// ===========================================================================
+// Edita dados principais e permite revisar/criar etapas do objetivo.
 function EditObjectiveModal({
   objective,
   onClose,
@@ -704,17 +787,17 @@ function EditObjectiveModal({
   const [title, setTitle] = useState(objective.title);
   const [description, setDescription] = useState(objective.description ?? "");
   const [deadline, setDeadline] = useState(objective.deadline ?? "");
-  // Etapas existentes (carregadas da API)
+  // Etapas existentes carregadas da API.
   const [existingSteps, setExistingSteps] = useState<api.Task[]>([]);
   const [loadingSteps, setLoadingSteps] = useState(true);
 
-  // Novas etapas digitadas nesta sessão (ainda não salvas)
+  // Novas etapas digitadas nesta sessão, ainda não salvas.
   const [newSteps, setNewSteps] = useState<DraftStep[]>([]);
 
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Carrega as etapas ao abrir
+  // Carrega as etapas ao abrir o modal.
   useEffect(() => {
     api.getObjective(objective.id)
       .then((obj) => setExistingSteps(obj.subtasks ?? []))
@@ -723,10 +806,18 @@ function EditObjectiveModal({
   }, [objective.id]);
 
   function addNewStep() {
-    setNewSteps((prev) => [...prev, { key: Math.random().toString(36).slice(2), title: "", date: "", time: "" }]);
+    setNewSteps((prev) => [
+      ...prev,
+      { key: Math.random().toString(36).slice(2), title: "", date: "", time: "" },
+    ]);
   }
+
   function updateNewStep(key: string, patch: Partial<DraftStep>) {
-    setNewSteps((prev) => prev.map((s) => s.key === key ? { ...s, ...patch } : s));
+    setNewSteps((prev) =>
+      prev.map((stepItem) =>
+        stepItem.key === key ? { ...stepItem, ...patch } : stepItem
+      )
+    );
   }
   function removeNewStep(key: string) {
     setNewSteps((prev) => prev.filter((s) => s.key !== key));
@@ -901,6 +992,10 @@ function EditObjectiveModal({
 // MODAL DE ADICIONAR ETAPA
 // ──────────────────────────────────────────────────────────────────────────────
 
+// ===========================================================================
+// MODAL DE NOVA ETAPA
+// ===========================================================================
+
 function AddStepModal({
   objective,
   onClose,
@@ -912,12 +1007,16 @@ function AddStepModal({
 }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
-  const [priority, setPriority] = useState<"low" | "medium" | "high">("medium");
+  const [priority, setPriority] =
+    useState<"low" | "medium" | "high">("medium");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
-    if (!title.trim()) { setError("Dê um nome à etapa."); return; }
+    if (!title.trim()) {
+      setError("Dê um nome à etapa.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -1015,6 +1114,10 @@ function AddStepModal({
 // MODAL DE EDITAR ETAPA (título, data, hora, prioridade)
 // ──────────────────────────────────────────────────────────────────────────────
 
+// ===========================================================================
+// MODAL DE EDIÇÃO DE ETAPA
+// ===========================================================================
+
 function EditStepModal({
   task,
   onClose,
@@ -1026,7 +1129,9 @@ function EditStepModal({
 }) {
   const [title, setTitle] = useState(task.title);
   const [date, setDate] = useState(task.scheduled_date ?? "");
-  const [time, setTime] = useState(task.start_time ? task.start_time.slice(0, 5) : "");
+  const [time, setTime] = useState(
+    task.start_time ? task.start_time.slice(0, 5) : ""
+  );
   const [priority, setPriority] = useState<"low" | "medium" | "high">(
     (task.priority as "low" | "medium" | "high") ?? "medium"
   );
@@ -1034,7 +1139,10 @@ function EditStepModal({
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit() {
-    if (!title.trim()) { setError("Dê um nome à etapa."); return; }
+    if (!title.trim()) {
+      setError("Dê um nome à etapa.");
+      return;
+    }
     setSubmitting(true);
     setError(null);
     try {
@@ -1140,6 +1248,10 @@ function EditStepModal({
 // INPUT DE ETAPA (título + data opcional + hora opcional)
 // ──────────────────────────────────────────────────────────────────────────────
 
+// ===========================================================================
+// INPUT REUTILIZÁVEL DE ETAPA
+// ===========================================================================
+
 function StepInput({
   step,
   index,
@@ -1199,16 +1311,3 @@ function StepInput({
   );
 }
 
-// ──────────────────────────────────────────────────────────────────────────────
-// BACKGROUND
-// ──────────────────────────────────────────────────────────────────────────────
-
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
-      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
-    </div>
-  );
-}

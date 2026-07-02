@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-import { Plus, Sparkles, X } from "lucide-react";
+import { Plus, Sparkles } from "lucide-react";
 
+import BottomSheet from "../ui/BottomSheet";
+import ConfirmDialog from "../ui/ConfirmDialog";
 import * as api from "../../lib/api";
 import {
   blankItem,
@@ -77,6 +78,9 @@ export default function NewRoutineSheet({ isOpen, onClose, onCreated }: Props) {
   // ---------------------------------------------------------------------------
   const nameValid = name.trim().length > 0;
   const itemsValid = items.length > 0 && items.every(itemValid);
+
+  const stepTitle =
+    step === 1 ? "Nome da rotina" : step === 2 ? "Itens da rotina" : "Período";
 
   // ---------------------------------------------------------------------------
   // Edição dos itens da rotina
@@ -155,129 +159,72 @@ export default function NewRoutineSheet({ isOpen, onClose, onCreated }: Props) {
   }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          {/* Overlay fecha a sheet quando não há envio em andamento. */}
-          <motion.button
-            type="button"
-            aria-label="Fechar"
-            onClick={submitting ? undefined : onClose}
-            className="fixed inset-0 z-[100] bg-black/55 backdrop-blur-sm"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+    <>
+      <BottomSheet
+        isOpen={isOpen}
+        onClose={onClose}
+        dismissDisabled={submitting}
+        title={stepTitle}
+        subtitle={`Passo ${step} de 3`}
+        ariaLabel="Criar nova rotina"
+        maxHeightClassName="max-h-[92vh]"
+        footer={
+          <SheetFooter
+            step={step}
+            submitting={submitting}
+            nameValid={nameValid}
+            itemsValid={itemsValid}
+            onBack={() => setStep((currentStep) => currentStep - 1)}
+            onNext={() => setStep((currentStep) => currentStep + 1)}
+            onCreate={handleCreateClick}
           />
-
-          <motion.div
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", stiffness: 260, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 z-[110] flex max-h-[92vh] flex-col overflow-hidden rounded-t-[2rem] border border-white/10 bg-[#11101a]/85 shadow-2xl shadow-black/50 backdrop-blur-2xl"
-          >
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/12 via-transparent to-fuchsia-400/8" />
-
-            <SheetHeader
-              step={step}
-              submitting={submitting}
-              onClose={onClose}
-            />
-
-            <StepProgress step={step} />
-
-            <div className="relative min-h-0 flex-1 overflow-y-auto px-5 pb-2">
-              {step === 1 && (
-                <RoutineNameStep name={name} onNameChange={setName} />
-              )}
-
-              {step === 2 && (
-                <RoutineItemsStep
-                  items={items}
-                  onAddItem={addItem}
-                  onUpdateItem={updateItem}
-                  onToggleDay={toggleDay}
-                  onRemoveItem={removeItem}
-                />
-              )}
-
-              {step === 3 && (
-                <RoutinePeriodStep
-                  startDate={startDate}
-                  endDate={endDate}
-                  onStartDateChange={setStartDate}
-                  onEndDateChange={setEndDate}
-                />
-              )}
-
-              {error && <ErrorMessage message={error} />}
-            </div>
-
-            <SheetFooter
-              step={step}
-              submitting={submitting}
-              nameValid={nameValid}
-              itemsValid={itemsValid}
-              onBack={() => setStep((currentStep) => currentStep - 1)}
-              onNext={() => setStep((currentStep) => currentStep + 1)}
-              onCreate={handleCreateClick}
-            />
-
-            {submitting && <SubmittingOverlay />}
-          </motion.div>
-
-          <NoEndDateConfirmModal
-            isOpen={showNoEndConfirm}
-            onCancel={() => setShowNoEndConfirm(false)}
-            onConfirm={submit}
-          />
-        </>
-      )}
-    </AnimatePresence>
-  );
-}
-
-// ===========================================================================
-// HEADER E PROGRESSO DA SHEET
-// ===========================================================================
-
-function SheetHeader({
-  step,
-  submitting,
-  onClose,
-}: {
-  step: number;
-  submitting: boolean;
-  onClose: () => void;
-}) {
-  const title =
-    step === 1 ? "Nome da rotina" : step === 2 ? "Itens da rotina" : "Período";
-
-  return (
-    <div className="relative flex items-center justify-between px-5 pb-3 pt-4">
-      <div>
-        <p className="text-[0.68rem] font-medium uppercase tracking-[0.16em] text-white/35">
-          Passo {step} de 3
-        </p>
-
-        <p className="mt-0.5 text-base font-semibold text-white">{title}</p>
-      </div>
-
-      <button
-        onClick={onClose}
-        disabled={submitting}
-        className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] text-white/55 active:scale-[0.96] disabled:opacity-40"
-        aria-label="Fechar"
+        }
       >
-        <X className="h-5 w-5" />
-      </button>
-    </div>
+        <StepProgress step={step} />
+
+        {step === 1 && <RoutineNameStep name={name} onNameChange={setName} />}
+
+        {step === 2 && (
+          <RoutineItemsStep
+            items={items}
+            onAddItem={addItem}
+            onUpdateItem={updateItem}
+            onToggleDay={toggleDay}
+            onRemoveItem={removeItem}
+          />
+        )}
+
+        {step === 3 && (
+          <RoutinePeriodStep
+            startDate={startDate}
+            endDate={endDate}
+            onStartDateChange={setStartDate}
+            onEndDateChange={setEndDate}
+          />
+        )}
+
+        {error && <ErrorMessage message={error} />}
+      </BottomSheet>
+
+      {/* Cobre o painel durante a criação; fica acima da sheet. */}
+      {submitting && <SubmittingOverlay />}
+
+      <NoEndDateConfirmModal
+        isOpen={showNoEndConfirm}
+        onCancel={() => setShowNoEndConfirm(false)}
+        onConfirm={submit}
+      />
+    </>
   );
 }
+
+// ===========================================================================
+// PROGRESSO DA SHEET
+// ===========================================================================
 
 function StepProgress({ step }: { step: number }) {
   return (
-    <div className="relative flex gap-1.5 px-5 pb-3">
+    <div className="mb-4 flex gap-1.5">
       {[1, 2, 3].map((currentStep) => (
         <div
           key={currentStep}
@@ -429,7 +376,7 @@ function SheetFooter({
   onCreate: () => void;
 }) {
   return (
-    <div className="relative flex items-center gap-3 border-t border-white/[0.07] px-5 pb-6 pt-4">
+    <div className="flex items-center gap-3">
       {step > 1 && (
         <button
           onClick={onBack}
@@ -471,7 +418,7 @@ function ErrorMessage({ message }: { message: string }) {
 
 function SubmittingOverlay() {
   return (
-    <div className="absolute inset-0 z-[120] flex flex-col items-center justify-center gap-3 bg-[#11101a]/80 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[140] flex flex-col items-center justify-center gap-3 bg-[#11101a]/85 backdrop-blur-sm">
       <div className="h-9 w-9 animate-spin rounded-full border-2 border-white/15 border-t-purple-300" />
 
       <p className="text-sm font-medium text-white/70">
@@ -499,54 +446,14 @@ function NoEndDateConfirmModal({
   onConfirm: () => void;
 }) {
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-        >
-          <motion.div
-            initial={{ opacity: 0, y: 18, scale: 0.96 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 18, scale: 0.96 }}
-            transition={{ duration: 0.22, ease: "easeOut" }}
-            className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
-          >
-            <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/10 text-purple-200">
-              <Sparkles className="h-6 w-6" />
-            </div>
-
-            <h2 className="text-lg font-semibold tracking-[-0.02em] text-white">
-              Rotina sem data de término
-            </h2>
-
-            <p className="mt-3 text-sm leading-6 text-white/45">
-              Você está criando uma rotina sem data de término. O Axon vai
-              continuar gerando tarefas indefinidamente. Deseja continuar?
-            </p>
-
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98]"
-              >
-                Cancelar
-              </button>
-
-              <button
-                type="button"
-                onClick={onConfirm}
-                className="min-h-12 rounded-2xl bg-purple-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98]"
-              >
-                Confirmar
-              </button>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+    <ConfirmDialog
+      isOpen={isOpen}
+      title="Rotina sem data de término"
+      description="Você está criando uma rotina sem data de término. O Axon vai continuar gerando tarefas indefinidamente. Deseja continuar?"
+      confirmLabel="Confirmar"
+      icon={Sparkles}
+      onConfirm={onConfirm}
+      onClose={onCancel}
+    />
   );
 }

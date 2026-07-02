@@ -28,6 +28,9 @@ import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 import type { ConversationData } from "../lib/api";
+import AppBackground from "../components/layout/AppBackground";
+import ConfirmDialog from "../components/ui/ConfirmDialog";
+import EmptyState from "../components/ui/EmptyState";
 
 /* ==========================================================================
  * Tipos e aliases locais
@@ -273,7 +276,7 @@ export default function Chat() {
 
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
         {/* Header fixo: retorno ao dashboard, criação rápida e menu lateral. */}
@@ -404,30 +407,17 @@ export default function Chat() {
                   )}
 
                   {activeConversationList.length === 0 ? (
-                    <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
-                      <MessageCircle className="mx-auto mb-3 h-6 w-6 text-purple-200" />
-
-                      <p className="text-sm font-semibold text-white">
-                        Nenhuma conversa neste projeto
-                      </p>
-
-                      <p className="mt-2 text-xs leading-5 text-white/42">
-                        Quando conversas forem adicionadas a este projeto, elas aparecerão aqui.
-                      </p>
-
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (selectedProjectId) {
-                            openCreateConversationModal(selectedProjectId);
-                          }
-                        }}
-                        className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
-                      >
-                        <Plus className="mr-2 h-4 w-4" />
-                        Criar conversa
-                      </button>
-                    </div>
+                    <EmptyState
+                      icon={MessageCircle}
+                      title="Nenhuma conversa neste projeto"
+                      description="Quando conversas forem adicionadas a este projeto, elas aparecerão aqui."
+                      actionLabel="Criar conversa"
+                      onAction={() => {
+                        if (selectedProjectId) {
+                          openCreateConversationModal(selectedProjectId);
+                        }
+                      }}
+                    />
                   ) : (
                     <>
                       {visibleConversations.map((conversation) => (
@@ -451,26 +441,13 @@ export default function Chat() {
                   )}
                 </>
               ) : filteredProjects.length === 0 ? (
-                <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
-                  <Briefcase className="mx-auto mb-3 h-6 w-6 text-purple-200" />
-
-                  <p className="text-sm font-semibold text-white">
-                    Nenhum projeto encontrado
-                  </p>
-
-                  <p className="mt-2 text-xs leading-5 text-white/42">
-                    Crie projetos para reunir conversas relacionadas em um mesmo contexto.
-                  </p>
-
-                  <button
-                    type="button"
-                    onClick={() => openCreateConversationModal(null)}
-                    className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
-                  >
-                    <Plus className="mr-2 h-4 w-4" />
-                    Criar projeto
-                  </button>
-                </div>
+                <EmptyState
+                  icon={Briefcase}
+                  title="Nenhum projeto encontrado"
+                  description="Crie projetos para reunir conversas relacionadas em um mesmo contexto."
+                  actionLabel="Criar projeto"
+                  onAction={() => openCreateConversationModal(null)}
+                />
               ) : (
                 filteredProjects.map((project) => {
                   const localCount = projectConversations.filter(
@@ -493,26 +470,13 @@ export default function Chat() {
                 })
               )
             ) : activeConversationList.length === 0 ? (
-              <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
-                <MessageCircle className="mx-auto mb-3 h-6 w-6 text-purple-200" />
-
-                <p className="text-sm font-semibold text-white">
-                  Nenhuma conversa solta encontrada
-                </p>
-
-                <p className="mt-2 text-xs leading-5 text-white/42">
-                  Conversas que pertencem a projetos aparecem apenas na aba Projetos.
-                </p>
-
-                <button
-                  type="button"
-                  onClick={() => openCreateConversationModal(null)}
-                  className="mt-5 inline-flex min-h-11 items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Criar conversa
-                </button>
-              </div>
+              <EmptyState
+                icon={MessageCircle}
+                title="Nenhuma conversa solta encontrada"
+                description="Conversas que pertencem a projetos aparecem apenas na aba Projetos."
+                actionLabel="Criar conversa"
+                onAction={() => openCreateConversationModal(null)}
+              />
             ) : (
               <>
                 {visibleConversations.map((conversation) => (
@@ -1381,63 +1345,38 @@ function DeleteProjectModal({
   if (!project) return null;
 
   return (
-    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-red-300/20 bg-red-500/10 text-red-200">
-          <Trash2 className="h-6 w-6" />
-        </div>
-
-        <h2 className="text-xl font-semibold tracking-[-0.035em] text-white">
-          Excluir projeto?
-        </h2>
-
-        <p className="mt-3 text-sm leading-6 text-white/45">
-          Essa ação vai excluir o projeto{" "}
-          <span className="font-semibold text-white/75">"{project.name}"</span>.
-        </p>
-
-        <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
-          <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
-            Atenção
+    <ConfirmDialog
+      isOpen
+      title="Excluir projeto?"
+      description={
+        <>
+          <p>
+            Essa ação vai excluir o projeto{" "}
+            <span className="font-semibold text-white/75">
+              "{project.name}"
+            </span>
+            .
           </p>
 
-          <p className="mt-2 text-xs leading-5 text-white/42">
-            Confirme com o backend se as conversas serão mantidas fora do projeto
-            ou excluídas junto com ele.
-          </p>
-        </div>
+          <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+              Atenção
+            </p>
 
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button
-            type="button"
-            onClick={onClose}
-            disabled={isDeleting}
-            className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:opacity-50"
-          >
-            Cancelar
-          </button>
-
-          <button
-            type="button"
-            onClick={onConfirm}
-            disabled={isDeleting}
-            className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-red-500/90 px-4 text-sm font-semibold text-white shadow-lg shadow-red-950/30 active:scale-[0.98] disabled:opacity-60"
-          >
-            {isDeleting ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Excluindo
-              </>
-            ) : (
-              <>
-                Excluir
-                <Trash2 className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </button>
-        </div>
-      </div>
-    </div>
+            <p className="mt-2 text-xs leading-5 text-white/42">
+              Confirme com o backend se as conversas serão mantidas fora do
+              projeto ou excluídas junto com ele.
+            </p>
+          </div>
+        </>
+      }
+      confirmLabel="Excluir"
+      variant="danger"
+      icon={Trash2}
+      loading={isDeleting}
+      onConfirm={onConfirm}
+      onClose={onClose}
+    />
   );
 }
 
@@ -1448,21 +1387,4 @@ function DeleteProjectModal({
 // Compatibiliza conversas antigas/novas sem exigir project_id no tipo base.
 function getConversationProjectId(conversation: ConversationData) {
   return (conversation as ProjectConversation).project_id ?? null;
-}
-
-/* ==========================================================================
- * Background
- * ========================================================================== */
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
-
-      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
-      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
-    </div>
-  );
 }

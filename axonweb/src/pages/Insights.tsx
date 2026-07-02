@@ -5,7 +5,6 @@ import {
   CalendarDays,
   CheckCircle2,
   Focus,
-  Menu,
   Moon,
   RefreshCw,
   Smile,
@@ -28,6 +27,12 @@ import Sidebar from "../components/layout/Sidebar";
 import DayReview from "./DayReview";
 import * as api from "../lib/api";
 import type { TaskInsights, FocusBlockItem } from "../lib/api";
+import AppBackground from "../components/layout/AppBackground";
+import PageHeader from "../components/layout/PageHeader";
+
+// ===========================================================================
+// TIPOS E CONFIGURAÇÕES DOS GRÁFICOS
+// ===========================================================================
 
 type SeriesKey = "tarefas" | "sono" | "qualidade" | "humor" | "prod";
 
@@ -57,6 +62,10 @@ type PatternCardProps = {
   icon: React.ElementType;
 };
 
+// ===========================================================================
+// CONFIGURAÇÕES DOS BLOCOS DE FOCO
+// ===========================================================================
+
 const LEVEL_COLOR: Record<string, { bar: string; text: string }> = {
   sono:          { bar: "#1e293b", text: "#475569" },
   recuperacao:   { bar: "#1e3a5f", text: "#60a5fa" },
@@ -75,6 +84,10 @@ const LEVEL_ORDER: { level: string; label: string }[] = [
   { level: "sono", label: "Sono" },
 ];
 
+// ===========================================================================
+// CONFIGURAÇÕES DO CRONOTIPO E SONO
+// ===========================================================================
+
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
   "Vespertino",
@@ -91,29 +104,44 @@ const SLEEP_TARGET_BY_CHRONOTYPE: Record<string, number> = {
   Bimodal: 7.5,
 };
 const DEFAULT_SLEEP_TARGET = 7.5;
-const CHART_MAX = 12; // escala do eixo (12h)
+// Escala máxima do eixo de sono em horas.
+const CHART_MAX = 12;
 
+// ===========================================================================
+// PÁGINA DE INSIGHTS
+// ===========================================================================
+// Consolida padrões de tarefas, sono, humor, produtividade e blocos de foco.
 export default function Insights() {
   const navigate = useNavigate();
+
+  // Sidebar global da página.
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
   // Períodos independentes: cada gráfico tem seu próprio toggle
   // semana/mês — alterar um não deve afetar o outro.
   const [taskPeriod, setTaskPeriod] = useState<"week" | "month">("week");
   const [comparePeriod, setComparePeriod] = useState<"week" | "month">("week");
+  // Dados do card de tarefas concluídas.
   const [taskInsights, setTaskInsights] = useState<TaskInsights | null>(null);
   const [loadingTasks, setLoadingTasks] = useState(true);
+  // Dados usados no gráfico comparativo.
   const [compareTaskInsights, setCompareTaskInsights] =
     useState<TaskInsights | null>(null);
+
+  // Histórico de sono e registros diários.
   const [sleepHistory, setSleepHistory] = useState<api.DailyLog[]>([]);
   const [loadingSleep, setLoadingSleep] = useState(true);
   const [compareLogs, setCompareLogs] = useState<api.DailyLog[]>([]);
   const [active, setActive] = useState<SeriesKey[]>(["tarefas", "sono"]);
+  // Insights de padrões gerados a partir dos registros do usuário.
   const [patterns, setPatterns] = useState<api.PatternInsightsResponse | null>(
     null
   );
   const [loadingPatterns, setLoadingPatterns] = useState(true);
+  // Registro diário usado pelo modal DayReview.
   const [todayLog, setTodayLog] = useState<api.DailyLog | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
+  // Blocos de foco calculados pelo backend com base no cronotipo e histórico.
   const [focusBlocks, setFocusBlocks] = useState<FocusBlockItem[]>([]);
   const [blocksCalibrated, setBlocksCalibrated] = useState(false);
   const [blocksDataPoints, setBlocksDataPoints] = useState(0);
@@ -121,10 +149,15 @@ export default function Insights() {
   const [expandedBlockIdx, setExpandedBlockIdx] = useState<number | null>(null);
   const [blocksListExpanded, setBlocksListExpanded] = useState(false);
 
+  // Carrega o registro diário atual para abrir/atualizar o DayReview.
   useEffect(() => {
-    api.getDailyLogToday().then(setTodayLog).catch(() => setTodayLog(null));
+    api
+      .getDailyLogToday()
+      .then(setTodayLog)
+      .catch(() => setTodayLog(null));
   }, []);
 
+  // Busca os blocos de foco personalizados.
   useEffect(() => {
     api.getFocusBlocks()
       .then((res) => {
@@ -136,6 +169,7 @@ export default function Insights() {
       .catch(() => setFocusBlocks([]));
   }, []);
 
+  // Busca padrões gerais de comportamento e produtividade.
   useEffect(() => {
     api
       .getPatternInsights()
@@ -144,8 +178,10 @@ export default function Insights() {
       .finally(() => setLoadingPatterns(false));
   }, []);
 
+  // Busca estatísticas de tarefas do card principal.
   useEffect(() => {
     setLoadingTasks(true);
+
     api
       .getTaskInsights(taskPeriod)
       .then(setTaskInsights)
@@ -153,6 +189,7 @@ export default function Insights() {
       .finally(() => setLoadingTasks(false));
   }, [taskPeriod]);
 
+  // Busca histórico recente de sono para o gráfico de horas dormidas.
   useEffect(() => {
     api
       .getDailyLogHistory(7)
@@ -171,14 +208,17 @@ export default function Insights() {
       .catch(() => setCompareTaskInsights(null));
   }, [comparePeriod]);
 
+  // Busca registros diários no mesmo período usado no gráfico comparativo.
   useEffect(() => {
     const days = comparePeriod === "week" ? 7 : 30;
+
     api
       .getDailyLogHistory(days)
       .then(setCompareLogs)
       .catch(() => setCompareLogs([]));
   }, [comparePeriod]);
 
+  // Permite comparar até duas séries ao mesmo tempo no gráfico final.
   function toggleSeries(key: SeriesKey) {
     setActive((cur) =>
       cur.includes(key)
@@ -229,6 +269,7 @@ export default function Insights() {
   // Largura fixa das barras: garante arredondamento uniforme (raio = largura/2).
   const taskBarWidth = taskPeriod === "week" ? "1.5rem" : "0.5rem";
 
+  // Cronotipo usado para contextualizar sono, foco e sidebar.
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
 
@@ -241,6 +282,7 @@ export default function Insights() {
 
   const result = results[resultKey];
 
+  // Cálculos derivados do sono registrado.
   const sleepTarget =
     SLEEP_TARGET_BY_CHRONOTYPE[resultKey] ?? DEFAULT_SLEEP_TARGET;
   const sleptValues = sleepHistory.map((l) => l.hours_slept as number);
@@ -262,32 +304,15 @@ export default function Insights() {
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
-      <Background />
+      <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        <header className="mb-6 flex items-center justify-between">
-          <button
-            onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-3 text-left active:scale-[0.98]"
-          >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
-              <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
-            </div>
-
-            <div>
-              <p className="text-sm font-semibold text-white">Insights</p>
-              <p className="text-xs text-white/40">Padrões do seu ritmo</p>
-            </div>
-          </button>
-
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] text-white/60 backdrop-blur-2xl active:scale-[0.96]"
-            aria-label="Abrir menu"
-          >
-            <Menu className="h-5 w-5" />
-          </button>
-        </header>
+        <PageHeader
+          title="Insights"
+          subtitle="Padrões do seu ritmo"
+          onBack={() => navigate("/dashboard")}
+          onMenuClick={() => setIsSidebarOpen(true)}
+        />
 
         <section className="mb-5">
           <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
@@ -574,7 +599,9 @@ export default function Insights() {
               }}
               className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/14 px-4 py-2.5 text-xs font-semibold text-white/45 active:scale-[0.98]"
             >
-              <span>{blocksListExpanded ? "Recolher blocos" : "Ver todos os blocos"}</span>
+              <span>
+                {blocksListExpanded ? "Recolher blocos" : "Ver todos os blocos"}
+              </span>
               <span>{blocksListExpanded ? "▲" : "▼"}</span>
             </button>
 
@@ -726,7 +753,7 @@ export default function Insights() {
               <p className="text-sm leading-6 text-white/58">
                 {taskInsights.summary.best_weekday ? (
                   <>
-                    Seu dia mais produtivo costuma ser {taskInsights.summary.best_weekday}
+                    Seu dia mais produtivo costuma ser{" "}
                     <span className="font-semibold text-purple-100">
                       {taskInsights.summary.best_weekday}
                     </span>
@@ -1049,6 +1076,10 @@ export default function Insights() {
   );
 }
 
+// ===========================================================================
+// CARD DE PADRÃO DO USUÁRIO
+// ===========================================================================
+
 function PatternCard({
   title,
   description,
@@ -1079,6 +1110,10 @@ function PatternCard({
   );
 }
 
+// ===========================================================================
+// HELPERS DE FORMATAÇÃO
+// ===========================================================================
+
 function formatDayLabel(iso: string) {
   const d = new Date(iso + "T00:00:00");
   return ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"][d.getDay()];
@@ -1095,6 +1130,10 @@ function formatUpdatedBadge(iso?: string): string | null {
   if (diff === 1) return "Atualizado ontem";
   return `Atualizado há ${diff} dias`;
 }
+
+// ===========================================================================
+// TOOLTIP DO GRÁFICO COMPARATIVO
+// ===========================================================================
 
 type TooltipRow = {
   tooltipLabel: string;
@@ -1141,19 +1180,5 @@ function Row({ color, text }: { color: string; text: string }) {
       />
       {text}
     </p>
-  );
-}
-
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute left-1/2 top-[-16rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-purple-700/25 blur-[120px]" />
-      <div className="absolute right-[-14rem] top-[14rem] h-[26rem] w-[26rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:28px_28px] opacity-20" />
-
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,11,0.05),#05050b_88%)]" />
-    </div>
   );
 }

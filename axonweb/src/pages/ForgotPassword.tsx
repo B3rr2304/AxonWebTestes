@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 
 import AuthLogo from "../components/auth/AuthLogo";
+import AuthBackground from "../components/layout/AuthBackground";
 
 export default function ForgotPassword() {
   // ---------------------------------------------------------------------------
@@ -49,7 +50,7 @@ export default function ForgotPassword() {
 
   return (
     <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#11111a] px-4 py-6 text-white">
-      <Background />
+      <AuthBackground />
 
       <div className="relative z-10 w-full max-w-[430px]">
         <AuthLogo />
@@ -245,23 +246,5 @@ function EmailField({ label, placeholder, value, onChange }: EmailFieldProps) {
         />
       </div>
     </label>
-  );
-}
-
-// ===========================================================================
-// BACKGROUND VISUAL
-// ===========================================================================
-
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,#151520_0%,#101018_48%,#13131d_100%)]" />
-
-      <div className="absolute left-1/2 top-[-14rem] h-[32rem] w-[32rem] -translate-x-1/2 rounded-full bg-purple-700/22 blur-[120px]" />
-      <div className="absolute right-[-12rem] top-[18rem] h-[24rem] w-[24rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
-      <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:30px_30px] opacity-[0.12]" />
-    </div>
   );
 }
