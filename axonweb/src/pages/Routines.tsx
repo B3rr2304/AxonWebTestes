@@ -17,7 +17,7 @@ import {
 } from "lucide-react";
 
 import Sidebar from "../components/layout/Sidebar";
-import NewRoutineSheet from "../components/rotinas/NewRoutineSheet";
+import NewRoutineSheet from "../components/routines/NewRoutineSheet";
 import {
   blankItem,
   draftToCreateInput,
@@ -27,7 +27,7 @@ import {
   RoutineItemEditor,
   WEEKDAYS,
   type DraftItem,
-} from "../components/rotinas/routineItem";
+} from "../components/routines/RoutineItem";
 import * as api from "../lib/api";
 import type { Routine, RoutineDetail, RoutineItem } from "../lib/api";
 
