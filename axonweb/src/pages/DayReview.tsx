@@ -13,9 +13,21 @@ import {
   TIME_OPTIONS,
 } from "../data/dayReviewTags";
 
-const DEFAULT_SLEEP_TAGS: TagItem[]        = SLEEP_TAGS.map((t) => ({ slug: t.slug, label: t.label }));
-const DEFAULT_MOOD_TAGS: TagItem[]         = MOOD_TAGS.map((t) => ({ slug: t.slug, label: t.label }));
-const DEFAULT_PRODUCTIVITY_TAGS: TagItem[] = PRODUCTIVITY_TAGS.map((t) => ({ slug: t.slug, label: t.label }));
+// Fallbacks locais usados até as preferências personalizadas do usuário carregarem.
+const DEFAULT_SLEEP_TAGS: TagItem[] = SLEEP_TAGS.map((t) => ({
+  slug: t.slug,
+  label: t.label,
+}));
+
+const DEFAULT_MOOD_TAGS: TagItem[] = MOOD_TAGS.map((t) => ({
+  slug: t.slug,
+  label: t.label,
+}));
+
+const DEFAULT_PRODUCTIVITY_TAGS: TagItem[] = PRODUCTIVITY_TAGS.map((t) => ({
+  slug: t.slug,
+  label: t.label,
+}));
 
 type Props = {
   isOpen: boolean;
@@ -24,27 +36,57 @@ type Props = {
   onSaved?: (log: DailyLog) => void;
 };
 
-export default function DayReview({ isOpen, onClose, existing, onSaved }: Props) {
+export default function DayReview({
+  isOpen,
+  onClose,
+  existing,
+  onSaved,
+}: Props) {
+  // ---------------------------------------------------------------------------
+  // Campos do registro diário
+  // ---------------------------------------------------------------------------
   const [sleepTime, setSleepTime] = useState(existing?.sleep_time ?? "23:30");
   const [wakeTime, setWakeTime] = useState(existing?.wake_time ?? "07:00");
-  const [sleepRating, setSleepRating] = useState<number | null>(existing?.sleep_rating ?? null);
+  const [sleepRating, setSleepRating] = useState<number | null>(
+    existing?.sleep_rating ?? null
+  );
   const [sleepTags, setSleepTags] = useState<string[]>(existing?.sleep_tags ?? []);
-  const [moodRating, setMoodRating] = useState<number | null>(existing?.mood_rating ?? null);
+  const [moodRating, setMoodRating] = useState<number | null>(
+    existing?.mood_rating ?? null
+  );
   const [moodTags, setMoodTags] = useState<string[]>(existing?.mood_tags ?? []);
-  const [prodRating, setProdRating] = useState<number | null>(existing?.productivity_rating ?? null);
+  const [prodRating, setProdRating] = useState<number | null>(
+    existing?.productivity_rating ?? null
+  );
   const [prodTags, setProdTags] = useState<string[]>(existing?.productivity_tags ?? []);
   const [peakPeriods, setPeakPeriods] = useState<string[]>(existing?.peak_periods ?? []);
   const [exercised, setExercised] = useState<boolean>(existing?.exercised ?? false);
   const [notes, setNotes] = useState(existing?.notes ?? "");
+  // ---------------------------------------------------------------------------
+  // Estado de envio e mensagens de erro
+  // ---------------------------------------------------------------------------
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const [availableSleepTags, setAvailableSleepTags]    = useState<TagItem[]>(DEFAULT_SLEEP_TAGS);
-  const [availableMoodTags, setAvailableMoodTags]      = useState<TagItem[]>(DEFAULT_MOOD_TAGS);
-  const [availableProdTags, setAvailableProdTags]      = useState<TagItem[]>(DEFAULT_PRODUCTIVITY_TAGS);
+  // ---------------------------------------------------------------------------
+  // Tags disponíveis
+  // ---------------------------------------------------------------------------
+  // Começa com tags locais e troca pelas preferências salvas quando o sheet abre.
+  const [availableSleepTags, setAvailableSleepTags] = useState<TagItem[]>(
+    DEFAULT_SLEEP_TAGS
+  );
+  const [availableMoodTags, setAvailableMoodTags] = useState<TagItem[]>(
+    DEFAULT_MOOD_TAGS
+  );
+  const [availableProdTags, setAvailableProdTags] = useState<TagItem[]>(
+    DEFAULT_PRODUCTIVITY_TAGS
+  );
 
-  // O sheet fica sempre montado, então o estado inicial é lido antes de
-  // `existing` carregar. Re-sincroniza os campos toda vez que o sheet abre.
+  // ---------------------------------------------------------------------------
+  // Sincronização ao abrir o sheet
+  // ---------------------------------------------------------------------------
+  // O componente pode continuar montado entre aberturas; por isso os campos são
+  // reidratados a partir de `existing` sempre que o usuário abre a revisão.
   useEffect(() => {
     if (!isOpen) return;
     setSleepTime(existing?.sleep_time ?? "23:30");
@@ -60,20 +102,30 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
     setNotes(existing?.notes ?? "");
     setError(null);
 
-    // Carrega as tags personalizadas do usuário (sem bloquear o sheet)
-    api.getTagPreferences().then((prefs) => {
-      setAvailableSleepTags(prefs.sleep);
-      setAvailableMoodTags(prefs.mood);
-      setAvailableProdTags(prefs.productivity);
-    }).catch(() => {});
+    // Carrega preferências personalizadas sem bloquear a abertura do formulário.
+    api
+      .getTagPreferences()
+      .then((prefs) => {
+        setAvailableSleepTags(prefs.sleep);
+        setAvailableMoodTags(prefs.mood);
+        setAvailableProdTags(prefs.productivity);
+      })
+      .catch(() => {});
   }, [isOpen, existing]);
 
+  // ---------------------------------------------------------------------------
+  // Validações e dados derivados
+  // ---------------------------------------------------------------------------
   // Data do registro: do dia já registrado (edição) ou de hoje (novo).
   const reviewDate = formatReviewDate(existing?.date);
 
   const canSave =
     sleepRating !== null && moodRating !== null && prodRating !== null && !saving;
 
+  // ---------------------------------------------------------------------------
+  // Seleções do formulário
+  // ---------------------------------------------------------------------------
+  // Limita cada grupo a 3 tags para manter o registro rápido e comparável.
   function toggleTag(list: string[], set: (v: string[]) => void, slug: string) {
     if (list.includes(slug)) {
       set(list.filter((t) => t !== slug));
@@ -82,6 +134,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
     }
   }
 
+  // Limita os períodos de pico a 2 para destacar os momentos mais relevantes.
   function togglePeakPeriod(slug: string) {
     if (peakPeriods.includes(slug)) {
       setPeakPeriods(peakPeriods.filter((p) => p !== slug));
@@ -90,6 +143,10 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Salvamento
+  // ---------------------------------------------------------------------------
+  // Envia apenas o resumo do dia; os Insights usam esse histórico depois.
   async function handleSave() {
     setSaving(true);
     setError(null);
@@ -118,6 +175,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
 
   return (
     <AnimatePresence>
+      {/* Sheet mobile-first de revisão diária. */}
       {isOpen && (
         <>
           <motion.button
@@ -139,6 +197,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
           >
             <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-white/15" />
 
+            {/* Cabeçalho do registro: data e ação de fechar. */}
             <div className="mb-6 flex items-center justify-between">
               <div>
                 <h2 className="text-xl font-semibold tracking-tight text-white">
@@ -160,10 +219,19 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
               </button>
             </div>
 
+            {/* Sono: horários, avaliação e até 3 tags. */}
             <Section icon={Moon} title="Como você dormiu?">
               <div className="mb-3 grid grid-cols-2 gap-3">
-                <TimeSelect label="Dormiu às" value={sleepTime} onChange={setSleepTime} />
-                <TimeSelect label="Acordou às" value={wakeTime} onChange={setWakeTime} />
+                <TimeSelect
+                  label="Dormiu às"
+                  value={sleepTime}
+                  onChange={setSleepTime}
+                />
+                <TimeSelect
+                  label="Acordou às"
+                  value={wakeTime}
+                  onChange={setWakeTime}
+                />
               </div>
               <RatingDots value={sleepRating} onChange={setSleepRating} />
               <TagRow
@@ -173,6 +241,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
               />
             </Section>
 
+            {/* Humor: percepção geral do dia e fatores associados. */}
             <Section icon={Smile} title="Como você se sentiu?">
               <RatingDots value={moodRating} onChange={setMoodRating} />
               <TagRow
@@ -182,6 +251,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
               />
             </Section>
 
+            {/* Produtividade: base para cruzar energia, foco e execução. */}
             <Section icon={Target} title="Como avalia sua produtividade?">
               <RatingDots value={prodRating} onChange={setProdRating} />
               <TagRow
@@ -191,6 +261,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
               />
             </Section>
 
+            {/* Pico produtivo: até 2 janelas para alimentar padrões futuros. */}
             <Section icon={Zap} title="Quando você foi mais produtivo? (opcional)">
               <div className="flex flex-wrap gap-2">
                 {PEAK_PERIODS.map((p) => {
@@ -211,7 +282,11 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
                       }`}
                     >
                       <span className="text-xs font-semibold">{p.label}</span>
-                      <span className={`text-[0.62rem] ${isSelected ? "text-purple-200/60" : "text-white/30"}`}>
+                      <span
+                        className={`text-[0.62rem] ${
+                          isSelected ? "text-purple-200/60" : "text-white/30"
+                        }`}
+                      >
                         {p.hours}
                       </span>
                     </button>
@@ -219,10 +294,13 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
                 })}
               </div>
               {peakPeriods.length >= 2 && (
-                <p className="mt-2 text-xs text-white/30">Máximo de 2 períodos selecionado</p>
+                <p className="mt-2 text-xs text-white/30">
+                  Máximo de 2 períodos selecionado
+                </p>
               )}
             </Section>
 
+            {/* Exercício: sinal simples para comparar energia e humor. */}
             <Section icon={Dumbbell} title="Você se exercitou hoje?">
               <div className="flex gap-3">
                 <button
@@ -250,6 +328,7 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
               </div>
             </Section>
 
+            {/* Notas livres: contexto qualitativo para o usuário lembrar do dia. */}
             <Section icon={Zap} title="Algo que queira registrar? (opcional)">
               <textarea
                 value={notes}
@@ -259,7 +338,9 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
                 placeholder="Ex: reunião pesada drenou minha energia..."
                 className="w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-3.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-purple-500/40"
               />
-              <p className="mt-1 text-right text-xs text-white/25">{notes.length}/500</p>
+              <p className="mt-1 text-right text-xs text-white/25">
+                {notes.length}/500
+              </p>
             </Section>
 
             {error && (
@@ -274,7 +355,11 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
               disabled={!canSave}
               className="min-h-12 w-full rounded-2xl bg-gradient-to-r from-purple-500 to-fuchsia-500 px-5 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {saving ? "Salvando..." : existing ? "Atualizar registro" : "Salvar registro"}
+              {saving
+                ? "Salvando..."
+                : existing
+                ? "Atualizar registro"
+                : "Salvar registro"}
             </button>
           </motion.div>
         </>
@@ -283,9 +368,11 @@ export default function DayReview({ isOpen, onClose, existing, onSaved }: Props)
   );
 }
 
-// --- Helpers ---
+// ===========================================================================
+// HELPERS DE FORMATAÇÃO
+// ===========================================================================
 
-// Formata a data do registro (ex.: "segunda-feira, 23 de junho").
+// Formata a data do registro exibida no topo do sheet.
 // `iso` ("YYYY-MM-DD") vem do registro em edição; sem ela, usa hoje.
 function formatReviewDate(iso?: string | null) {
   const date = iso ? new Date(`${iso}T00:00:00`) : new Date();
@@ -296,7 +383,9 @@ function formatReviewDate(iso?: string | null) {
   });
 }
 
-// --- Subcomponents ---
+// ===========================================================================
+// SUBCOMPONENTES DO FORMULÁRIO
+// ===========================================================================
 
 function Section({
   icon: Icon,
@@ -320,8 +409,10 @@ function Section({
   );
 }
 
+// Labels exibidas abaixo da nota selecionada.
 const RATING_LABELS = ["Péssimo", "Ruim", "Regular", "Bom", "Ótimo"];
 
+// Escala compacta de 1 a 5 usada em sono, humor e produtividade.
 function RatingDots({
   value,
   onChange,
@@ -354,6 +445,7 @@ function RatingDots({
   );
 }
 
+// Chips reutilizáveis com limite de seleção controlado pelo componente pai.
 function TagRow({
   tags,
   selected,
@@ -391,12 +483,15 @@ function TagRow({
         })}
       </div>
       {atLimit && (
-        <p className="mt-2 text-xs text-white/30">Máximo de 3 tags selecionado</p>
+        <p className="mt-2 text-xs text-white/30">
+          Máximo de 3 tags selecionado
+        </p>
       )}
     </div>
   );
 }
 
+// Select padronizado para horários de dormir/acordar.
 function TimeSelect({
   label,
   value,

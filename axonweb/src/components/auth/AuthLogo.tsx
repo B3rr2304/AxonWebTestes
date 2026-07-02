@@ -1,8 +1,16 @@
+// ===========================================================================
+// TIPOS DO COMPONENTE
+// ===========================================================================
+
 type AuthLogoProps = {
   variant?: "auth" | "header";
   className?: string;
 };
 
+// ===========================================================================
+// LOGO DE AUTENTICAÇÃO
+// ===========================================================================
+// Usado nas telas de auth em tamanho maior e em headers compactos quando preciso.
 export default function AuthLogo({
   variant = "auth",
   className = "",

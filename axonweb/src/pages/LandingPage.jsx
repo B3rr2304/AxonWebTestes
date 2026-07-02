@@ -17,6 +17,10 @@ import {
   Zap,
 } from "lucide-react";
 
+// ===========================================================================
+// CONTEÚDO ESTÁTICO DA LANDING
+// ===========================================================================
+// Blocos de texto usados nas seções comerciais da página.
 const pains = [
   "Você começa o dia sem saber o que priorizar.",
   "Sua rotina muda, mas suas ferramentas continuam rígidas.",
@@ -24,6 +28,7 @@ const pains = [
   "Você tenta se organizar, mas depende demais de força de vontade.",
 ];
 
+// Passos que explicam a proposta do Axon como sistema de organização pessoal.
 const solutionSteps = [
   {
     icon: Brain,
@@ -51,6 +56,7 @@ const solutionSteps = [
   },
 ];
 
+// Recursos principais apresentados antes do usuário criar a conta.
 const features = [
   {
     icon: Brain,
@@ -78,6 +84,7 @@ const features = [
   },
 ];
 
+// Sequência inicial que conecta cadastro, questionário e Dashboard.
 const onboardingSteps = [
   {
     number: "01",
@@ -99,24 +106,56 @@ const onboardingSteps = [
   },
 ];
 
+// ===========================================================================
+// COMPONENTES BASE DA LANDING
+// ===========================================================================
+// Botão principal usado nos CTAs de cadastro.
 function PrimaryButton({ children, className = "", to, href }) {
   const cls = `inline-flex min-h-14 items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-[0_0_34px_rgba(168,85,247,0.42)] transition duration-300 hover:bg-purple-400 active:scale-[0.98] ${className}`;
 
-  if (to) return <Link to={to} className={cls}>{children}</Link>;
-  if (href) return <a href={href} className={cls}>{children}</a>;
+  if (to) {
+    return (
+      <Link to={to} className={cls}>
+        {children}
+      </Link>
+    );
+  }
+
+  if (href) {
+    return (
+      <a href={href} className={cls}>
+        {children}
+      </a>
+    );
+  }
 
   return <button className={cls}>{children}</button>;
 }
 
+// Botão secundário usado para navegação interna ou login.
 function SecondaryButton({ children, className = "", to, href }) {
   const cls = `inline-flex min-h-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/75 backdrop-blur-2xl transition duration-300 hover:bg-white/[0.08] hover:text-white active:scale-[0.98] ${className}`;
 
-  if (to) return <Link to={to} className={cls}>{children}</Link>;
-  if (href) return <a href={href} className={cls}>{children}</a>;
+  if (to) {
+    return (
+      <Link to={to} className={cls}>
+        {children}
+      </Link>
+    );
+  }
+
+  if (href) {
+    return (
+      <a href={href} className={cls}>
+        {children}
+      </a>
+    );
+  }
 
   return <button className={cls}>{children}</button>;
 }
 
+// Background global da página, mantendo o visual dark premium/glassmorphism.
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -132,6 +171,7 @@ function Background() {
   );
 }
 
+// Container reutilizável para cards com borda, blur e transparência.
 function GlassPanel({ children, className = "" }) {
   return (
     <div
@@ -142,14 +182,19 @@ function GlassPanel({ children, className = "" }) {
   );
 }
 
-function SectionShell({ children, className = "" }) {
+// Wrapper padrão das seções principais da landing.
+function SectionShell({ children, className = "", id }) {
   return (
-    <section className={`px-4 py-20 sm:px-8 sm:py-24 ${className}`}>
+    <section
+      id={id}
+      className={`px-4 py-20 sm:px-8 sm:py-24 ${className}`}
+    >
       <div className="mx-auto max-w-7xl">{children}</div>
     </section>
   );
 }
 
+// Cabeçalho reutilizável para manter hierarquia visual entre seções.
 function SectionHeader({ eyebrow, title, description, centered = false }) {
   return (
     <div
@@ -176,7 +221,14 @@ function SectionHeader({ eyebrow, title, description, centered = false }) {
   );
 }
 
-function FloatingCard({ icon: Icon, title, children, className = "", delay = 0 }) {
+// Cards flutuantes usados na ilustração central do produto.
+function FloatingCard({
+  icon: Icon,
+  title,
+  children,
+  className = "",
+  delay = 0,
+}) {
   return (
     <motion.div
       animate={{ y: [-5, 5, -5] }}
@@ -201,6 +253,7 @@ function FloatingCard({ icon: Icon, title, children, className = "", delay = 0 }
   );
 }
 
+// Ilustração hero: representa contexto, energia, foco e prioridades orbitando o Axon.
 function ProductOrbit() {
   return (
     <div className="relative mx-auto mt-12 h-[460px] w-full max-w-[380px] overflow-visible sm:mt-16 sm:h-[570px] sm:max-w-5xl">
@@ -344,11 +397,15 @@ function ProductOrbit() {
   );
 }
 
+// ===========================================================================
+// SESSÃO E REDIRECIONAMENTO
+// ===========================================================================
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
 export default function LandingPage() {
   const navigate = useNavigate();
 
+  // Tenta restaurar sessão recente para evitar mostrar a landing a usuário logado.
   useEffect(() => {
     const refreshToken = localStorage.getItem("axon_refresh_token");
     const lastActive = Number(localStorage.getItem("axon_last_active") ?? "0");
@@ -381,9 +438,16 @@ export default function LandingPage() {
       <Background />
 
       <div className="relative z-10">
+        {/* Header: marca centralizada e acesso rápido ao login no desktop. */}
         <header className="relative mx-auto flex max-w-7xl items-center justify-center px-4 py-5 sm:px-8 sm:py-6">
-          <Link to="/" className="flex flex-col items-center justify-center text-center">
-            <AuthLogo variant="header" className="mb-2 [transform:scale(1.15)]" />
+          <Link
+            to="/"
+            className="flex flex-col items-center justify-center text-center"
+          >
+            <AuthLogo
+              variant="header"
+              className="mb-2 [transform:scale(1.15)]"
+            />
 
             <p className="text-base font-semibold tracking-tight text-white sm:text-lg">
               Axon
@@ -403,6 +467,7 @@ export default function LandingPage() {
         </header>
 
 
+        {/* Hero: promessa principal, CTAs e ilustração de produto. */}
         <section className="px-4 pb-12 pt-8 sm:px-8 sm:pb-24 sm:pt-20">
           <div className="mx-auto max-w-5xl text-center">
             <motion.div
@@ -447,7 +512,10 @@ export default function LandingPage() {
                 <ArrowRight className="ml-2 h-4 w-4" />
               </PrimaryButton>
 
-              <SecondaryButton href="#como-funciona" className="w-full sm:w-auto">
+              <SecondaryButton
+                href="#como-funciona"
+                className="w-full sm:w-auto"
+              >
                 Ver como funciona
                 <Sparkles className="ml-2 h-4 w-4" />
               </SecondaryButton>
@@ -456,9 +524,12 @@ export default function LandingPage() {
 
           <ProductOrbit />
 
+          {/* Métricas rápidas para reforçar simplicidade e uso diário. */}
           <div className="mx-auto mt-2 grid max-w-4xl grid-cols-3 gap-2 px-1 sm:mt-8 sm:gap-4">
             <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-center backdrop-blur-2xl sm:p-4">
-              <p className="text-lg font-semibold text-white sm:text-2xl">3min</p>
+              <p className="text-lg font-semibold text-white sm:text-2xl">
+                3min
+              </p>
               <p className="mt-1 text-[0.68rem] leading-4 text-white/38 sm:text-xs">
                 para configurar
               </p>
@@ -472,7 +543,9 @@ export default function LandingPage() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-center backdrop-blur-2xl sm:p-4">
-              <p className="text-lg font-semibold text-white sm:text-2xl">24h</p>
+              <p className="text-lg font-semibold text-white sm:text-2xl">
+                24h
+              </p>
               <p className="mt-1 text-[0.68rem] leading-4 text-white/38 sm:text-xs">
                 de contexto
               </p>
@@ -480,6 +553,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Problema: conecta a dor do usuário antes de apresentar a solução. */}
         <SectionShell id="problema">
           <SectionHeader
             eyebrow="O problema"
@@ -507,6 +581,7 @@ export default function LandingPage() {
           </div>
         </SectionShell>
 
+        {/* Solução: explica como o Axon transforma ritmo em plano de ação. */}
         <section id="solucao" className="px-4 py-20 sm:px-8 sm:py-24">
           <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
             <div>
@@ -558,6 +633,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Recursos: mostra os módulos centrais do produto. */}
         <SectionShell id="recursos">
           <SectionHeader
             centered
@@ -597,6 +673,7 @@ export default function LandingPage() {
           </div>
         </SectionShell>
 
+        {/* Como funciona: resume a jornada até o primeiro Dashboard. */}
         <SectionShell id="como-funciona">
           <SectionHeader
             centered
@@ -632,6 +709,7 @@ export default function LandingPage() {
           </div>
         </SectionShell>
 
+        {/* CTA final: última chamada antes do rodapé. */}
         <section className="px-4 py-20 sm:px-8 sm:py-24">
           <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-6 text-center shadow-[0_0_80px_rgba(88,28,135,0.28)] backdrop-blur-2xl sm:rounded-[2.5rem] sm:p-12">
             <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
@@ -660,6 +738,7 @@ export default function LandingPage() {
           </div>
         </section>
 
+        {/* Rodapé institucional. */}
         <footer className="border-t border-white/10 px-4 py-8 sm:px-8">
           <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 text-sm text-white/40 sm:flex-row sm:items-center">
             <p>© 2026 Axon. Todos os direitos reservados.</p>
@@ -679,6 +758,7 @@ export default function LandingPage() {
         </footer>
       </div>
 
+      {/* CTA fixo mobile: mantém a ação principal sempre acessível no celular. */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#05050b]/85 p-4 backdrop-blur-2xl sm:hidden">
         <PrimaryButton to="/login" className="w-full">
           Entrar

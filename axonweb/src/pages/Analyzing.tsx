@@ -11,6 +11,7 @@ import {
   Zap,
 } from "lucide-react";
 
+// Etapas exibidas durante a análise antes de liberar o resultado do cronotipo.
 const steps = [
   {
     icon: Clock3,
@@ -40,14 +41,17 @@ const steps = [
 ];
 
 export default function Analyzing() {
+  // Navegação e estado da etapa ativa da animação.
   const navigate = useNavigate();
   const [activeStep, setActiveStep] = useState(0);
 
+  // Dados derivados usados para trocar ícone, texto e progresso visual.
   const currentStep = steps[activeStep];
   const CurrentIcon = currentStep.icon;
   const progress = ((activeStep + 1) / steps.length) * 100;
 
   useEffect(() => {
+    // Avança as mensagens da análise enquanto mantém a última etapa fixa até o redirect.
     const stepTimer = setInterval(() => {
       setActiveStep((prev) => {
         if (prev === steps.length - 1) return prev;
@@ -55,6 +59,7 @@ export default function Analyzing() {
       });
     }, 950);
 
+    // Fluxo automático após o questionário: análise visual -> tela de resultado.
     const redirectTimer = setTimeout(() => {
       navigate("/result");
     }, 5600);
@@ -70,6 +75,7 @@ export default function Analyzing() {
       <Background />
 
       <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
+        {/* Header compacto mantém a identidade do Axon durante a transição. */}
         <header className="flex shrink-0 items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
             <Brain className="h-5 w-5" />
@@ -83,10 +89,12 @@ export default function Analyzing() {
 
         <section className="flex flex-1 flex-col justify-center py-6">
           <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/35 backdrop-blur-2xl">
+            {/* Camadas internas dão profundidade glassmorphism ao card principal. */}
             <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/14 via-transparent to-fuchsia-400/10" />
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:26px_26px] opacity-20" />
 
             <div className="relative">
+              {/* Ilustração neural central: órbitas, linhas e pulso visual do Axon. */}
               <div className="mb-6 flex h-[230px] items-center justify-center overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/25">
                 <motion.div
                   animate={{ rotate: 360 }}
@@ -243,6 +251,7 @@ export default function Analyzing() {
                 </motion.div>
               </div>
 
+              {/* Texto principal explica a espera sem expor detalhes técnicos do cálculo. */}
               <div className="text-center">
                 <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
                   <Activity className="h-3.5 w-3.5" />
@@ -259,6 +268,7 @@ export default function Analyzing() {
                 </p>
               </div>
 
+              {/* Card dinâmico mostra qual parte da análise está em destaque. */}
               <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-black/25 p-4">
                 <AnimatePresence mode="wait">
                   <motion.div
@@ -285,6 +295,7 @@ export default function Analyzing() {
                 </AnimatePresence>
               </div>
 
+              {/* Progresso calculado pela etapa ativa; não depende de resposta do backend. */}
               <div className="mt-5">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="text-xs text-white/35">Análise em andamento</p>
@@ -305,6 +316,7 @@ export default function Analyzing() {
           </div>
         </section>
 
+        {/* Atalho manual evita prender o usuário caso ele queira pular a animação. */}
         <footer className="shrink-0">
           <button
             onClick={() => navigate("/result")}
@@ -322,6 +334,7 @@ export default function Analyzing() {
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
+      {/* Gradientes amplos criam o brilho de fundo sem interferir nos cliques. */}
       <div className="absolute left-1/2 top-[-16rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-purple-700/25 blur-[120px]" />
       <div className="absolute right-[-14rem] top-[14rem] h-[26rem] w-[26rem] rounded-full bg-fuchsia-500/10 blur-[110px]" />
       <div className="absolute bottom-[-12rem] left-[-12rem] h-[26rem] w-[26rem] rounded-full bg-indigo-500/10 blur-[120px]" />

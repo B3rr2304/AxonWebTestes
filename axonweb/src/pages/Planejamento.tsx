@@ -5,7 +5,6 @@ import { CalendarDays, Menu, Repeat, Target } from "lucide-react";
 import Sidebar from "../components/layout/Sidebar";
 import { results, type ChronotypeResultKey } from "../data/results";
 import Planning from "./Planning";
-import Rotinas from "./Rotinas";
 import Objetivos from "./Objetivos";
 
 type View = "agenda" | "rotinas" | "objetivos";
@@ -94,7 +93,6 @@ export default function Planejamento({
 
         {/* Conteúdo da visão ativa (sem moldura própria) */}
         {view === "agenda" && <Planning embedded />}
-        {view === "rotinas" && <Rotinas embedded />}
         {view === "objetivos" && <Objetivos embedded />}
       </div>
 

@@ -20,6 +20,10 @@ import {
 
 import { results, type ChronotypeResultKey } from "../data/results";
 
+// ===========================================================================
+// CHAVES VÁLIDAS DE CRONOTIPO
+// ===========================================================================
+// Mantém a leitura do resultado limitada às chaves existentes em data/results.ts.
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
   "Vespertino",
@@ -28,13 +32,25 @@ const validKeys: ChronotypeResultKey[] = [
   "Bimodal",
 ];
 
+// ===========================================================================
+// PÁGINA DE RESULTADO DO CRONOTIPO
+// ===========================================================================
+
 export default function Result() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
+  // ---------------------------------------------------------------------------
+  // Origem da navegação
+  // ---------------------------------------------------------------------------
+  // Quando vem do perfil, a página funciona como leitura completa do resultado.
   const fromProfile = searchParams.get("from") === "profile";
   const chronotypeFromUrl = searchParams.get("chronotype");
 
+  // ---------------------------------------------------------------------------
+  // Resolução do cronotipo
+  // ---------------------------------------------------------------------------
+  // Prioriza a URL, depois o localStorage e, por fim, usa "Misto" como fallback.
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     if (
       chronotypeFromUrl &&
@@ -52,6 +68,9 @@ export default function Result() {
     return "Misto";
   }, [chronotypeFromUrl]);
 
+  // ---------------------------------------------------------------------------
+  // Dados derivados do resultado
+  // ---------------------------------------------------------------------------
   const result = results[resultKey];
   const ResultIcon = getResultIcon(resultKey);
 
@@ -60,6 +79,7 @@ export default function Result() {
       <Background />
 
       <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
+        {/* Header: identifica o contexto do resultado. */}
         <header className="mb-5 flex shrink-0 items-center gap-3">
           <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
             <Brain className="h-5 w-5" />
@@ -74,6 +94,7 @@ export default function Result() {
         </header>
 
         <section className="flex-1 space-y-4">
+          {/* Hero do resultado: ícone, rótulo, título e descrição do perfil. */}
           <motion.section
             initial={{ opacity: 0, y: 18, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -150,6 +171,7 @@ export default function Result() {
             </div>
           </motion.section>
 
+          {/* Métricas principais do cronotipo calculado. */}
           <section className="grid grid-cols-2 gap-3">
             <InfoCard
               icon={Zap}
@@ -176,6 +198,7 @@ export default function Result() {
             />
           </section>
 
+          {/* Leitura resumida do Axon sobre o perfil produtivo. */}
           <section className="rounded-[1.8rem] border border-purple-300/20 bg-purple-500/10 p-4 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
             <div className="mb-3 flex items-center gap-2">
               <Brain className="h-4 w-4 text-purple-200" />
@@ -187,6 +210,7 @@ export default function Result() {
             <p className="text-sm leading-6 text-white/58">{result.summary}</p>
           </section>
 
+          {/* Janelas sugeridas para orientar o planejamento inicial. */}
           <section className="rounded-[1.8rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
             <div className="mb-4 flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-purple-200" />
@@ -219,6 +243,7 @@ export default function Result() {
             </div>
           </section>
 
+          {/* Atividades que tendem a combinar melhor com esse ritmo. */}
           <section className="rounded-[1.8rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
             <div className="mb-4 flex items-center gap-2">
               <CheckCircle2 className="h-4 w-4 text-purple-200" />
@@ -234,6 +259,7 @@ export default function Result() {
             </div>
           </section>
 
+          {/* Alertas para evitar atrito entre energia e tipo de tarefa. */}
           <section className="rounded-[1.8rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
             <div className="mb-4 flex items-center gap-2">
               <Coffee className="h-4 w-4 text-purple-200" />
@@ -249,6 +275,7 @@ export default function Result() {
             </div>
           </section>
 
+          {/* Como o app usará o resultado para personalizar a experiência. */}
           <section className="rounded-[1.8rem] border border-purple-300/20 bg-purple-500/10 p-4 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
             <div className="mb-3 flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-purple-200" />
@@ -270,6 +297,7 @@ export default function Result() {
             </div>
           </section>
 
+          {/* Recomendações práticas para os primeiros ajustes de rotina. */}
           <section className="rounded-[1.8rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
             <p className="mb-4 text-sm font-semibold text-white">
               Como começar melhor
@@ -289,6 +317,7 @@ export default function Result() {
           </section>
         </section>
 
+        {/* Ações finais mudam conforme a origem: perfil ou onboarding. */}
         <footer className="mt-5 shrink-0 space-y-3">
           {fromProfile ? (
             <>
@@ -333,6 +362,11 @@ export default function Result() {
   );
 }
 
+// ===========================================================================
+// HELPERS DO RESULTADO
+// ===========================================================================
+
+// Seleciona um ícone visual coerente com o cronotipo exibido.
 function getResultIcon(resultKey: ChronotypeResultKey) {
   if (resultKey === "Matutino") return Sun;
   if (resultKey === "Vespertino") return Sparkles;
@@ -341,6 +375,11 @@ function getResultIcon(resultKey: ChronotypeResultKey) {
   return BarChart3;
 }
 
+// ===========================================================================
+// COMPONENTES INTERNOS
+// ===========================================================================
+
+// Card compacto usado para energia, foco, baixa energia e sono ideal.
 function InfoCard({
   icon: Icon,
   label,
@@ -364,6 +403,7 @@ function InfoCard({
   );
 }
 
+// Item reutilizável para listas de atividades e pontos de atenção.
 function ListItem({
   icon: Icon,
   text,
@@ -389,6 +429,10 @@ function ListItem({
     </div>
   );
 }
+
+// ===========================================================================
+// BACKGROUND VISUAL
+// ===========================================================================
 
 function Background() {
   return (

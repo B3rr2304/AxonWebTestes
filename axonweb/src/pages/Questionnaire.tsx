@@ -16,6 +16,9 @@ import {
   Zap,
 } from "lucide-react";
 
+// ===========================================================================
+// TIPOS DO QUESTIONÁRIO
+// ===========================================================================
 type Option = {
   id: string;
   label: string;
@@ -29,6 +32,10 @@ type Question = {
   options: Option[];
 };
 
+// ===========================================================================
+// PERGUNTAS DO MAPEAMENTO INICIAL
+// ===========================================================================
+// Questionário cronobiológico usado para estimar ritmo, foco e tipo de rotina.
 const questions: Question[] = [
   {
     id: "P1",
@@ -76,13 +83,17 @@ const questions: Question[] = [
       { id: "A", label: "Não, acordo espontaneamente." },
       { id: "B", label: "Sim, mas sem dificuldades." },
       { id: "C", label: "Sim, às vezes com dificuldades." },
-      { id: "D", label: "Sim, preciso de vários alarmes para conseguir acordar." },
+      {
+        id: "D",
+        label: "Sim, preciso de vários alarmes para conseguir acordar.",
+      },
     ],
   },
   {
     id: "P5",
     category: "Horário ideal de dormir",
-    title: "Caso não tivesse compromisso na manhã seguinte, a que horas gostaria de deitar?",
+    title:
+      "Caso não tivesse compromisso na manhã seguinte, a que horas gostaria de deitar?",
     icon: Moon,
     options: [
       { id: "A", label: "Entre 21h e 22h." },
@@ -94,7 +105,8 @@ const questions: Question[] = [
   {
     id: "P6",
     category: "Energia física",
-    title: "Em qual horário você se sente fisicamente mais disposto e com mais energia no corpo?",
+    title:
+      "Em qual horário você se sente fisicamente mais disposto e com mais energia no corpo?",
     icon: Zap,
     options: [
       { id: "A", label: "De manhã cedo, antes das 8h." },
@@ -107,7 +119,8 @@ const questions: Question[] = [
   {
     id: "P7",
     category: "Cansaço noturno",
-    title: "À noite, entre 20h e 3h, a que horas você costuma se sentir cansado e com vontade de dormir?",
+    title:
+      "À noite, entre 20h e 3h, a que horas você costuma se sentir cansado e com vontade de dormir?",
     icon: Moon,
     options: [
       { id: "A", label: "Entre 20h e 21h." },
@@ -135,17 +148,27 @@ const questions: Question[] = [
     icon: Moon,
     options: [
       { id: "A", label: "Durmo direto e acordo me sentindo 100% disposto." },
-      { id: "B", label: "Acordo poucas vezes durante a noite, mas acordo me sentindo bem." },
+      {
+        id: "B",
+        label: "Acordo poucas vezes durante a noite, mas acordo me sentindo bem.",
+      },
       { id: "C", label: "Tenho dificuldade em pegar no sono, mas depois durmo bem." },
-      { id: "D", label: "Acordo várias vezes durante a noite e tenho o sono leve." },
-      { id: "E", label: "Sinto que durmo bem, mas acordo cansado e sem energia." },
+      {
+        id: "D",
+        label: "Acordo várias vezes durante a noite e tenho o sono leve.",
+      },
+      {
+        id: "E",
+        label: "Sinto que durmo bem, mas acordo cansado e sem energia.",
+      },
       { id: "F", label: "Outro." },
     ],
   },
   {
     id: "P10",
     category: "Pico mental",
-    title: "Em qual horário você estaria no máximo de sua forma para um teste de esforço mental?",
+    title:
+      "Em qual horário você estaria no máximo de sua forma para um teste de esforço mental?",
     icon: Brain,
     options: [
       { id: "A", label: "Antes das 10h." },
@@ -159,7 +182,8 @@ const questions: Question[] = [
   {
     id: "P11",
     category: "Produtividade",
-    title: "Em qual período do dia você geralmente se sente mais produtivo para tarefas que exigem concentração?",
+    title:
+      "Em qual período do dia você geralmente se sente mais produtivo para tarefas que exigem concentração?",
     icon: Brain,
     options: [
       { id: "A", label: "Nas primeiras horas da manhã (5h às 9h)." },
@@ -168,7 +192,10 @@ const questions: Question[] = [
       { id: "D", label: "No final da tarde (15h às 18h)." },
       { id: "E", label: "À noite (18h às 22h)." },
       { id: "F", label: "Tarde da noite (após as 22h)." },
-      { id: "G", label: "Não tenho um pico claro — cada dia é diferente." },
+      {
+        id: "G",
+        label: "Não tenho um pico claro — cada dia é diferente.",
+      },
     ],
   },
   {
@@ -189,7 +216,8 @@ const questions: Question[] = [
   {
     id: "P13",
     category: "Criatividade",
-    title: "Você consegue realizar tarefas criativas ou de resolução de problemas melhor em algum horário específico?",
+    title:
+      "Você consegue realizar tarefas criativas ou de resolução de problemas melhor em algum horário específico?",
     icon: Sparkles,
     options: [
       { id: "A", label: "Nas primeiras horas da manhã (antes das 09h)." },
@@ -204,7 +232,8 @@ const questions: Question[] = [
   {
     id: "P14",
     category: "Execução",
-    title: "Se tivesse que realizar uma tarefa importante e desafiadora, em qual horário você escolheria?",
+    title:
+      "Se tivesse que realizar uma tarefa importante e desafiadora, em qual horário você escolheria?",
     icon: Brain,
     options: [
       { id: "A", label: "Antes das 10h." },
@@ -218,7 +247,8 @@ const questions: Question[] = [
   {
     id: "P15",
     category: "Turno menos produtivo",
-    title: "Se você tivesse que descartar um turno do dia por considerá-lo menos produtivo, qual seria?",
+    title:
+      "Se você tivesse que descartar um turno do dia por considerá-lo menos produtivo, qual seria?",
     icon: Clock3,
     options: [
       { id: "A", label: "Manhã (antes das 12h)." },
@@ -248,7 +278,10 @@ const questions: Question[] = [
     icon: Zap,
     options: [
       { id: "A", label: "Alta pela manhã e vai diminuindo ao longo do dia." },
-      { id: "B", label: "Consistente ao longo de todo o dia, com pequenos picos." },
+      {
+        id: "B",
+        label: "Consistente ao longo de todo o dia, com pequenos picos.",
+      },
       { id: "C", label: "Baixa pela manhã, aumentando durante a tarde e a noite." },
       { id: "D", label: "Alta somente à noite." },
       { id: "E", label: "Tenho dois picos: um de manhã e outro à noite." },
@@ -257,7 +290,8 @@ const questions: Question[] = [
   {
     id: "P18",
     category: "Concentração",
-    title: "Você sente que sua capacidade de se concentrar aumenta em algum horário específico do dia?",
+    title:
+      "Você sente que sua capacidade de se concentrar aumenta em algum horário específico do dia?",
     icon: Sparkles,
     options: [
       { id: "A", label: "Nas primeiras horas da manhã." },
@@ -287,6 +321,11 @@ const questions: Question[] = [
   },
 ];
 
+// ===========================================================================
+// COMPONENTES VISUAIS AUXILIARES
+// ===========================================================================
+
+// Barra superior que acompanha a posição atual no questionário.
 function ProgressBar({ progress }: { progress: number }) {
   return (
     <div className="h-2 overflow-hidden rounded-full bg-white/10">
@@ -300,17 +339,31 @@ function ProgressBar({ progress }: { progress: number }) {
   );
 }
 
+// ===========================================================================
+// PÁGINA DO QUESTIONÁRIO
+// ===========================================================================
+
 export default function Questionnaire() {
   const navigate = useNavigate();
 
+  // ---------------------------------------------------------------------------
+  // Estado principal do fluxo
+  // ---------------------------------------------------------------------------
   const [currentIndex, setCurrentIndex] = useState(0);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
 
+  // ---------------------------------------------------------------------------
+  // Dados derivados da pergunta atual
+  // ---------------------------------------------------------------------------
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = answers[currentQuestion?.id];
   const progress = ((currentIndex + 1) / questions.length) * 100;
 
+  // ---------------------------------------------------------------------------
+  // Seleção de resposta
+  // ---------------------------------------------------------------------------
+  // Mantém as respostas por id da pergunta para facilitar o envio final.
   function selectAnswer(optionId: string) {
     setAnswers((prev) => ({
       ...prev,
@@ -318,34 +371,68 @@ export default function Questionnaire() {
     }));
   }
 
+  // ---------------------------------------------------------------------------
+  // Finalização e classificação
+  // ---------------------------------------------------------------------------
+  // Só avança para a tela de análise depois que o resultado foi calculado/salvo.
+  // Assim evitamos mostrar o loading como sucesso quando a API retorna erro.
   async function handleFinish(finalAnswers: Record<string, string>) {
-    const { P9: qualidade_sono = "F", SCHED: schedule_type, ...respostas } = finalAnswers;
+    const {
+      P9: qualidade_sono = "F",
+      SCHED: schedule_type,
+      ...respostas
+    } = finalAnswers;
 
     const logged = api.isLoggedIn();
-    console.log("[questionario] isLoggedIn:", logged, "| respostas:", respostas, "| sono:", qualidade_sono, "| sched:", schedule_type);
 
-    navigate("/analyzing");
+    console.log(
+      "[questionario] isLoggedIn:",
+      logged,
+      "| respostas:",
+      respostas,
+      "| sono:",
+      qualidade_sono,
+      "| sched:",
+      schedule_type
+    );
 
     try {
       const result = logged
         ? await api.classifyAndSave(respostas, qualidade_sono, schedule_type)
         : await api.classify(respostas, qualidade_sono, schedule_type);
-      console.log("[questionario] salvo com sucesso. cronotipo:", result.cronotipo);
+
+      console.log(
+        "[questionario] salvo com sucesso. cronotipo:",
+        result.cronotipo
+      );
+
       localStorage.setItem("axon_chronotype", result.cronotipo);
+
       if (schedule_type) {
         localStorage.setItem("axon_schedule_type", schedule_type);
       }
+
+      navigate("/analyzing");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
       console.error("[questionario] ERRO ao salvar:", msg, err);
+
+      setSubmitted(false);
+
       if (!logged) {
-        alert("Você não está logado — o questionário não pôde ser salvo no banco. Faça login e refaça o questionário.");
+        alert(
+          "Você não está logado — o questionário não pôde ser salvo no banco. Faça login e refaça o questionário."
+        );
       } else {
         alert("Erro ao salvar o questionário: " + msg);
       }
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Navegação entre perguntas
+  // ---------------------------------------------------------------------------
+  // Impede avanço sem resposta e bloqueia duplo envio no fim do questionário.
   function goNext() {
     if (!selectedAnswer || submitted) return;
 
@@ -359,6 +446,7 @@ export default function Questionnaire() {
     setCurrentIndex((prev) => prev + 1);
   }
 
+  // Volta para a introdução quando o usuário está na primeira pergunta.
   function goBack() {
     if (currentIndex === 0) {
       navigate("/questionnaire-intro");
@@ -377,6 +465,7 @@ export default function Questionnaire() {
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col">
         <Header />
 
+        {/* Progresso e card da pergunta atual. */}
         <section className="flex flex-1 flex-col py-6">
           <div className="mb-6">
             <div className="mb-3 flex items-center justify-between">
@@ -412,6 +501,7 @@ export default function Questionnaire() {
                 {currentQuestion.title}
               </h1>
 
+              {/* Opções da pergunta atual. */}
               <div className="mt-7 space-y-3">
                 {currentQuestion.options.map((option) => {
                   const isSelected = selectedAnswer === option.id;
@@ -453,6 +543,7 @@ export default function Questionnaire() {
           </AnimatePresence>
         </section>
 
+        {/* Ações fixas do fluxo: avançar/finalizar e voltar. */}
         <footer className="space-y-3 pb-2">
           <button
             onClick={goNext}
@@ -486,6 +577,7 @@ export default function Questionnaire() {
   );
 }
 
+// Header compacto usado somente durante o mapeamento inicial.
 function Header() {
   return (
     <header className="flex items-center justify-between">
@@ -503,6 +595,7 @@ function Header() {
   );
 }
 
+// Background da etapa de onboarding, alinhado ao visual dark premium do app.
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">

@@ -1,3 +1,8 @@
+/* ==========================================================================
+ * Esta página separa conversas soltas da aba "Projetos", mantendo busca,
+ * criação rápida e navegação para a conversa interna.
+ * ========================================================================== */
+
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -24,6 +29,9 @@ import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 import type { ConversationData } from "../lib/api";
 
+/* ==========================================================================
+ * Tipos e aliases locais
+ * ========================================================================== */
 type ConversationType = "general" | "planning" | "focus" | "project";
 type ProjectFolder = api.ChatProjectData;
 type ProjectConversation = ConversationData & { project_id?: string | null };
@@ -32,6 +40,7 @@ type ConversationWithSortDates = ConversationData & {
   last_message_at?: string | null;
 };
 
+// Centraliza a prioridade de datas usada para ordenar conversas recentes.
 function getConversationSortDate(conversation: ConversationData) {
   const item = conversation as ConversationWithSortDates;
 
@@ -40,12 +49,14 @@ function getConversationSortDate(conversation: ConversationData) {
   ).getTime();
 }
 
+// Evita mutar a lista original antes de renderizar filtros e projetos.
 function sortConversationsByRecent<T extends ConversationData>(items: T[]) {
   return [...items].sort(
     (a, b) => getConversationSortDate(b) - getConversationSortDate(a)
   );
 }
 
+// Fallback usado pela Sidebar quando o cronotipo salvo ainda não existe.
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
   "Vespertino",
@@ -57,14 +68,24 @@ const validKeys: ChronotypeResultKey[] = [
 export default function Chat() {
   const navigate = useNavigate();
 
+  /* --------------------------------------------------------------------------
+   * Estados da lista e layout
+   * -------------------------------------------------------------------------- */
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"all" | "projects">("all");
   const [visibleCount, setVisibleCount] = useState(8);
+
+  /* --------------------------------------------------------------------------
+   * Conversas
+   * -------------------------------------------------------------------------- */
   const [conversations, setConversations] = useState<ConversationData[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
 
+  /* --------------------------------------------------------------------------
+   * Projetos / pastas de conversa
+   * -------------------------------------------------------------------------- */
   const [projects, setProjects] = useState<ProjectFolder[]>([]);
   const [loadingProjects, setLoadingProjects] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
@@ -74,6 +95,9 @@ export default function Chat() {
   const [projectToDelete, setProjectToDelete] = useState<ProjectFolder | null>(null);
   const [isDeletingProject, setIsDeletingProject] = useState(false);
 
+  /* --------------------------------------------------------------------------
+   * Carregamento inicial de conversas
+   * -------------------------------------------------------------------------- */
   useEffect(() => {
     api
       .getConversations()
@@ -82,6 +106,9 @@ export default function Chat() {
       .finally(() => setLoadingConversations(false));
   }, []);
 
+  /* --------------------------------------------------------------------------
+   * Carregamento sob demanda dos projetos
+   * -------------------------------------------------------------------------- */
   useEffect(() => {
     if (view !== "projects") return;
 
@@ -94,6 +121,9 @@ export default function Chat() {
       .finally(() => setLoadingProjects(false));
   }, [view]);
 
+  /* --------------------------------------------------------------------------
+   * Dados da Sidebar
+   * -------------------------------------------------------------------------- */
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
 
@@ -106,6 +136,9 @@ export default function Chat() {
 
   const result = results[resultKey];
 
+  /* --------------------------------------------------------------------------
+   * Filtros e ordenação
+   * -------------------------------------------------------------------------- */
   const looseConversations = useMemo(() => {
     return conversations.filter((conversation) => {
       const projectId = getConversationProjectId(conversation);
@@ -186,21 +219,33 @@ export default function Chat() {
   const visibleConversations = activeConversationList.slice(0, visibleCount);
   const hasMoreConversations = activeConversationList.length > visibleCount;
 
+  /* --------------------------------------------------------------------------
+   * Paginação simples da lista
+   * -------------------------------------------------------------------------- */
   useEffect(() => {
     setVisibleCount(8);
   }, [search, view, selectedProjectId]);
 
+  /* --------------------------------------------------------------------------
+   * Navegação entre abas
+   * -------------------------------------------------------------------------- */
   useEffect(() => {
     if (view === "all") {
       setSelectedProjectId(null);
     }
   }, [view]);
 
+  /* --------------------------------------------------------------------------
+   * Criação de conversa/projeto
+   * -------------------------------------------------------------------------- */
   function openCreateConversationModal(projectId?: string | null) {
     setCreateConversationProjectId(projectId ?? null);
     setIsCreateModalOpen(true);
   }
 
+  /* --------------------------------------------------------------------------
+   * Exclusão de projeto
+   * -------------------------------------------------------------------------- */
   async function confirmDeleteProject() {
     if (!projectToDelete) return;
 
@@ -219,18 +264,19 @@ export default function Chat() {
 
       setProjectToDelete(null);
     } catch {
-      // depois podemos trocar por toast/erro visual
+      // Mantém a tela estável se a exclusão falhar; o tratamento visual pode entrar depois.
     } finally {
       setIsDeletingProject(false);
     }
   }
-  
+
 
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
       <Background />
 
       <div className="relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
+        {/* Header fixo: retorno ao dashboard, criação rápida e menu lateral. */}
         <header className="mb-4 flex shrink-0 items-center justify-between">
           <button
             onClick={() => navigate("/dashboard")}
@@ -274,6 +320,7 @@ export default function Chat() {
         </header>
 
         <section className="min-h-0 flex-1 overflow-y-auto pr-1">
+          {/* Hero contextual da página de chat. */}
           <div className="mb-4">
             <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
               <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
@@ -297,6 +344,7 @@ export default function Chat() {
             </div>
           </div>
 
+          {/* Busca e alternância entre conversas soltas e projetos. */}
           <div className="sticky top-0 z-30 -mx-1 mb-4 space-y-3 bg-transparent px-1 py-3">
             <label className="flex min-h-13 items-center gap-3 rounded-2xl border border-white/10 bg-[#1b1b27]/90 px-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
               <Search className="h-4 w-4 text-white/35" />
@@ -334,6 +382,7 @@ export default function Chat() {
             </div>
           </div>
 
+          {/* Lista principal: muda entre conversas, projetos e conversas do projeto selecionado. */}
           <section className="space-y-3 pb-4">
             {loadingConversations || (view === "projects" && loadingProjects) ? (
               <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
@@ -489,6 +538,7 @@ export default function Chat() {
         </section>
       </div>
 
+      {/* Sidebar global reaproveitada para navegação entre páginas do app. */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -496,6 +546,7 @@ export default function Chat() {
         energyPeak={result.energyPeak}
       />
 
+      {/* Modal único para criar conversa solta, conversa dentro de projeto ou novo projeto. */}
       <CreateConversationModal
         isOpen={isCreateModalOpen}
         defaultProjectId={createConversationProjectId}
@@ -523,6 +574,7 @@ export default function Chat() {
         }}
       />
 
+      {/* Edição rápida de nome/descrição do projeto. */}
       <EditProjectModal
         project={projectToEdit}
         onClose={() => setProjectToEdit(null)}
@@ -537,6 +589,7 @@ export default function Chat() {
         }}
       />
 
+      {/* Confirmação separada para evitar exclusão acidental de projeto. */}
       <DeleteProjectModal
         project={projectToDelete}
         isDeleting={isDeletingProject}
@@ -549,9 +602,12 @@ export default function Chat() {
       />
     </main>
   );
-      
+
 }
 
+/* ==========================================================================
+ * Cabeçalho do projeto selecionado
+ * ========================================================================== */
 function SelectedProjectHeader({
   project,
   onBack,
@@ -597,6 +653,9 @@ function SelectedProjectHeader({
   );
 }
 
+/* ==========================================================================
+ * Cards de conversa
+ * ========================================================================== */
 function ConversationCard({
   conversation,
   isFixed = false,
@@ -611,6 +670,7 @@ function ConversationCard({
     ? Bell
     : getConversationIcon(conversation.type as ConversationType);
 
+  // Formata a data para leitura rápida na lista mobile.
   const formattedDate = useMemo(() => {
     const date = new Date(conversation.created_at);
     const now = new Date();
@@ -693,6 +753,7 @@ function ConversationCard({
   );
 }
 
+// Ícone visual usado para diferenciar contexto geral, planejamento, foco e projeto.
 function getConversationIcon(type: ConversationType) {
   if (type === "planning") return CalendarDays;
   if (type === "focus") return Focus;
@@ -700,6 +761,9 @@ function getConversationIcon(type: ConversationType) {
   return MessageCircle;
 }
 
+/* ==========================================================================
+ * Modal de criação de conversa/projeto
+ * ========================================================================== */
 function CreateConversationModal({
   isOpen,
   defaultProjectId,
@@ -726,6 +790,7 @@ function CreateConversationModal({
 
   const isInsideProject = Boolean(defaultProjectId);
 
+  // Sempre reabre o modal limpo e respeitando o projeto de origem.
   useEffect(() => {
     if (!isOpen) return;
 
@@ -740,6 +805,7 @@ function CreateConversationModal({
 
   if (!isOpen) return null;
 
+  // Decide entre criar projeto, conversa solta ou conversa já vinculada ao projeto.
   async function handleCreate() {
     setFormError(null);
 
@@ -831,6 +897,7 @@ function CreateConversationModal({
         </div>
 
         <div className="relative flex-1 overflow-y-auto px-5 py-4">
+          {/* Quando não veio de um projeto, o modal também permite criar uma nova pasta. */}
           {!isInsideProject && (
             <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.045] p-1">
               <button
@@ -861,6 +928,7 @@ function CreateConversationModal({
 
           {createMode === "conversation" || isInsideProject ? (
             <>
+              {/* Tipos de conversa solta ajudam o Axon a interpretar o contexto inicial. */}
               {!isInsideProject && (
                 <div className="mb-4 grid grid-cols-2 gap-2">
                   <ConversationTypeButton
@@ -1003,6 +1071,9 @@ function CreateConversationModal({
   );
 }
 
+/* ==========================================================================
+ * Botão de tipo de conversa
+ * ========================================================================== */
 function ConversationTypeButton({
   active,
   icon: Icon,
@@ -1030,7 +1101,9 @@ function ConversationTypeButton({
   );
 }
 
-
+/* ==========================================================================
+ * Cards de projeto
+ * ========================================================================== */
 function ProjectFolderCard({
   project,
   count,
@@ -1047,7 +1120,8 @@ function ProjectFolderCard({
   onDelete: () => void;
 }) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-    return (
+
+  return (
     <div className="relative">
       <button
         type="button"
@@ -1133,6 +1207,9 @@ function ProjectFolderCard({
   );
 }
 
+/* ==========================================================================
+ * Modal de edição de projeto
+ * ========================================================================== */
 function EditProjectModal({
   project,
   onClose,
@@ -1147,6 +1224,7 @@ function EditProjectModal({
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
+  // Sincroniza o formulário sempre que um projeto diferente é escolhido.
   useEffect(() => {
     if (!project) return;
 
@@ -1158,6 +1236,7 @@ function EditProjectModal({
 
   if (!project) return null;
 
+  // Envia apenas nome e descrição, mantendo as conversas do projeto intactas.
   async function handleSubmit() {
     if (!project) return;
 
@@ -1285,6 +1364,9 @@ function EditProjectModal({
   );
 }
 
+/* ==========================================================================
+ * Modal de exclusão de projeto
+ * ========================================================================== */
 function DeleteProjectModal({
   project,
   isDeleting,
@@ -1359,10 +1441,18 @@ function DeleteProjectModal({
   );
 }
 
+/* ==========================================================================
+ * Helpers finais
+ * ========================================================================== */
+
+// Compatibiliza conversas antigas/novas sem exigir project_id no tipo base.
 function getConversationProjectId(conversation: ConversationData) {
   return (conversation as ProjectConversation).project_id ?? null;
 }
 
+/* ==========================================================================
+ * Background
+ * ========================================================================== */
 function Background() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden">
