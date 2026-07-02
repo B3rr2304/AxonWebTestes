@@ -589,10 +589,13 @@ export function rejectNotification(id: string) {
  * Lista de conversas, histórico, envio normal e streaming da resposta do Axon.
  * ========================================================================== */
 
+export type ConversationBackendType = "regular" | "axon_direct";
+
 export interface ConversationData {
   id: string;
   title: string;
   type: "general" | "planning" | "focus" | "project";
+  conversation_type: "regular" | "axon_direct";
   archived: boolean;
   created_at: string;
   last_message?: string;

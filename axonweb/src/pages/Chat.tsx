@@ -59,6 +59,10 @@ function sortConversationsByRecent<T extends ConversationData>(items: T[]) {
   );
 }
 
+function isAxonDirectConversation(conversation: ConversationData) {
+  return conversation.conversation_type === "axon_direct";
+}
+
 // Fallback usado pela Sidebar quando o cronotipo salvo ainda não existe.
 const validKeys: ChronotypeResultKey[] = [
   "Matutino",
@@ -85,6 +89,12 @@ export default function Chat() {
    * -------------------------------------------------------------------------- */
   const [conversations, setConversations] = useState<ConversationData[]>([]);
   const [loadingConversations, setLoadingConversations] = useState(true);
+  const axonDirectConversation = useMemo(() => {
+    return conversations.find(
+      (conversation) =>
+        !conversation.archived && isAxonDirectConversation(conversation)
+    );
+  }, [conversations]);
 
   /* --------------------------------------------------------------------------
    * Projetos / pastas de conversa
@@ -145,14 +155,24 @@ export default function Chat() {
   const looseConversations = useMemo(() => {
     return conversations.filter((conversation) => {
       const projectId = getConversationProjectId(conversation);
-      return !conversation.archived && !projectId;
+
+      return (
+        !conversation.archived &&
+        !projectId &&
+        !isAxonDirectConversation(conversation)
+      );
     });
   }, [conversations]);
 
   const projectConversations = useMemo(() => {
     return conversations.filter((conversation) => {
       const projectId = getConversationProjectId(conversation);
-      return !conversation.archived && Boolean(projectId);
+
+      return (
+        !conversation.archived &&
+        Boolean(projectId) &&
+        !isAxonDirectConversation(conversation)
+      );
     });
   }, [conversations]);
 
@@ -273,6 +293,9 @@ export default function Chat() {
     }
   }
 
+  /* --------------------------------------------------------------------------
+   * Renderização
+   * -------------------------------------------------------------------------- */
 
   return (
     <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
@@ -469,7 +492,7 @@ export default function Chat() {
                   );
                 })
               )
-            ) : activeConversationList.length === 0 ? (
+            ) : activeConversationList.length === 0 && !axonDirectConversation ? (
               <EmptyState
                 icon={MessageCircle}
                 title="Nenhuma conversa solta encontrada"
@@ -479,6 +502,27 @@ export default function Chat() {
               />
             ) : (
               <>
+                {axonDirectConversation && (
+                  <div className="space-y-3">
+                    <AxonDirectConversationCard
+                      conversation={axonDirectConversation}
+                      onClick={() => navigate(`/chat/${axonDirectConversation.id}`)}
+                    />
+
+                    {visibleConversations.length > 0 && (
+                      <div className="flex items-center gap-3 px-1">
+                        <div className="h-px flex-1 bg-white/10" />
+
+                        <span className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/28">
+                          Conversas regulares
+                        </span>
+
+                        <div className="h-px flex-1 bg-white/10" />
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {visibleConversations.map((conversation) => (
                   <ConversationCard
                     key={conversation.id}
@@ -620,6 +664,8 @@ function SelectedProjectHeader({
 /* ==========================================================================
  * Cards de conversa
  * ========================================================================== */
+
+// Card genérico para conversa solta ou dentro de projeto.
 function ConversationCard({
   conversation,
   isFixed = false,
@@ -713,6 +759,86 @@ function ConversationCard({
       </div>
 
       <ChevronRight className="h-5 w-5 shrink-0 text-white/22" />
+    </button>
+  );
+}
+
+// Card especial para a conversa direta com o Axon, sempre fixa no topo da lista.
+function AxonDirectConversationCard({
+  conversation,
+  onClick,
+}: {
+  conversation: ConversationData;
+  onClick: () => void;
+}) {
+  const formattedDate = useMemo(() => {
+    const date = new Date(conversation.created_at);
+    const now = new Date();
+    const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+
+    if (diffDays === 0) {
+      return date.toLocaleTimeString("pt-BR", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    }
+
+    if (diffDays === 1) return "Ontem";
+    if (diffDays < 7) {
+      return date.toLocaleDateString("pt-BR", { weekday: "short" });
+    }
+
+    return date.toLocaleDateString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+    });
+  }, [conversation.created_at]);
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="relative flex w-full items-center gap-3 overflow-hidden rounded-[1.8rem] border border-purple-300/25 bg-purple-500/12 p-4 text-left shadow-xl shadow-purple-950/20 backdrop-blur-2xl active:scale-[0.99]"
+    >
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_52%)]" />
+
+      <div className="relative flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-purple-300/25 bg-purple-500/20">
+        <img
+          src="/axon-logo.svg"
+          alt="Axon"
+          className="h-8 w-8 object-contain"
+        />
+      </div>
+
+      <div className="relative min-w-0 flex-1">
+        <div className="mb-1 flex items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <p className="truncate text-sm font-semibold text-white">
+              Axon
+            </p>
+
+            <span className="shrink-0 rounded-full border border-purple-300/20 bg-purple-500/15 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-purple-100">
+              Canal do Axon
+            </span>
+          </div>
+
+          <p className="shrink-0 text-[0.68rem] text-white/36">
+            {formattedDate}
+          </p>
+        </div>
+
+        <p className="mb-2 truncate text-xs text-purple-100/55">
+          Conversa principal
+        </p>
+
+        {conversation.last_message && (
+          <p className="line-clamp-1 text-xs leading-5 text-white/50">
+            {conversation.last_message}
+          </p>
+        )}
+      </div>
+
+      <ChevronRight className="relative h-5 w-5 shrink-0 text-white/28" />
     </button>
   );
 }
