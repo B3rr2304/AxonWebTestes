@@ -339,6 +339,72 @@ def _focus_block_context(block: dict) -> str:
     )
 
 
+# =============================================================
+# 6. CANAL DO AXON — onboarding conversacional (conversation_type=axon_direct)
+# =============================================================
+
+# Lista fixa das perguntas de onboarding, uma por vez, na ordem em que devem
+# ser feitas. A pergunta 1 já foi puxada na mensagem de abertura fixa (ver
+# services/axon_direct_service._OPENING_MESSAGE_TEMPLATE, que termina com
+# "Me conta: quem é você?") — por isso o bloco de instrução abaixo pede para
+# NÃO repeti-la, só continuar a partir da resposta do usuário.
+AXON_DIRECT_ONBOARDING_QUESTIONS = [
+    "Quem é você? (já perguntada na mensagem de abertura — não repita; "
+    "extraia organicamente ao longo da conversa: trabalho, estudo, horários "
+    "de trabalho/estudo, exercícios físicos — NUNCA pergunte tudo de uma vez "
+    "como lista)",
+    "Qual o seu principal objetivo atualmente?",
+    "Por que você deseja ser mais produtivo?",
+    "Como você se organiza hoje?",
+    "Você sente que tem algum momento do dia ou da sua rotina que você perde "
+    "tempo e/ou energia?",
+    "Qual o seu principal objetivo com o AXON e como você acha que eu posso "
+    "te ajudar?",
+    "Você tem alguma dúvida que posso te ajudar a esclarecer sobre o seu "
+    "cronotipo e como você pode usar essas informações para melhorar sua "
+    "rotina e seu dia?",
+    "Você tem alguma dúvida sobre como o aplicativo AXON funciona? Quer que "
+    "eu te explique tudo que podemos fazer aqui dentro?",
+]
+
+
+AXON_DIRECT_ONBOARDING_BLOCK = (
+    "CONTEXTO — CANAL DO AXON (ONBOARDING):\n"
+    "Você está no canal dedicado de onboarding deste usuário. A mensagem de "
+    "abertura já foi enviada e já fez a primeira pergunta (\"quem é você?\"). "
+    "Seu objetivo é conhecê-lo profundamente através de uma conversa natural. "
+    "Siga as regras abaixo com rigor.\n\n"
+    "PERGUNTAS (faça na ordem, uma por vez — você conduz todas, mas o usuário pode "
+    "escolher não responder qualquer uma):\n"
+    + "\n".join(f"{i}. {q}" for i, q in enumerate(AXON_DIRECT_ONBOARDING_QUESTIONS, start=1))
+    + "\n\n"
+    "COMPORTAMENTO:\n"
+    "- Demonstre interesse genuíno. Antes de avançar para a próxima pergunta, "
+    "sempre reconheça o que o usuário disse de forma específica — nunca "
+    "genérica.\n"
+    "- Deixe o usuário elaborar à vontade. Não corte uma resposta no meio.\n"
+    "- Você pode fazer UMA única pergunta de aprofundamento por resposta se "
+    "algo relevante surgir — nunca mais de uma.\n"
+    "- Salve como memória (salvar_memoria) tudo que o usuário compartilhar de "
+    "relevante, mesmo que vá além do que a pergunta pediu.\n"
+    "- Se o usuário estiver falando sobre si mesmo, família, sonhos ou "
+    "rotina: deixe falar, é valioso.\n"
+    "- Se o usuário desviar para outro assunto (perguntas sobre "
+    "funcionalidades, assuntos aleatórios): reconheça brevemente e "
+    "redirecione com naturalidade — nunca de forma abrupta.\n"
+    "- O usuário nunca é obrigado a responder. Não insista, não pressione e não "
+    "repita a mesma pergunta. Se ele quiser pular, disser que não quer responder, "
+    "ou simplesmente não responder o que foi perguntado: diga de forma acolhedora "
+    "que está tudo bem não responder e siga com naturalidade para a próxima pergunta.\n"
+    "- Ao concluir as 8 perguntas: encerre de forma acolhedora, agradeça "
+    "pelo que foi compartilhado e chame a tool concluir_onboarding.\n"
+    "- Se o usuário disser que prefere pular o onboarding inteiro a qualquer "
+    "momento, respeite: acolha a decisão, diga que ele pode retomar quando "
+    "quiser, e chame concluir_onboarding mesmo sem ter feito todas as "
+    "perguntas."
+)
+
+
 def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> list[dict]:
     """
     Monta o system prompt do agente certo para o usuário.
@@ -431,6 +497,15 @@ def build_agent_prompt(perfil: dict, memories: list[str] | None = None) -> list[
         volateis.append(_memory_block(memories))
 
     volateis.append(_user_block(perfil))
+
+    # Canal do Axon: injeta o bloco de onboarding apenas na conversa dedicada
+    # (conversation_type=axon_direct) e apenas enquanto não foi concluído.
+    # Fora dela, ou já concluído, o canal funciona como conversa livre.
+    if (
+        perfil.get("conversation_type") == "axon_direct"
+        and not perfil.get("axon_direct_onboarding_completed")
+    ):
+        volateis.append(AXON_DIRECT_ONBOARDING_BLOCK)
 
     # Dois blocos com ponto de cache cada. O 1º (estável) é reaproveitado entre
     # requisições/usuários; o 2º (volátil) é reaproveitado entre as rodadas de

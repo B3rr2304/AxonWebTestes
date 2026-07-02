@@ -417,3 +417,21 @@ alter table public.profiles
   add column if not exists weekly_planning_enabled boolean not null default true,
   add column if not exists weekly_planning_day     integer,
   add column if not exists weekly_use_chronotype    boolean not null default true;
+
+-- =============================================
+-- Migration 17: Canal do Axon (conversa permanente + onboarding conversacional)
+-- ---------------------------------------------
+-- Nova feature: uma conversa fixa por usuário (conversation_type='axon_direct'),
+-- criada automaticamente no primeiro GET /chat/conversations, com uma mensagem
+-- de abertura fixa (não gerada por LLM) e um onboarding conversacional guiado
+-- pelo system prompt até o usuário concluir (tool concluir_onboarding).
+-- Nota: a tabela real de conversas neste projeto é "conversations" (não
+-- "chat_conversations" como em versões antigas do plano) — mesma tabela usada
+-- por routers/conversations.py.
+-- =============================================
+
+alter table public.conversations
+  add column if not exists conversation_type varchar not null default 'regular';
+
+alter table public.profiles
+  add column if not exists axon_direct_onboarding_completed boolean not null default false;

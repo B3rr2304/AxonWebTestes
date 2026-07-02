@@ -47,7 +47,7 @@ def _sse(payload: dict) -> str:
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
 
 
-def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: str, tz_name: str | None = None):
+def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: str, tz_name: str | None = None, conversation_type: str = "regular"):
     """
     Streaming SSE com o loop de tool use do Anthropic.
 
@@ -64,6 +64,7 @@ def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: st
     """
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     convo = list(messages)
+    tools = agent_tools.tools_for_conversation(conversation_type)
 
     for _ in range(_MAX_TOOL_ROUNDS):
         with client.messages.stream(
@@ -71,7 +72,7 @@ def stream_chat_with_tools(messages: list[dict], system_prompt: str, user_id: st
             max_tokens=8192,
             system=system_prompt,
             thinking={"type": "adaptive"},
-            tools=agent_tools.TOOLS,
+            tools=tools,
             messages=convo,
         ) as stream:
             for text in stream.text_stream:

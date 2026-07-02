@@ -10,6 +10,7 @@ Datas devem ser passadas pelo modelo no formato YYYY-MM-DD e horários como HH:M
 
 from datetime import date, datetime, timedelta
 
+from database import supabase
 from services import (
     tasks_service,
     memory_service,
@@ -180,6 +181,7 @@ TOOL_LABELS = {
     "listar_subtarefas": "Consultando subtarefas",
     "atualizar_subtarefa": "Atualizando subtarefa",
     "deletar_subtarefa": "Removendo subtarefa",
+    "concluir_onboarding": "Concluindo onboarding",
 }
 
 _TASK_TYPE = {"type": "string", "enum": ["task", "event", "routine"]}
@@ -604,7 +606,31 @@ TOOLS = [
             "required": ["subtask_id"],
         },
     },
+
+    # --- Canal do Axon (onboarding) -------------------------------------------
+    {
+        "name": "concluir_onboarding",
+        "description": (
+            "Marca o onboarding do Canal do Axon como concluído. Chame esta "
+            "ferramenta somente depois de ter feito a última pergunta da lista "
+            "de onboarding e o usuário ter respondido (ou quando ele pedir para "
+            "pular o onboarding). Depois disso o canal vira conversa livre."
+        ),
+        "input_schema": {"type": "object", "properties": {}},
+    },
 ]
+
+# Tools que só devem ser oferecidas ao modelo em contextos específicos (fora
+# da lista padrão de TOOLS). Hoje só concluir_onboarding, restrita à conversa
+# axon_direct — ver claude_service.stream_chat_with_tools.
+_AXON_DIRECT_ONLY_TOOLS = {"concluir_onboarding"}
+
+
+def tools_for_conversation(conversation_type: str) -> list[dict]:
+    """Filtra TOOLS conforme o tipo de conversa (ex.: concluir_onboarding só em axon_direct)."""
+    if conversation_type == "axon_direct":
+        return TOOLS
+    return [t for t in TOOLS if t["name"] not in _AXON_DIRECT_ONLY_TOOLS]
 
 
 def execute_tool(name: str, tool_input: dict, user_id: str, tz_name: str | None = None) -> dict:
@@ -753,6 +779,13 @@ def execute_tool(name: str, tool_input: dict, user_id: str, tz_name: str | None 
         if name == "deletar_subtarefa":
             subtasks_service.delete_subtask(user_id, tool_input["subtask_id"])
             return {"ok": True, "deleted": tool_input["subtask_id"]}
+
+        # --- Canal do Axon ------------------------------------------------
+        if name == "concluir_onboarding":
+            supabase.table("profiles").update(
+                {"axon_direct_onboarding_completed": True}
+            ).eq("id", user_id).execute()
+            return {"ok": True}
 
         return {"ok": False, "error": f"Ferramenta desconhecida: {name}"}
     except ValueError as e:
