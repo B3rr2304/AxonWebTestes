@@ -96,9 +96,14 @@ const CHART_MAX = 12; // escala do eixo (12h)
 export default function Insights() {
   const navigate = useNavigate();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [period, setPeriod] = useState<"week" | "month">("week");
+  // Períodos independentes: cada gráfico tem seu próprio toggle
+  // semana/mês — alterar um não deve afetar o outro.
+  const [taskPeriod, setTaskPeriod] = useState<"week" | "month">("week");
+  const [comparePeriod, setComparePeriod] = useState<"week" | "month">("week");
   const [taskInsights, setTaskInsights] = useState<TaskInsights | null>(null);
   const [loadingTasks, setLoadingTasks] = useState(true);
+  const [compareTaskInsights, setCompareTaskInsights] =
+    useState<TaskInsights | null>(null);
   const [sleepHistory, setSleepHistory] = useState<api.DailyLog[]>([]);
   const [loadingSleep, setLoadingSleep] = useState(true);
   const [compareLogs, setCompareLogs] = useState<api.DailyLog[]>([]);
@@ -142,11 +147,11 @@ export default function Insights() {
   useEffect(() => {
     setLoadingTasks(true);
     api
-      .getTaskInsights(period)
+      .getTaskInsights(taskPeriod)
       .then(setTaskInsights)
       .catch(() => setTaskInsights(null))
       .finally(() => setLoadingTasks(false));
-  }, [period]);
+  }, [taskPeriod]);
 
   useEffect(() => {
     api
@@ -156,13 +161,23 @@ export default function Insights() {
       .finally(() => setLoadingSleep(false));
   }, []);
 
+  // O gráfico de comparação usa sua PRÓPRIA busca de tarefas (série "tarefas %"),
+  // independente de taskInsights do card "Tarefas concluídas" — senão os dois
+  // ficariam acoplados ao mesmo período.
   useEffect(() => {
-    const days = period === "week" ? 7 : 30;
+    api
+      .getTaskInsights(comparePeriod)
+      .then(setCompareTaskInsights)
+      .catch(() => setCompareTaskInsights(null));
+  }, [comparePeriod]);
+
+  useEffect(() => {
+    const days = comparePeriod === "week" ? 7 : 30;
     api
       .getDailyLogHistory(days)
       .then(setCompareLogs)
       .catch(() => setCompareLogs([]));
-  }, [period]);
+  }, [comparePeriod]);
 
   function toggleSeries(key: SeriesKey) {
     setActive((cur) =>
@@ -175,16 +190,23 @@ export default function Insights() {
   }
 
   // Une por data. days do insights/tasks é a espinha (sempre 7 ou 30 dias).
+  // Usa compareTaskInsights (período próprio do card de comparação), não
+  // taskInsights (período do card "Tarefas concluídas") — mantém os dois
+  // gráficos independentes.
   const chartData = useMemo(() => {
     const byDate = new Map(compareLogs.map((l) => [l.date, l]));
-    return (taskInsights?.days ?? []).map((d) => {
+    return (compareTaskInsights?.days ?? []).map((d) => {
       const log = byDate.get(d.date);
       const humor = log?.mood_rating ?? null;
       const prod = log?.productivity_rating ?? null;
       const qualidade = log?.sleep_rating ?? null;
+      const [, mm, dd] = d.date.split("-");
       return {
         date: d.date,
         label: d.weekday,
+        // dia + data completa: no modo mês há vários "Seg" na mesma janela,
+        // então o weekday sozinho é ambíguo no tooltip (a data ISO é única).
+        tooltipLabel: `${d.weekday}, ${dd}/${mm}`,
         // valores reais (para o tooltip)
         tarefas: d.completion_rate,
         sono: log?.hours_slept ?? null,
@@ -205,7 +227,7 @@ export default function Insights() {
     ...(taskInsights?.days ?? []).map((d) => d.total)
   );
   // Largura fixa das barras: garante arredondamento uniforme (raio = largura/2).
-  const taskBarWidth = period === "week" ? "1.5rem" : "0.5rem";
+  const taskBarWidth = taskPeriod === "week" ? "1.5rem" : "0.5rem";
 
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const stored = localStorage.getItem("axon_chronotype");
@@ -628,15 +650,15 @@ export default function Insights() {
                 Tarefas concluídas
               </p>
               <p className="mt-1 text-xs text-white/38">
-                {period === "week" ? "Últimos 7 dias" : "Últimos 30 dias"}
+                {taskPeriod === "week" ? "Últimos 7 dias" : "Últimos 30 dias"}
               </p>
             </div>
 
             <div className="flex shrink-0 rounded-full border border-white/10 bg-black/20 p-1 text-xs">
               <button
-                onClick={() => setPeriod("week")}
+                onClick={() => setTaskPeriod("week")}
                 className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
-                  period === "week"
+                  taskPeriod === "week"
                     ? "bg-purple-500/30 text-purple-100"
                     : "text-white/40"
                 }`}
@@ -644,9 +666,9 @@ export default function Insights() {
                 Semana
               </button>
               <button
-                onClick={() => setPeriod("month")}
+                onClick={() => setTaskPeriod("month")}
                 className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
-                  period === "month"
+                  taskPeriod === "month"
                     ? "bg-purple-500/30 text-purple-100"
                     : "text-white/40"
                 }`}
@@ -691,7 +713,7 @@ export default function Insights() {
                     </div>
 
                     <p className="text-[0.6rem] text-white/35">
-                      {period === "week" || i % 5 === 0 ? d.weekday : ""}
+                      {taskPeriod === "week" || i % 5 === 0 ? d.weekday : ""}
                     </p>
                   </div>
                 );
@@ -826,9 +848,9 @@ export default function Insights() {
 
             <div className="flex shrink-0 rounded-full border border-white/10 bg-black/20 p-1 text-xs">
               <button
-                onClick={() => setPeriod("week")}
+                onClick={() => setComparePeriod("week")}
                 className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
-                  period === "week"
+                  comparePeriod === "week"
                     ? "bg-purple-500/30 text-purple-100"
                     : "text-white/40"
                 }`}
@@ -836,9 +858,9 @@ export default function Insights() {
                 Semana
               </button>
               <button
-                onClick={() => setPeriod("month")}
+                onClick={() => setComparePeriod("month")}
                 className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
-                  period === "month"
+                  comparePeriod === "month"
                     ? "bg-purple-500/30 text-purple-100"
                     : "text-white/40"
                 }`}
@@ -895,7 +917,10 @@ export default function Insights() {
                     stroke="rgba(255,255,255,0.06)"
                   />
                   <XAxis
-                    dataKey="label"
+                    dataKey="date"
+                    tickFormatter={(date: string) =>
+                      chartData.find((d) => d.date === date)?.label ?? date
+                    }
                     tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
                   />
                   <YAxis
@@ -1072,6 +1097,7 @@ function formatUpdatedBadge(iso?: string): string | null {
 }
 
 type TooltipRow = {
+  tooltipLabel: string;
   tarefas: number | null;
   sono: number | null;
   qualidade: number | null;
@@ -1082,17 +1108,15 @@ type TooltipRow = {
 function CustomTooltip({
   active,
   payload,
-  label,
 }: {
   active?: boolean;
   payload?: { payload: TooltipRow }[];
-  label?: string;
 }) {
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   return (
     <div className="rounded-xl border border-white/10 bg-[#15141f]/95 px-3 py-2 text-xs shadow-lg backdrop-blur-xl">
-      <p className="mb-1 font-semibold text-white/70">{label}</p>
+      <p className="mb-1 font-semibold text-white/70">{row.tooltipLabel}</p>
       {row.tarefas != null && (
         <Row color="#c084fc" text={`Tarefas: ${row.tarefas}%`} />
       )}
