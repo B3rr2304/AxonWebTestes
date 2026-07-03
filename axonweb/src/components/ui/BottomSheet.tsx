@@ -2,6 +2,8 @@ import type { ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
+import { ScrollArea } from "../ui/ScrollArea";
+
 // ===========================================================================
 // TIPOS DO COMPONENTE
 // ===========================================================================
@@ -134,11 +136,12 @@ export default function BottomSheet({
               </header>
             )}
 
-            <div
-              className={`relative min-h-0 flex-1 overflow-y-auto px-5 py-4 ${contentClassName}`}
+            <ScrollArea
+              className="flex-1"
+              contentClassName={`relative px-5 py-4 ${contentClassName}`}
             >
               {children}
-            </div>
+            </ScrollArea>
 
             {footer && (
               <footer

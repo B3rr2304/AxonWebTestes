@@ -26,6 +26,7 @@ import type { DashboardData, FocusBlock, BlockTask, Task, Subtask } from "../lib
 import AppBackground from "../components/layout/AppBackground";
 import PageHeader from "../components/layout/PageHeader";
 import EmptyState from "../components/ui/EmptyState";
+import { ScrollArea } from "../components/ui/ScrollArea";
 
 // ============================================================================
 // Tipos locais
@@ -1319,7 +1320,7 @@ function NotificationsSheet({
           </div>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+        <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
           {loading && notifications.length === 0 ? (
             <div className="py-8 text-center text-sm text-white/35">
               Carregando...
@@ -1361,7 +1362,7 @@ function NotificationsSheet({
               )}
             </div>
           )}
-        </div>
+        </ScrollArea>
       </div>
     </div>
   );
