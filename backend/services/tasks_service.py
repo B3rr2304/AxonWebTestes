@@ -210,7 +210,7 @@ def update_task(user_id: str, task_id: str, data: dict) -> dict:
     # e is_key_task para a lógica de unicidade de tarefa chave).
     existing = (
         supabase.table("tasks")
-        .select("status, scheduled_date, is_key_task")
+        .select("status, scheduled_date, is_key_task, objective_id")
         .eq("id", task_id)
         .eq("user_id", user_id)
         .execute()
@@ -219,6 +219,13 @@ def update_task(user_id: str, task_id: str, data: dict) -> dict:
         raise ValueError("Tarefa não encontrada")
     current_status = existing.data[0].get("status")
     current_scheduled_date = existing.data[0].get("scheduled_date")
+    current_objective_id = existing.data[0].get("objective_id")
+
+    # objective_id vazio ("" vindo do formulário) significa desvincular do
+    # objetivo. Vira NULL no banco — o router usa exclude_none, então a string
+    # vazia chega até aqui e é normalizada neste ponto.
+    if "objective_id" in payload and not payload["objective_id"]:
+        payload["objective_id"] = None
 
     if payload.get("is_key_task"):
         payload["priority"] = "high"
@@ -245,9 +252,31 @@ def update_task(user_id: str, task_id: str, data: dict) -> dict:
     task = serialize(result.data[0])
     calendar_sync.sync_task_async(user_id, task, "update")
 
-    if task.get("objective_id"):
+    # Espelha o status da tarefa nas subtarefas: concluir a tarefa conclui
+    # todas as subtarefas; reabrir uma tarefa concluída desmarca todas. A
+    # atualização vai direto na tabela (sem passar por subtasks_service) para
+    # não disparar o recálculo reverso, que sobrescreveria o status que
+    # acabamos de definir. É o par da lógica subtarefas→tarefa em
+    # subtasks_service._recalculate_task_progress.
+    new_status = payload.get("status")
+    if new_status == "done" and current_status != "done":
+        supabase.table("subtasks").update({"done": True}).eq(
+            "task_id", task_id
+        ).eq("user_id", user_id).execute()
+    elif new_status and new_status != "done" and current_status == "done":
+        supabase.table("subtasks").update({"done": False}).eq(
+            "task_id", task_id
+        ).eq("user_id", user_id).execute()
+
+    # Recalcula o progresso do objetivo novo E do antigo — cobre vincular,
+    # trocar de objetivo e desvincular, sem deixar o objetivo de origem com
+    # progresso defasado.
+    affected = {current_objective_id, task.get("objective_id")}
+    affected.discard(None)
+    if affected:
         from services.objectives_service import recalculate_progress
-        recalculate_progress(task["objective_id"])
+        for objective_id in affected:
+            recalculate_progress(objective_id)
 
     return task
 

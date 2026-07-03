@@ -27,7 +27,7 @@ A definição de "concluído" é idêntica à do frontend (Planning.tsx):
 
 import math
 from collections import defaultdict
-from datetime import date, datetime, time, timedelta
+from datetime import date, datetime, time, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from database import supabase
@@ -171,6 +171,23 @@ def _last_snapshot_date(user_id: str) -> date | None:
     return None
 
 
+def _mark_reconcile_started(user_id: str) -> None:
+    """
+    Marca que reconcile() já rodou ao menos uma vez para este usuário.
+    Precisa ser um marcador EXPLÍCITO (não inferido de daily_task_stats)
+    porque snapshot_days() pula dias sem tarefas — um usuário cujos primeiros
+    dias de uso não tiveram nenhuma tarefa nunca deixaria linha na tabela, e
+    sem este marcador reconcile ficaria preso no ramo "primeira execução"
+    para sempre, nunca congelando dias passados de verdade.
+    """
+    try:
+        supabase.table("profiles").update(
+            {"daily_stats_reconcile_started_at": datetime.now(timezone.utc).isoformat()}
+        ).eq("id", user_id).execute()
+    except Exception:
+        pass  # não bloqueia o fluxo principal de reconcile
+
+
 def snapshot_days(user_id: str, days: list[date], tz_name: str) -> None:
     """Congela cada dia da lista. Dias sem tarefas não geram linha."""
     if not days:
@@ -193,21 +210,53 @@ def snapshot_days(user_id: str, days: list[date], tz_name: str) -> None:
         ).execute()
 
 
-def reconcile(user_id: str, tz_name: str, local_today: date) -> list[dict]:
+def _has_started_before(user_id: str) -> bool:
     """
-    Congela os dias passados ainda não snapshotados e carrega as pendentes.
-    Idempotente e gap-aware. Retorna as tarefas efetivamente carregadas.
+    True se reconcile() já rodou para este usuário em uma execução anterior.
+    Usa o marcador explícito em profiles — NÃO infere pela existência de
+    linhas em daily_task_stats, porque dias sem tarefas não deixam linha
+    (ver _mark_reconcile_started).
+    """
+    try:
+        res = (
+            supabase.table("profiles")
+            .select("daily_stats_reconcile_started_at")
+            .eq("id", user_id)
+            .single()
+            .execute()
+        )
+        return bool((res.data or {}).get("daily_stats_reconcile_started_at"))
+    except Exception:
+        return False
+
+
+def _freeze_past_days(user_id: str, tz_name: str, local_today: date) -> None:
+    """
+    Congela em daily_task_stats os dias passados (< local_today) ainda não
+    snapshotados. NÃO mexe em tasks — separado de propósito de reconcile()
+    para que scripts de manutenção (ex.: scripts/backfill_daily_stats.py)
+    possam congelar histórico sem o efeito colateral de mover tarefas reais
+    (ver incidente 2026-07-03: um backfill que simulava "hoje = amanhã" para
+    forçar o congelamento do dia atual acabou também disparando o
+    carry-forward com essa data falsa, movendo tarefas de sexta para sábado).
     """
     yesterday = local_today - timedelta(days=1)
+    started_before = _has_started_before(user_id)
     last = _last_snapshot_date(user_id)
 
-    if last is None:
+    if not started_before:
         # Primeira execução: NÃO reconstruir dias passados. As pendentes deles
         # já foram carregadas historicamente (scheduled_date destruído), então
         # um snapshot agora congelaria o falso 100%. Começamos a congelar a
         # partir da próxima virada — cada dia é snapshotado enquanto ainda
-        # tem suas pendentes. Aqui só carregamos as pendentes.
-        start = local_today
+        # tem suas pendentes.
+        _mark_reconcile_started(user_id)
+        return
+    elif last is None:
+        # Já rodou antes, mas nenhum dia teve tarefas para congelar (snapshot_days
+        # pula dias com total=0) — continua avançando a partir de ontem, não fica
+        # preso esperando uma linha que nunca vai aparecer.
+        start = yesterday - timedelta(days=MAX_BACKFILL_DAYS)
     else:
         # Recuperação de gap (downtime numa virada): o carry também não rodou,
         # então as pendentes ainda estão em seus dias → snapshot é fiel.
@@ -220,6 +269,18 @@ def reconcile(user_id: str, tz_name: str, local_today: date) -> list[dict]:
     if start <= yesterday:
         days = [start + timedelta(days=i) for i in range((yesterday - start).days + 1)]
         snapshot_days(user_id, days, tz_name)
+
+
+def reconcile(user_id: str, tz_name: str, local_today: date) -> list[dict]:
+    """
+    Congela os dias passados ainda não snapshotados e carrega as pendentes.
+    Idempotente e gap-aware. Retorna as tarefas efetivamente carregadas.
+
+    `local_today` DEVE ser a data real (hoje de verdade) — esta função move
+    tarefas de verdade via carry_forward_tasks. Para só congelar snapshots
+    de manutenção sem tocar em tasks, use _freeze_past_days diretamente.
+    """
+    _freeze_past_days(user_id, tz_name, local_today)
 
     # Só depois de congelar o histórico movemos as pendentes para hoje.
     return tasks_service.carry_forward_tasks(user_id, today=local_today)
