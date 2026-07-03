@@ -21,6 +21,7 @@ import AppBackground from "../components/layout/AppBackground";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import PageHeader from "../components/layout/PageHeader";
 import EmptyState from "../components/ui/EmptyState";
+import { ScrollArea } from "../components/ui/ScrollArea";
 
 // ===========================================================================
 // TIPOS E CONSTANTES GERAIS
@@ -660,7 +661,7 @@ function CreateObjectiveModal({
         </div>
 
         {/* Conteúdo do passo */}
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <ScrollArea className="flex-1" contentClassName="px-5 py-4">
           {step === 1 ? (
             <div className="space-y-3">
               <label className="block">
@@ -725,7 +726,7 @@ function CreateObjectiveModal({
               {submitError && <p className="mt-3 text-xs font-medium text-rose-300">{submitError}</p>}
             </div>
           )}
-        </div>
+        </ScrollArea>
 
         {/* Botões de ação */}
         <div className="border-t border-white/10 px-5 py-4">
@@ -880,7 +881,7 @@ function EditObjectiveModal({
           </div>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-5 py-4">
+        <ScrollArea className="flex-1" contentClassName="px-5 py-4">
           <div className="space-y-3">
             {/* Campos do objetivo */}
             <label className="block">
@@ -969,7 +970,7 @@ function EditObjectiveModal({
 
             {error && <p className="text-xs font-medium text-rose-300">{error}</p>}
           </div>
-        </div>
+        </ScrollArea>
 
         <div className="border-t border-white/10 px-5 py-4">
           <button

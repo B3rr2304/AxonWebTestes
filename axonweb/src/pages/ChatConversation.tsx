@@ -30,6 +30,7 @@ import * as api from "../lib/api";
 import AppBackground from "../components/layout/AppBackground";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import EmptyState from "../components/ui/EmptyState";
+import { ScrollArea } from "../components/ui/ScrollArea";
 
 // ============================================================================
 // Tipos e contratos locais
@@ -494,7 +495,7 @@ export default function ChatConversation() {
           </div>
         </header>
 
-        <section className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <ScrollArea className="flex-1" contentClassName="pr-1">
           <div className="space-y-3 pb-4">
             {messages.length === 0 ? (
               <div className="flex min-h-[56vh] items-center justify-center">
@@ -531,7 +532,7 @@ export default function ChatConversation() {
 
             <div ref={messagesEndRef} className="h-1" />
           </div>
-        </section>
+        </ScrollArea>
 
         <footer className="shrink-0 pt-3">
           <form
@@ -1236,7 +1237,7 @@ function MoveConversationProjectSheet({
           </div>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+        <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/45">
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -1312,7 +1313,7 @@ function MoveConversationProjectSheet({
           {error && (
             <p className="mt-3 text-xs font-medium text-rose-300">{error}</p>
           )}
-        </div>
+        </ScrollArea>
         <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
           <button
             type="button"
@@ -1451,7 +1452,7 @@ function NotificationsConversation({
           </div>
         </section>
 
-        <section className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <ScrollArea className="flex-1" contentClassName="pr-1">
           <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/28">
             Recentes
           </p>
@@ -1482,7 +1483,7 @@ function NotificationsConversation({
               relevante para sua rotina.
             </p>
           </div>
-        </section>
+        </ScrollArea>
       </div>
 
       <Sidebar

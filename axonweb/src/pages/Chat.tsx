@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 
 import { results, type ChronotypeResultKey } from "../data/results";
+import { ScrollArea } from "../components/ui/ScrollArea";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 import type { ConversationData } from "../lib/api";
@@ -345,7 +346,7 @@ export default function Chat() {
           </div>
         </header>
 
-        <section className="min-h-0 flex-1 overflow-y-auto pr-1">
+        <ScrollArea className="flex-1" contentClassName="pr-1">
           {/* Hero contextual da página de chat. */}
           <div className="mb-4">
             <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
@@ -543,7 +544,7 @@ export default function Chat() {
               </>
             )}
           </section>
-        </section>
+        </ScrollArea>
       </div>
 
       {/* Sidebar global reaproveitada para navegação entre páginas do app. */}
@@ -986,7 +987,7 @@ function CreateConversationModal({
           </div>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+        <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
           {/* Quando não veio de um projeto, o modal também permite criar uma nova pasta. */}
           {!isInsideProject && (
             <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.045] p-1">
@@ -1130,7 +1131,7 @@ function CreateConversationModal({
               {formError}
             </p>
           )}
-        </div>
+        </ScrollArea>
 
         <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
           <button
@@ -1386,7 +1387,7 @@ function EditProjectModal({
           </div>
         </div>
 
-        <div className="relative flex-1 overflow-y-auto px-5 py-4">
+        <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
           <div className="space-y-3">
             <label className="block">
               <span className="mb-2 block text-xs font-medium text-white/42">
@@ -1418,7 +1419,7 @@ function EditProjectModal({
               <p className="text-xs font-medium text-rose-300">{formError}</p>
             )}
           </div>
-        </div>
+        </ScrollArea>
 
         <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
           <button
