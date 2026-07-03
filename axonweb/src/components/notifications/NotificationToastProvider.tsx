@@ -75,6 +75,45 @@ export default function NotificationToastProvider() {
     api.isLoggedIn() && !PUBLIC_ROUTES.includes(location.pathname);
 
   // ---------------------------------------------------------------------------
+  // Fechamento do toast
+  // ---------------------------------------------------------------------------
+  // Centraliza o fechamento para sempre limpar estado e timer.
+  function closeToast() {
+    if (hideTimeoutRef.current) {
+      window.clearTimeout(hideTimeoutRef.current);
+      hideTimeoutRef.current = null;
+    }
+
+    setIsVisible(false);
+    setActionLoading(null);
+    setToast(null);
+  }
+
+  // ---------------------------------------------------------------------------
+  // Auto-fechamento do toast
+  // ---------------------------------------------------------------------------
+  // O timer fica separado do polling para não ser cancelado por troca de rota,
+  // foco da aba ou novas consultas de notificações.
+  useEffect(() => {
+    if (!toast || !isVisible) return;
+
+    if (hideTimeoutRef.current) {
+      window.clearTimeout(hideTimeoutRef.current);
+    }
+
+    hideTimeoutRef.current = window.setTimeout(() => {
+      closeToast();
+    }, TOAST_HIDE_DELAY_MS);
+
+    return () => {
+      if (hideTimeoutRef.current) {
+        window.clearTimeout(hideTimeoutRef.current);
+        hideTimeoutRef.current = null;
+      }
+    };
+  }, [toast?.id, isVisible]);
+
+  // ---------------------------------------------------------------------------
   // Polling de notificações
   // ---------------------------------------------------------------------------
   // Busca notificações novas ao entrar no app, a cada intervalo e ao voltar para aba.
@@ -100,17 +139,10 @@ export default function NotificationToastProvider() {
 
         saveShownId(latestUnread.id);
 
+        setActionLoading(null);
         setToast(latestUnread);
         setIsVisible(true);
         playNotificationSound();
-
-        if (hideTimeoutRef.current) {
-          window.clearTimeout(hideTimeoutRef.current);
-        }
-
-        hideTimeoutRef.current = window.setTimeout(() => {
-          setIsVisible(false);
-        }, TOAST_HIDE_DELAY_MS);
       } catch {
         // Falhas de polling não devem interromper o uso do app.
       }
@@ -135,10 +167,6 @@ export default function NotificationToastProvider() {
         window.clearInterval(interval);
       }
 
-      if (hideTimeoutRef.current) {
-        window.clearTimeout(hideTimeoutRef.current);
-      }
-
       document.removeEventListener("visibilitychange", handleVisibility);
     };
   }, [shouldCheckNotifications]);
@@ -147,7 +175,7 @@ export default function NotificationToastProvider() {
   // Ações do toast
   // ---------------------------------------------------------------------------
   function openNotifications() {
-    setIsVisible(false);
+    closeToast();
     navigate("/dashboard?notifications=open");
   }
 
@@ -161,7 +189,7 @@ export default function NotificationToastProvider() {
 
       window.dispatchEvent(new Event("axon:notifications-updated"));
 
-      setIsVisible(false);
+      closeToast();
     } finally {
       setActionLoading(null);
     }
@@ -177,7 +205,7 @@ export default function NotificationToastProvider() {
 
       window.dispatchEvent(new Event("axon:notifications-updated"));
 
-      setIsVisible(false);
+      closeToast();
     } finally {
       setActionLoading(null);
     }
@@ -193,7 +221,7 @@ export default function NotificationToastProvider() {
 
       window.dispatchEvent(new Event("axon:notifications-updated"));
 
-      setIsVisible(false);
+      closeToast();
     } finally {
       setActionLoading(null);
     }
@@ -207,8 +235,8 @@ export default function NotificationToastProvider() {
   const isImprovement = toast.type === "improvement";
 
   return (
-    <div className="fixed left-0 right-0 top-4 z-[200] px-4">
-      <div className="mx-auto w-full max-w-[430px] overflow-hidden rounded-[1.6rem] border border-purple-300/20 bg-[#171720]/95 p-4 shadow-2xl shadow-black/45 backdrop-blur-2xl">
+    <div className="pointer-events-none fixed left-0 right-0 top-4 z-[200] px-4">
+      <div className="pointer-events-auto mx-auto w-full max-w-[430px] overflow-hidden rounded-[1.6rem] border border-purple-300/20 bg-[#171720]/95 p-4 shadow-2xl shadow-black/45 backdrop-blur-2xl">
         <div className="flex items-start gap-3">
           <div className="min-w-0 flex-1">
             {/* Clique no conteúdo abre a central de notificações do Dashboard. */}
@@ -275,7 +303,7 @@ export default function NotificationToastProvider() {
 
           <button
             type="button"
-            onClick={() => setIsVisible(false)}
+            onClick={closeToast}
             className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] text-white/40 active:scale-[0.96]"
             aria-label="Fechar notificação"
           >

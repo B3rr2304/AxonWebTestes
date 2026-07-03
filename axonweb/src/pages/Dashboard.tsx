@@ -70,9 +70,15 @@ export default function Dashboard() {
   // --------------------------------------------------------------------------
   const refreshUnreadCount = useCallback(() => {
     api
-      .getUnreadCount()
-      .then((res) => setUnreadCount(res.unread))
-      .catch(() => null);
+      .getNotifications(50, 0)
+      .then((notifications) => {
+        const nextUnreadCount = notifications.filter(
+          (notification) => notification.status === "unread"
+        ).length;
+
+        setUnreadCount(nextUnreadCount);
+      })
+      .catch(() => setUnreadCount(0));
   }, []);
 
   useEffect(() => {
@@ -156,18 +162,13 @@ export default function Dashboard() {
         .catch(() => setTodayLog(null));
     };
 
-    let delayedNotificationRefresh: number | undefined;
-
-    const analyzeNotificationsAndRefreshLater = () => {
+    const analyzeNotificationsAndRefresh = () => {
       api
         .analyzeNotifications()
-        .then(() => {
-          delayedNotificationRefresh = window.setTimeout(
-            refreshUnreadCount,
-            10000
-          );
-        })
-        .catch(() => null);
+        .catch(() => null)
+        .finally(() => {
+          refreshUnreadCount();
+        });
     };
 
     loadDashboard();
@@ -175,7 +176,7 @@ export default function Dashboard() {
     loadKeyTask();
     loadSubtasks();
     refreshUnreadCount();
-    analyzeNotificationsAndRefreshLater();
+    analyzeNotificationsAndRefresh();
 
     const interval = window.setInterval(() => {
       loadDashboard();
@@ -192,7 +193,7 @@ export default function Dashboard() {
       loadDashboard();
       loadSubtasks();
       refreshUnreadCount();
-      analyzeNotificationsAndRefreshLater();
+      analyzeNotificationsAndRefresh();
     };
 
     document.addEventListener("visibilitychange", handleVisibility);
@@ -201,10 +202,6 @@ export default function Dashboard() {
       window.clearInterval(interval);
       window.clearInterval(notifInterval);
       document.removeEventListener("visibilitychange", handleVisibility);
-
-      if (delayedNotificationRefresh) {
-        window.clearTimeout(delayedNotificationRefresh);
-      }
     };
   }, [navigate, refreshUnreadCount, loadSubtasks]);
 
@@ -291,7 +288,7 @@ export default function Dashboard() {
             >
               <Bell className="h-5 w-5" />
 
-              {unreadCount > 0 && (
+              {Number(unreadCount) > 0 && (
                 <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
               )}
             </button>
@@ -601,7 +598,7 @@ export default function Dashboard() {
       <NotificationsSheet
         isOpen={isNotificationsOpen}
         onClose={() => setIsNotificationsOpen(false)}
-        onUnreadCountChange={setUnreadCount}
+        onUnreadCountChange={(count) => setUnreadCount(Number(count) || 0)}
       />
     </main>
   );
@@ -1114,13 +1111,11 @@ function NotificationsSheet({
   const unreadCount = unreadNotifications.length;
   const readCount = readNotifications.length;
 
-  useEffect(() => {
-    onUnreadCountChange(unreadCount);
-  }, [unreadCount, onUnreadCountChange]);
-
   // Carrega uma página extra para descobrir se ainda existe “Ver mais”.
-  function loadNotifications() {
-    setLoading(true);
+  function loadNotifications({ showLoading = true } = {}) {
+    if (showLoading) {
+      setLoading(true);
+    }
 
     api
       .getNotifications(NOTIFICATIONS_PAGE_SIZE + 1, 0)
@@ -1129,18 +1124,28 @@ function NotificationsSheet({
 
         setNotifications(visibleNotifications);
         setHasMore(data.length > NOTIFICATIONS_PAGE_SIZE);
+
+        const nextUnreadCount = data.filter(
+          (notification) => notification.status === "unread"
+        ).length;
+
+        onUnreadCountChange(nextUnreadCount);
       })
       .catch(() => null)
-      .finally(() => setLoading(false));
+      .finally(() => {
+        if (showLoading) {
+          setLoading(false);
+        }
+      });
   }
 
   useEffect(() => {
     if (!isOpen) return;
 
-    loadNotifications();
+    loadNotifications({ showLoading: true });
 
     const handleNotificationsUpdated = () => {
-      loadNotifications();
+      loadNotifications({ showLoading: false });
     };
 
     window.addEventListener(
@@ -1177,7 +1182,15 @@ function NotificationsSheet({
     }
   }
 
-  // Marca como lida e avisa outros pontos da interface para atualizarem o contador.
+  function syncUnreadCount(nextNotifications: api.NotificationData[]) {
+    const nextUnreadCount = nextNotifications.filter(
+      (notification) => notification.status === "unread"
+    ).length;
+
+    onUnreadCountChange(nextUnreadCount);
+  }
+
+  // Marca como lida de forma otimista, sem recarregar a central inteira.
   async function handleRead(id: string) {
     const currentNotification = notifications.find(
       (notification) => notification.id === id
@@ -1187,57 +1200,52 @@ function NotificationsSheet({
       return;
     }
 
-    await api.markNotificationRead(id).catch(() => null);
+    const nextNotifications = notifications.map((notification) =>
+      notification.id === id
+        ? { ...notification, status: "read" as const }
+        : notification
+    );
 
-    setNotifications((prev) => {
-      const next = prev.map((notification) =>
-        notification.id === id
-          ? { ...notification, status: "read" as const }
-          : notification
-      );
+    setNotifications(nextNotifications);
+    syncUnreadCount(nextNotifications);
 
-      return next;
-    }
-      );
-    window.dispatchEvent(new Event("axon:notifications-updated"));
+    await api.markNotificationRead(id).catch(() => {
+      loadNotifications({ showLoading: false });
+    });
   }
 
   // Aceita sugestões de melhoria e move o item para a aba de lidas/tratadas.
   async function handleAccept(id: string) {
-    await api.acceptNotification(id).catch(() => null);
+    const nextNotifications = notifications.map((notification) =>
+      notification.id === id
+        ? { ...notification, status: "accepted" as const }
+        : notification
+    );
 
-    setNotifications((prev) => {
-      const next = prev.map((notification) =>
-        notification.id === id
-          ? { ...notification, status: "accepted" as const }
-          : notification
-      );
-
-      return next;
-    });
-
-    window.dispatchEvent(new Event("axon:notifications-updated"));
-    loadNotifications();
+    setNotifications(nextNotifications);
+    syncUnreadCount(nextNotifications);
     setNotificationView("read");
+
+    await api.acceptNotification(id).catch(() => {
+      loadNotifications({ showLoading: false });
+    });
   }
 
   // Recusa sugestões mantendo o histórico visível na aba de lidas/tratadas.
   async function handleReject(id: string) {
-    await api.rejectNotification(id).catch(() => null);
+    const nextNotifications = notifications.map((notification) =>
+      notification.id === id
+        ? { ...notification, status: "rejected" as const }
+        : notification
+    );
 
-    setNotifications((prev) => {
-      const next = prev.map((notification) =>
-        notification.id === id
-          ? { ...notification, status: "rejected" as const }
-          : notification
-      );
-
-      return next;
-    });
-
-    window.dispatchEvent(new Event("axon:notifications-updated"));
-    loadNotifications();
+    setNotifications(nextNotifications);
+    syncUnreadCount(nextNotifications);
     setNotificationView("read");
+
+    await api.rejectNotification(id).catch(() => {
+      loadNotifications({ showLoading: false });
+    });
   }
 
   if (!isOpen) return null;
@@ -1312,7 +1320,7 @@ function NotificationsSheet({
         </div>
 
         <div className="relative flex-1 overflow-y-auto px-5 py-4">
-          {loading ? (
+          {loading && notifications.length === 0 ? (
             <div className="py-8 text-center text-sm text-white/35">
               Carregando...
             </div>
