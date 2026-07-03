@@ -435,3 +435,24 @@ alter table public.conversations
 
 alter table public.profiles
   add column if not exists axon_direct_onboarding_completed boolean not null default false;
+
+-- =============================================
+-- Migration 18: marcador explícito de "primeira execução do reconcile"
+-- ---------------------------------------------
+-- Bug (2026-07-02): daily_task_stats ficava permanentemente vazia para
+-- usuários cujos primeiros dias de uso não tinham tarefas (fim de semana,
+-- início de conta etc). reconcile() decidia "já rodei antes?" checando se
+-- existe QUALQUER linha em daily_task_stats para o usuário — mas
+-- snapshot_days() pula dias com total=0 (nada a congelar), então esses dias
+-- nunca deixavam rastro. Sem rastro, reconcile ficava PRESO no ramo de
+-- "primeira execução" para sempre, nunca avançando para congelar dias
+-- passados de verdade — resultado: um dia com tarefas REALMENTE concluídas
+-- (ex.: 2026-07-01) não tinha snapshot, e o Planning mostrava 0% (fallback
+-- "?? 0" do frontend) em vez da % real.
+-- Correção: coluna explícita em profiles, gravada na PRIMEIRA vez que
+-- reconcile roda para o usuário, independente de haver linha em
+-- daily_task_stats ou não.
+-- =============================================
+
+alter table public.profiles
+  add column if not exists daily_stats_reconcile_started_at timestamp with time zone;

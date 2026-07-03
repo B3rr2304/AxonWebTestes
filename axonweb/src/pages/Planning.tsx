@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import {
   CalendarDays,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   Circle,
@@ -463,22 +464,27 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
 
   const todayIso = toISODate(new Date());
   const selectedDailyStat = dailyStatsMap[selectedIso];
-  const shouldUseSnapshot = selectedIso < todayIso;
+  // Só usa o snapshot se ele REALMENTE existir para o dia. Sem isso, um dia
+  // passado sem linha em daily_task_stats (job de fim de dia ainda não rodou
+  // para esse usuário/dia) caía no fallback "?? 0" e mostrava 0% mesmo tendo
+  // tarefas concluídas de verdade — o cálculo ao vivo abaixo é sempre um
+  // resultado melhor que "0% categórico" quando não há snapshot.
+  const shouldUseSnapshot = selectedIso < todayIso && !!selectedDailyStat;
 
   const liveCompletedItems = actionable.filter((t) =>
     t.task_type === "event" ? isEventCompleted(t, now) : t.status === "done"
   ).length;
 
   const completedItems = shouldUseSnapshot
-    ? selectedDailyStat?.completed_items ?? 0
+    ? selectedDailyStat!.completed_items
     : liveCompletedItems;
 
   const totalItems = shouldUseSnapshot
-    ? selectedDailyStat?.total ?? 0
+    ? selectedDailyStat!.total
     : actionable.length;
 
   const progress = shouldUseSnapshot
-    ? selectedDailyStat?.completion_rate ?? 0
+    ? selectedDailyStat!.completion_rate
     : totalItems === 0
     ? 0
     : Math.round((completedScore / totalItems) * 100);
@@ -830,6 +836,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
                             onEdit={handleEdit}
                             onDelete={handleDelete}
                             onToggleSubtask={handleToggleSubtask}
+                            onSubtaskChange={loadSubtasks}
                           />
                         ))}
                       </div>
@@ -1397,6 +1404,7 @@ function TimelineItem({
   onEdit,
   onDelete,
   onToggleSubtask,
+  onSubtaskChange,
 }: {
   task: Task;
   selectedIso: string;
@@ -1406,6 +1414,7 @@ function TimelineItem({
   onEdit: (t: Task) => void;
   onDelete: (t: Task) => void;
   onToggleSubtask: (subtask: Subtask) => void;
+  onSubtaskChange?: () => void;
 }) {
   const isKey = !!task.is_key_task;
   const Icon =
@@ -1457,18 +1466,18 @@ function TimelineItem({
 
   return (
     <div className="grid grid-cols-[3.4rem_1fr] gap-3">
-      <div className="relative pt-1">
+      <div className="flex flex-col pt-1">
         <p className="text-xs font-semibold text-white/55">{start ?? "—"}</p>
 
         <div
-          className={`mx-auto mt-3 h-16 w-px border-l ${
+          className={`mx-auto my-2 w-px flex-1 border-l ${
             isRoutine
               ? "border-dashed border-purple-300/35"
               : "border-dashed border-white/15"
           }`}
         />
 
-        <p className="mt-3 text-xs font-semibold text-white/35">{end ?? "—"}</p>
+        <p className="pb-1 text-xs font-semibold text-white/35">{end ?? "—"}</p>
       </div>
 
       <div
@@ -1715,13 +1724,13 @@ function TimelineItem({
               />
             </div>
 
-            {hasSubtasks && (
-              <SubtasksPreview
-                subtasks={subtasks}
-                completedSubtasks={completedSubtasks}
-                onToggleSubtask={onToggleSubtask}
-              />
-            )}
+            <SubtasksPreview
+              taskId={task.id}
+              subtasks={subtasks}
+              completedSubtasks={completedSubtasks}
+              onToggleSubtask={onToggleSubtask}
+              onSubtaskChange={onSubtaskChange}
+            />
           </div>
         ) : null}
       </div>
@@ -1733,60 +1742,153 @@ function TimelineItem({
 // ===========================================================================
 
 function SubtasksPreview({
+  taskId,
   subtasks,
   completedSubtasks,
   onToggleSubtask,
+  onSubtaskChange,
 }: {
+  taskId: string;
   subtasks: Subtask[];
   completedSubtasks: number;
   onToggleSubtask: (subtask: Subtask) => void;
+  onSubtaskChange?: () => void;
 }) {
-  const visibleSubtasks = subtasks.slice(0, 3);
+  const [expanded, setExpanded] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [newTitle, setNewTitle] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const hasSubtasks = subtasks.length > 0;
+  const visibleSubtasks = expanded ? subtasks : subtasks.slice(0, 3);
   const hiddenCount = subtasks.length - visibleSubtasks.length;
+  const canExpand = subtasks.length > 3;
+
+  async function handleAdd() {
+    const title = newTitle.trim();
+    if (!title || saving) return;
+    setSaving(true);
+    try {
+      await api.createSubtask(taskId, { title });
+      setNewTitle("");
+      setAdding(false);
+      onSubtaskChange?.();
+    } catch {
+      // Mantém o estado atual em caso de erro.
+    } finally {
+      setSaving(false);
+    }
+  }
 
   return (
     <div className="mt-4 space-y-2 rounded-[1.25rem] border border-white/10 bg-black/15 p-3">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
-          Subtarefas
-        </p>
+      {hasSubtasks && (
+        <>
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+              Subtarefas
+            </p>
 
-        <p className="text-[0.68rem] font-semibold text-purple-100/70">
-          {completedSubtasks} de {subtasks.length}
-        </p>
-      </div>
+            <p className="text-[0.68rem] font-semibold text-purple-100/70">
+              {completedSubtasks} de {subtasks.length}
+            </p>
+          </div>
 
-      {visibleSubtasks.map((subtask) => (
+          {visibleSubtasks.map((subtask) => (
+            <button
+              key={subtask.id}
+              type="button"
+              onClick={() => onToggleSubtask(subtask)}
+              className="flex w-full items-start gap-2 rounded-xl px-1 py-1.5 text-left active:scale-[0.99]"
+            >
+              <span
+                className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
+                  subtask.done
+                    ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-100"
+                    : "border-white/14 bg-white/[0.04] text-white/30"
+                }`}
+              >
+                {subtask.done && <CheckCircle2 className="h-3.5 w-3.5" />}
+              </span>
+
+              <span
+                className={`min-w-0 flex-1 break-words text-xs ${
+                  subtask.done ? "text-white/32 line-through" : "text-white/58"
+                }`}
+              >
+                {subtask.title}
+              </span>
+            </button>
+          ))}
+
+          {canExpand && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="flex items-center gap-1 pl-7 text-[0.68rem] font-semibold text-purple-100/70 active:scale-[0.98]"
+            >
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${
+                  expanded ? "rotate-180" : ""
+                }`}
+              />
+              {expanded ? "Ver menos" : `Ver mais (${hiddenCount})`}
+            </button>
+          )}
+        </>
+      )}
+
+      {adding ? (
+        <div className="flex items-center gap-2">
+          <input
+            autoFocus
+            value={newTitle}
+            onChange={(e) => setNewTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleAdd();
+              }
+              if (e.key === "Escape") {
+                setAdding(false);
+                setNewTitle("");
+              }
+            }}
+            placeholder="Nome da subtarefa…"
+            className="min-h-[34px] flex-1 rounded-xl border border-purple-300/30 bg-white/[0.055] px-3 text-xs text-white outline-none placeholder:text-white/25"
+          />
+          <button
+            type="button"
+            onClick={handleAdd}
+            disabled={saving || !newTitle.trim()}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-purple-500 text-white active:scale-[0.94] disabled:opacity-45"
+          >
+            {saving ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Plus className="h-3.5 w-3.5" />
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setAdding(false);
+              setNewTitle("");
+            }}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94]"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      ) : (
         <button
-          key={subtask.id}
           type="button"
-          onClick={() => onToggleSubtask(subtask)}
-          className="flex w-full items-center gap-2 rounded-xl px-1 py-1.5 text-left active:scale-[0.99]"
+          onClick={() => setAdding(true)}
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/15 py-1.5 text-[0.68rem] font-semibold text-white/35 active:scale-[0.98]"
         >
-          <span
-            className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
-              subtask.done
-                ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-100"
-                : "border-white/14 bg-white/[0.04] text-white/30"
-            }`}
-          >
-            {subtask.done && <CheckCircle2 className="h-3.5 w-3.5" />}
-          </span>
-
-          <span
-            className={`line-clamp-1 text-xs ${
-              subtask.done ? "text-white/32 line-through" : "text-white/58"
-            }`}
-          >
-            {subtask.title}
-          </span>
+          <Plus className="h-3.5 w-3.5" />
+          Adicionar subtarefa
         </button>
-      ))}
-
-      {hiddenCount > 0 && (
-        <p className="pl-7 text-[0.68rem] font-medium text-white/30">
-          +{hiddenCount} subtarefas
-        </p>
       )}
     </div>
   );
@@ -1826,6 +1928,8 @@ function CreatePlanningItemModal({
   const [draftSubtasks, setDraftSubtasks] = useState<
     { key: string; title: string }[]
   >([]);
+  const [objectiveId, setObjectiveId] = useState("");
+  const [objectives, setObjectives] = useState<api.Objective[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -1858,11 +1962,17 @@ function CreatePlanningItemModal({
       setRecurrence("daily");
       setDescription("");
       setDraftSubtasks([]);
+      setObjectiveId("");
       setFormError(null);
       setEndDate(defaultDate);
       setAxonPickTime(false);
       setDuration("");
       setIsKeyTask(false);
+
+      // Objetivos ativos para o campo "Vincular a objetivo".
+      api.getObjectives()
+        .then((list) => setObjectives(list.filter((o) => o.status === "active")))
+        .catch(() => setObjectives([]));
     }
   }, [isOpen, defaultDate]);
 
@@ -1919,6 +2029,8 @@ function CreatePlanningItemModal({
         axon_pick_time: useAxon || undefined,
         duration_minutes: useAxon ? Number(duration) : undefined,
         is_key_task: selectedType === "task" && isKeyTask ? true : undefined,
+        objective_id:
+          selectedType === "task" && objectiveId ? objectiveId : undefined,
       } as any);
 
       const validDrafts = draftSubtasks.filter((s) => s.title.trim());
@@ -2227,6 +2339,27 @@ function CreatePlanningItemModal({
               </label>
             )}
 
+            {selectedType === "task" && objectives.length > 0 && (
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  Vincular a objetivo
+                </span>
+
+                <select
+                  value={objectiveId}
+                  onChange={(e) => setObjectiveId(e.target.value)}
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none transition focus:border-purple-300/35"
+                >
+                  <option value="">Nenhum</option>
+                  {objectives.map((objective) => (
+                    <option key={objective.id} value={objective.id}>
+                      {objective.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
             {selectedType === "event" && (
               <label className="block">
                 <span className="mb-2 block text-xs font-medium text-white/42">
@@ -2435,6 +2568,8 @@ function EditPlanningItemModal({
   );
   const [description, setDescription] = useState("");
   const [isKeyTask, setIsKeyTask] = useState(false);
+  const [objectiveId, setObjectiveId] = useState("");
+  const [objectives, setObjectives] = useState<api.Objective[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
@@ -2451,7 +2586,21 @@ function EditPlanningItemModal({
     setRecurrence((task.recurrence as "daily" | "weekly" | "monthly") ?? "daily");
     setDescription(task.description ?? "");
     setIsKeyTask(!!task.is_key_task);
+    setObjectiveId(task.objective_id ?? "");
     setFormError(null);
+
+    // Objetivos ativos para o campo "Vincular a objetivo". Mantém o objetivo
+    // já vinculado na lista mesmo que ele esteja concluído, para não perder a
+    // seleção atual da tarefa.
+    api.getObjectives()
+      .then((list) =>
+        setObjectives(
+          list.filter(
+            (o) => o.status === "active" || o.id === task.objective_id
+          )
+        )
+      )
+      .catch(() => setObjectives([]));
   }, [task]);
 
   if (!task) return null;
@@ -2501,6 +2650,7 @@ function EditPlanningItemModal({
           recurrence: isRoutine ? recurrence : undefined,
           description: description || undefined,
           is_key_task: isTask ? isKeyTask : undefined,
+          objective_id: isTask ? objectiveId : undefined,
         } as any
       );
 
@@ -2739,6 +2889,27 @@ function EditPlanningItemModal({
                   <option value="low">Baixa</option>
                   <option value="medium">Média</option>
                   <option value="high">Alta</option>
+                </select>
+              </label>
+            )}
+
+            {isTask && objectives.length > 0 && (
+              <label className="block">
+                <span className="mb-2 block text-xs font-medium text-white/42">
+                  Vincular a objetivo
+                </span>
+
+                <select
+                  value={objectiveId}
+                  onChange={(e) => setObjectiveId(e.target.value)}
+                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none transition focus:border-purple-300/35"
+                >
+                  <option value="">Nenhum</option>
+                  {objectives.map((objective) => (
+                    <option key={objective.id} value={objective.id}>
+                      {objective.title}
+                    </option>
+                  ))}
                 </select>
               </label>
             )}
