@@ -21,9 +21,10 @@ import Sidebar from "../components/layout/Sidebar";
 import TagEditorSheet from "../components/settings/TagEditorSheet";
 import NotificationSettingsSheet from "../components/settings/NotificationSettingsSheet";
 import * as api from "../lib/api";
-import AppBackground from "../components/layout/AppBackground";
+import { AppBackground } from "../components/layout/AppBackground";
 import PageHeader from "../components/layout/PageHeader";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import { ThemeToggle } from "../components/theme/ThemeToggle";
 
 // ===========================================================================
 // TIPOS DA TELA
@@ -141,7 +142,7 @@ export default function Settings() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
@@ -155,21 +156,28 @@ export default function Settings() {
 
         {/* Hero: explica o objetivo da central de configurações. */}
         <section className="mb-4">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
+          <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(circle at top right, var(--accent-soft), transparent 48%)",
+              }}
+            />
+
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),transparent_40%)] opacity-60 dark:opacity-30" />
 
             <div className="relative">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <SettingsIcon className="h-3.5 w-3.5" />
                 Central do app
               </div>
 
-              <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.055em] text-white">
+              <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.055em] text-primary">
                 Ajuste o Axon sem poluir sua rotina.
               </h1>
 
-              <p className="mt-3 text-sm leading-6 text-white/50">
+              <p className="mt-3 text-sm leading-6 text-muted">
                 Gerencie conta, notificações, aparência, privacidade e
                 integrações em um só lugar.
               </p>
@@ -186,12 +194,7 @@ export default function Settings() {
             value={silentMode ? "Silencioso" : "Padrão"}
           />
 
-          <SettingItem
-            icon={Palette}
-            title="Aparência"
-            description="Tema visual da interface."
-            value="Escuro premium"
-          />
+          <AppearanceCard />
         </Section>
 
         {/* Configurações usadas pela revisão diária e pelos Insights. */}
@@ -273,7 +276,7 @@ export default function Settings() {
           />
         </Section>
 
-        <p className="pt-1 text-center text-xs leading-5 text-white/28">
+        <p className="pt-1 text-center text-xs leading-5 text-soft">
           Axon Web · versão inicial de desenvolvimento
         </p>
       </div>
@@ -323,12 +326,12 @@ export default function Settings() {
             <p>
               O e-mail abaixo não poderá ser usado para criar outra conta no
               Axon pelos próximos{" "}
-              <span className="font-semibold text-white">60 dias</span>.
+              <span className="font-semibold text-primary">60 dias</span>.
             </p>
 
-            <div className="mt-5 flex items-center gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
-              <Mail className="h-4 w-4 shrink-0 text-red-200" />
-              <p className="min-w-0 truncate text-sm font-semibold text-white/75">
+            <div className="mt-5 flex items-center gap-3 rounded-[1.35rem] border border-soft bg-surface-muted p-3 text-left">
+              <Mail className="h-4 w-4 shrink-0 text-red-600 dark:text-red-200" />
+              <p className="min-w-0 truncate text-sm font-semibold text-secondary">
                 {userEmail || "E-mail da conta"}
               </p>
             </div>
@@ -361,7 +364,7 @@ export default function Settings() {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="mb-5">
-      <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/28">
+      <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-soft">
         {title}
       </p>
 
@@ -383,17 +386,17 @@ function SettingItem({
   return (
     <Wrapper
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-[1.7rem] border p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99] ${
+      className={`flex w-full items-center gap-3 rounded-[1.7rem] border p-4 text-left shadow-card backdrop-blur-2xl transition active:scale-[0.99] ${
         danger
-          ? "border-red-300/15 bg-red-500/10"
-          : "border-white/10 bg-[#1b1b27]/76"
+          ? "border-red-300/20 bg-red-500/10"
+          : "border-soft bg-surface-elevated"
       }`}
     >
       <div
         className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
           danger
-            ? "border-red-300/20 bg-red-500/10 text-red-100"
-            : "border-purple-300/15 bg-purple-500/10 text-purple-200"
+            ? "border-red-300/25 bg-red-500/10 text-red-600 dark:text-red-100"
+            : "border-accent-soft bg-accent-soft text-accent"
         }`}
       >
         <Icon className="h-5 w-5" />
@@ -402,18 +405,18 @@ function SettingItem({
       <div className="min-w-0 flex-1">
         <p
           className={`text-sm font-semibold ${
-            danger ? "text-red-100" : "text-white"
+            danger ? "text-red-600 dark:text-red-100" : "text-primary"
           }`}
         >
           {title}
         </p>
 
-        <p className="mt-1 text-xs leading-5 text-white/38">{description}</p>
+        <p className="mt-1 text-xs leading-5 text-muted">{description}</p>
 
         {value && (
           <p
             className={`mt-2 truncate text-xs font-medium ${
-              danger ? "text-red-100/70" : "text-purple-100"
+              danger ? "text-red-600/75 dark:text-red-100/70" : "text-accent"
             }`}
           >
             {value}
@@ -424,7 +427,7 @@ function SettingItem({
       {onClick && (
         <ChevronRight
           className={`h-5 w-5 shrink-0 ${
-            danger ? "text-red-100/35" : "text-white/24"
+            danger ? "text-red-500/40 dark:text-red-100/35" : "text-soft"
           }`}
         />
       )}
@@ -441,28 +444,29 @@ function ToggleItem({
 }: ToggleItemProps) {
   return (
     <button
+      type="button"
       onClick={onToggle}
-      className="flex w-full items-center gap-3 rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/76 p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99]"
+      className="flex w-full items-center gap-3 rounded-[1.7rem] border border-soft bg-surface-elevated p-4 text-left shadow-card backdrop-blur-2xl transition active:scale-[0.99]"
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
         <Icon className="h-5 w-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-white">{title}</p>
-        <p className="mt-1 text-xs leading-5 text-white/38">{description}</p>
+        <p className="text-sm font-semibold text-primary">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-muted">{description}</p>
       </div>
 
       <div
         className={`flex h-7 w-12 shrink-0 items-center rounded-full border p-1 transition ${
           enabled
-            ? "justify-end border-purple-300/25 bg-purple-500/30"
-            : "justify-start border-white/10 bg-white/10"
+            ? "justify-end border-accent-soft bg-accent-soft"
+            : "justify-start border-soft bg-surface-muted"
         }`}
       >
         <div
-          className={`h-5 w-5 rounded-full transition ${
-            enabled ? "bg-purple-100" : "bg-white/35"
+          className={`h-5 w-5 rounded-full shadow-card transition ${
+            enabled ? "bg-[var(--accent)]" : "bg-[var(--text-soft)]"
           }`}
         />
       </div>
@@ -470,3 +474,23 @@ function ToggleItem({
   );
 }
 
+function AppearanceCard() {
+  return (
+    <div className="rounded-[1.7rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl">
+      <div className="mb-4 flex items-start gap-3">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
+          <Palette className="h-5 w-5" />
+        </div>
+
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-primary">Aparência</p>
+          <p className="mt-1 text-xs leading-5 text-muted">
+            Escolha o tema visual da interface.
+          </p>
+        </div>
+      </div>
+
+      <ThemeToggle showHeader={false} />
+    </div>
+  );
+}

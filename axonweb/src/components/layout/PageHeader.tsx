@@ -55,10 +55,10 @@ export default function PageHeader({
 
   const titleBlock = title ? (
     <div className="min-w-0">
-      <p className="truncate text-sm font-semibold text-white">{title}</p>
+      <p className="truncate text-sm font-semibold text-primary">{title}</p>
 
       {subtitle && (
-        <p className="mt-0.5 truncate text-xs text-white/40">{subtitle}</p>
+        <p className="mt-0.5 truncate text-xs text-muted">{subtitle}</p>
       )}
     </div>
   ) : null;
@@ -70,7 +70,7 @@ export default function PageHeader({
       <button
         type="button"
         onClick={leadingHandler}
-        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+        className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl active:scale-[0.96]"
         aria-label="Voltar"
       >
         <ArrowLeft className="h-5 w-5" />
@@ -129,7 +129,7 @@ export default function PageHeader({
           <button
             type="button"
             onClick={onMenuClick}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl  active:scale-[0.96]"
             aria-label="Abrir menu"
           >
             <Menu className="h-5 w-5" />

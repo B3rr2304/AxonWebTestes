@@ -16,19 +16,31 @@ export function ScrollArea({
   fadeBottom = false,
 }: ScrollAreaProps) {
   return (
-    <div className={`relative min-h-0 ${className}`}>
+    <div className={`relative flex min-h-0 flex-col ${className}`}>
       {fadeTop && (
-        <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6 bg-gradient-to-b from-[#171720] to-transparent" />
+        <div
+          className="pointer-events-none absolute inset-x-0 top-0 z-10 h-6"
+          style={{
+            background:
+              "linear-gradient(to bottom, var(--surface-elevated), transparent)",
+          }}
+        />
       )}
 
       <div
-        className={`custom-scrollbar h-full min-h-0 overflow-y-auto ${contentClassName}`}
+        className={`custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain ${contentClassName}`}
       >
         {children}
       </div>
 
       {fadeBottom && (
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6 bg-gradient-to-t from-[#171720] to-transparent" />
+        <div
+          className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-6"
+          style={{
+            background:
+              "linear-gradient(to top, var(--surface-elevated), transparent)",
+          }}
+        />
       )}
     </div>
   );
