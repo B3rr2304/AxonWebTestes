@@ -236,29 +236,37 @@ export default function NotificationToastProvider() {
 
   return (
     <div className="pointer-events-none fixed left-0 right-0 top-4 z-[200] px-4">
-      <div className="pointer-events-auto mx-auto w-full max-w-[430px] overflow-hidden rounded-[1.6rem] border border-purple-300/20 bg-[#171720]/95 p-4 shadow-2xl shadow-black/45 backdrop-blur-2xl">
-        <div className="flex items-start gap-3">
+      <div className="pointer-events-auto relative mx-auto w-full max-w-[430px] overflow-hidden rounded-[1.6rem] border border-soft bg-surface-elevated p-4 text-primary shadow-soft backdrop-blur-2xl">
+        <div
+          className="pointer-events-none absolute inset-0"
+          style={{
+            background:
+              "radial-gradient(circle at top right, var(--accent-soft), transparent 54%)",
+          }}
+        />
+
+        <div className="relative flex items-start gap-3">
           <div className="min-w-0 flex-1">
             {/* Clique no conteúdo abre a central de notificações do Dashboard. */}
             <button
               type="button"
               onClick={openNotifications}
-              className="flex w-full min-w-0 items-start gap-3 text-left active:scale-[0.99]"
+              className="flex w-full min-w-0 items-start gap-3 text-left transition active:scale-[0.99]"
             >
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/25 bg-purple-500/15 text-purple-100">
+              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
                 <Bell className="h-5 w-5" />
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-purple-100/55">
+                <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-accent">
                   {isImprovement ? "Nova sugestão" : "Nova notificação"}
                 </p>
 
-                <p className="mt-1 line-clamp-1 text-sm font-semibold text-white">
+                <p className="mt-1 line-clamp-1 text-sm font-semibold text-primary">
                   {toast.title}
                 </p>
 
-                <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/42">
+                <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
                   {toast.body}
                 </p>
               </div>
@@ -272,7 +280,7 @@ export default function NotificationToastProvider() {
                     type="button"
                     onClick={handleAccept}
                     disabled={actionLoading !== null}
-                    className="min-h-9 flex-1 rounded-xl bg-purple-500 px-3 text-xs font-semibold text-white active:scale-[0.98] disabled:opacity-60"
+                    className="min-h-9 flex-1 rounded-xl bg-[var(--accent-strong)] px-3 text-xs font-semibold text-white transition active:scale-[0.98] disabled:opacity-60"
                   >
                     {actionLoading === "accept" ? "Aceitando..." : "Aceitar"}
                   </button>
@@ -281,7 +289,7 @@ export default function NotificationToastProvider() {
                     type="button"
                     onClick={handleReject}
                     disabled={actionLoading !== null}
-                    className="min-h-9 flex-1 rounded-xl border border-white/10 bg-white/[0.055] px-3 text-xs font-semibold text-white/55 active:scale-[0.98] disabled:opacity-60"
+                    className="min-h-9 flex-1 rounded-xl border border-soft bg-surface-muted px-3 text-xs font-semibold text-secondary transition active:scale-[0.98] disabled:opacity-60"
                   >
                     {actionLoading === "reject" ? "Recusando..." : "Recusar"}
                   </button>
@@ -291,7 +299,7 @@ export default function NotificationToastProvider() {
                   type="button"
                   onClick={handleMarkAsRead}
                   disabled={actionLoading !== null}
-                  className="min-h-9 rounded-xl border border-white/10 bg-white/[0.055] px-3 text-xs font-semibold text-white/55 active:scale-[0.98] disabled:opacity-60"
+                  className="min-h-9 rounded-xl border border-soft bg-surface-muted px-3 text-xs font-semibold text-secondary transition active:scale-[0.98] disabled:opacity-60"
                 >
                   {actionLoading === "read"
                     ? "Marcando..."
@@ -304,7 +312,7 @@ export default function NotificationToastProvider() {
           <button
             type="button"
             onClick={closeToast}
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] text-white/40 active:scale-[0.96]"
+            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
             aria-label="Fechar notificação"
           >
             <X className="h-4 w-4" />

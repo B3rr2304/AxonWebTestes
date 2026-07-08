@@ -450,7 +450,7 @@ export default function ChatConversation() {
 
   // Layout principal: header fixo, histórico scrollável, composer e modais globais.
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
+    <main className="relative h-[100dvh] overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
@@ -458,18 +458,19 @@ export default function ChatConversation() {
           <div className="flex items-center justify-between">
             <div className="flex min-w-0 items-center gap-2">
               <button
+                type="button"
                 onClick={() => navigate("/chat")}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
                 aria-label="Voltar"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
 
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-white">
+                <p className="truncate text-sm font-semibold text-primary">
                   {chatTitle}
                 </p>
-                <p className="truncate text-xs text-white/38">
+                <p className="truncate text-xs text-muted">
                   Conversa com o Axon
                 </p>
               </div>
@@ -477,16 +478,18 @@ export default function ChatConversation() {
 
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => setIsOptionsOpen(true)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
                 aria-label="Opções da conversa"
               >
                 <MoreVertical className="h-5 w-5" />
               </button>
 
               <button
+                type="button"
                 onClick={() => setIsSidebarOpen(true)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
                 aria-label="Abrir menu"
               >
                 <Menu className="h-5 w-5" />
@@ -499,16 +502,16 @@ export default function ChatConversation() {
           <div className="space-y-3 pb-4">
             {messages.length === 0 ? (
               <div className="flex min-h-[56vh] items-center justify-center">
-                <div className="w-full rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-2xl shadow-black/30 backdrop-blur-2xl">
-                  <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/10 text-purple-100">
+                <div className="w-full rounded-[2rem] border border-soft bg-surface-elevated p-5 text-center text-primary shadow-soft backdrop-blur-2xl">
+                  <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
                     <Sparkles className="h-6 w-6" />
                   </div>
 
-                  <h2 className="text-xl font-semibold tracking-[-0.04em] text-white">
+                  <h2 className="text-xl font-semibold tracking-[-0.04em] text-primary">
                     Comece uma conversa.
                   </h2>
 
-                  <p className="mx-auto mt-3 max-w-[260px] text-sm leading-6 text-white/45">
+                  <p className="mx-auto mt-3 max-w-[260px] text-sm leading-6 text-muted">
                     Use o Axon para reorganizar seu dia, clarear prioridades ou
                     transformar pensamentos soltos em ações.
                   </p>
@@ -537,7 +540,7 @@ export default function ChatConversation() {
         <footer className="shrink-0 pt-3">
           <form
             onSubmit={(e) => handleSend(e)}
-            className="flex min-h-[58px] items-center gap-2 rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/86 p-2 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            className="flex min-h-[58px] items-center gap-2 rounded-[1.7rem] border border-soft bg-surface-elevated p-2 shadow-soft backdrop-blur-2xl"
           >
             <textarea
               value={message}
@@ -554,13 +557,13 @@ export default function ChatConversation() {
               }}
               placeholder="Mensagem para o Axon..."
               rows={1}
-              className="max-h-28 min-h-[42px] flex-1 resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm leading-6 text-white outline-none placeholder:text-white/30"
+              className="max-h-28 min-h-[42px] flex-1 resize-none overflow-y-auto bg-transparent px-3 py-2 text-sm leading-6 text-primary outline-none placeholder:text-soft"
             />
 
             <button
               type="submit"
               disabled={!message.trim()}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-lg shadow-purple-950/30 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-45"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-strong)] text-white shadow-card transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-45"
               aria-label="Enviar mensagem"
             >
               <Send className="h-4.5 w-4.5" />
@@ -672,26 +675,27 @@ function ChatOptionsSheet({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative w-full max-w-[430px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.2),transparent_48%)]" />
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
+      <div className="relative w-full max-w-[430px] overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
 
         <div className="relative px-5 pb-4 pt-4">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
 
           <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <p className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+              <p className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
                 Opções da conversa
               </p>
-              <p className="mt-2 text-xs leading-5 text-white/45">
+              <p className="mt-2 text-xs leading-5 text-muted">
                 Gerencie esta aba sem alterar as outras conversas.
               </p>
             </div>
 
             <button
+              type="button"
               onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
               aria-label="Fechar"
             >
               <X className="h-5 w-5" />
@@ -764,18 +768,19 @@ function OptionButton({
 }) {
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left active:scale-[0.99] ${
+      className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition active:scale-[0.99] ${
         danger
-          ? "border-red-300/15 bg-red-500/10"
-          : "border-white/10 bg-white/[0.045]"
+          ? "border-red-300/20 bg-red-500/10"
+          : "border-soft bg-surface-muted"
       }`}
     >
       <div
         className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
           danger
-            ? "border-red-300/20 bg-red-500/10 text-red-100"
-            : "border-purple-300/15 bg-purple-500/10 text-purple-200"
+            ? "border-red-300/25 bg-red-500/10 text-red-600 dark:text-red-100"
+            : "border-accent-soft bg-accent-soft text-accent"
         }`}
       >
         <Icon className="h-5 w-5" />
@@ -784,12 +789,12 @@ function OptionButton({
       <div className="min-w-0 flex-1">
         <p
           className={`text-sm font-semibold ${
-            danger ? "text-red-100" : "text-white"
+            danger ? "text-red-600 dark:text-red-100" : "text-primary"
           }`}
         >
           {title}
         </p>
-        <p className="mt-1 text-xs leading-5 text-white/38">{description}</p>
+        <p className="mt-1 text-xs leading-5 text-muted">{description}</p>
       </div>
     </button>
   );
@@ -812,40 +817,42 @@ function RenameConversationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="w-full max-w-[430px] rounded-[2rem] border border-white/10 bg-[#171720]/95 p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+    <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
+      <div className="w-full max-w-[430px] rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
 
-        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
           Renomear conversa
         </h2>
 
-        <p className="mt-2 text-xs leading-5 text-white/45">
+        <p className="mt-2 text-xs leading-5 text-muted">
           Escolha um nome claro para encontrar esta aba depois.
         </p>
 
         <label className="mt-5 block">
-          <span className="mb-2 block text-xs font-medium text-white/42">
+          <span className="mb-2 block text-xs font-medium text-muted">
             Nome da conversa
           </span>
 
           <input
             value={value}
             onChange={(event) => onChange(event.target.value)}
-            className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+            className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
           />
         </label>
 
         <button
+          type="button"
           onClick={onConfirm}
-          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
+          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
         >
           Salvar nome
         </button>
 
         <button
+          type="button"
           onClick={onClose}
-          className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]"
+          className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98]"
         >
           Cancelar
         </button>
@@ -873,18 +880,18 @@ function ConversationContextModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="w-full max-w-[430px] rounded-[2rem] border border-white/10 bg-[#171720]/95 p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+    <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
+      <div className="w-full max-w-[430px] rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
 
         <div className="mb-4 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-purple-200" />
-          <p className="text-sm font-semibold text-purple-100">
+          <Sparkles className="h-4 w-4 text-accent" />
+          <p className="text-sm font-semibold text-accent">
             Contexto da conversa
           </p>
         </div>
 
-        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
           {chatTitle}
         </h2>
 
@@ -897,8 +904,9 @@ function ConversationContextModal({
         </div>
 
         <button
+          type="button"
           onClick={onClose}
-          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
+          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
         >
           Entendi
         </button>
@@ -910,9 +918,9 @@ function ConversationContextModal({
 // Linha compacta usada dentro do resumo de contexto.
 function ContextRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
-      <p className="text-xs text-white/35">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-white/75">{value}</p>
+    <div className="rounded-2xl border border-soft bg-surface-muted p-4">
+      <p className="text-xs text-muted">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-primary">{value}</p>
     </div>
   );
 }
@@ -925,21 +933,21 @@ function ContextRow({ label, value }: { label: string; value: string }) {
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
-      <div className="animate-[messageIn_0.25s_ease-out] max-w-[86%] rounded-[1.6rem] border border-white/10 bg-[#1b1b27]/76 px-4 py-3 shadow-xl shadow-black/20 backdrop-blur-2xl">
+      <div className="animate-[messageIn_0.25s_ease-out] max-w-[86%] rounded-[1.6rem] border border-soft bg-surface-elevated px-4 py-3 shadow-card backdrop-blur-2xl">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-purple-300/20 bg-purple-500/10 text-purple-100">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-accent-soft bg-accent-soft text-accent">
             <Brain className="h-4 w-4" />
           </div>
 
           <div>
-            <p className="text-xs font-semibold text-white/55">
+            <p className="text-xs font-semibold text-muted">
               Axon está organizando...
             </p>
 
             <div className="mt-2 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-purple-200/70 [animation-delay:-0.2s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-purple-200/70 [animation-delay:-0.1s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-purple-200/70" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--accent)] [animation-delay:-0.2s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--accent)] [animation-delay:-0.1s]" />
+              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-[var(--accent)]" />
             </div>
           </div>
         </div>
@@ -1013,16 +1021,16 @@ function MessageBubble({
   return (
     <div className={`animate-[messageIn_0.25s_ease-out] flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[82%] rounded-[1.35rem] px-4 py-3 text-sm leading-6 shadow-xl ${
+        className={`max-w-[82%] rounded-[1.35rem] px-4 py-3 text-sm leading-6 shadow-card ${
           isUser
-            ? "rounded-br-md bg-purple-500 text-white shadow-purple-950/25"
-            : "rounded-bl-md border border-white/10 bg-[#1b1b27]/82 text-white/62 shadow-black/20 backdrop-blur-2xl"
+            ? "rounded-br-md bg-[var(--accent-strong)] text-white"
+            : "rounded-bl-md border border-soft bg-surface-elevated text-secondary backdrop-blur-2xl"
         }`}
       >
         {!isUser && (
           <div className="mb-2 flex items-center gap-2">
-            <Brain className="h-3.5 w-3.5 text-purple-200" />
-            <p className="text-xs font-semibold text-purple-100">Axon</p>
+            <Brain className="h-3.5 w-3.5 text-accent" />
+            <p className="text-xs font-semibold text-accent">Axon</p>
           </div>
         )}
 
@@ -1035,10 +1043,10 @@ function MessageBubble({
                   key={`${activity.tool}-${index}`}
                   className={`inline-flex items-center gap-2 self-start rounded-full border px-3 py-1 text-[0.68rem] font-medium ${
                     failed
-                      ? "border-rose-300/25 bg-rose-500/10 text-rose-100"
+                      ? "border-rose-300/25 bg-rose-500/10 text-rose-700 dark:text-rose-100"
                       : activity.status === "done"
-                      ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-100"
-                      : "border-purple-300/25 bg-purple-500/12 text-purple-100"
+                      ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-700 dark:text-emerald-100"
+                      : "border-accent-soft bg-accent-soft text-accent"
                   }`}
                 >
                   {activity.status === "running" ? (
@@ -1086,13 +1094,13 @@ function AxonMarkdown({ text }: { text: string }) {
           <p className="mb-2 last:mb-0 leading-6">{children}</p>
         ),
         h1: ({ children }) => (
-          <h1 className="mb-2 mt-3 text-base font-semibold text-white first:mt-0">{children}</h1>
+          <h1 className="mb-2 mt-3 text-base font-semibold text-primary first:mt-0">{children}</h1>
         ),
         h2: ({ children }) => (
-          <h2 className="mb-2 mt-3 text-sm font-semibold text-white first:mt-0">{children}</h2>
+          <h2 className="mb-2 mt-3 text-sm font-semibold text-primary first:mt-0">{children}</h2>
         ),
         h3: ({ children }) => (
-          <h3 className="mb-1.5 mt-3 text-sm font-semibold text-white/90 first:mt-0">{children}</h3>
+          <h3 className="mb-1.5 mt-3 text-sm font-semibold text-primary first:mt-0">{children}</h3>
         ),
         ul: ({ children }) => (
           <ul className="mb-2 space-y-1 pl-4 last:mb-0">{children}</ul>
@@ -1101,36 +1109,36 @@ function AxonMarkdown({ text }: { text: string }) {
           <ol className="mb-2 space-y-1 pl-4 last:mb-0">{children}</ol>
         ),
         li: ({ children }) => (
-          <li className="leading-6 [&::marker]:text-purple-300/60" style={{ listStyleType: "disc" }}>{children}</li>
+          <li className="leading-6 [&::marker]:text-accent" style={{ listStyleType: "disc" }}>{children}</li>
         ),
         strong: ({ children }) => (
-          <strong className="font-semibold text-white/88">{children}</strong>
+          <strong className="font-semibold text-primary">{children}</strong>
         ),
         em: ({ children }) => (
-          <em className="italic text-white/72">{children}</em>
+          <em className="italic text-secondary">{children}</em>
         ),
         hr: () => (
-          <hr className="my-3 border-white/12" />
+          <hr className="my-3 border-[var(--border-soft)]" />
         ),
         code: ({ children }) => (
-          <code className="rounded bg-white/10 px-1.5 py-0.5 text-xs font-mono text-purple-200">{children}</code>
+          <code className="rounded bg-surface-muted px-1.5 py-0.5 text-xs font-mono text-accent">{children}</code>
         ),
         blockquote: ({ children }) => (
-          <blockquote className="my-2 border-l-2 border-purple-400/40 pl-3 text-white/55">{children}</blockquote>
+          <blockquote className="my-2 border-l-2 border-accent-soft pl-3 text-secondary">{children}</blockquote>
         ),
         table: ({ children }) => (
-          <div className="my-2 overflow-x-auto rounded-xl border border-white/10">
+          <div className="my-2 overflow-x-auto rounded-xl border border-soft">
             <table className="w-full text-xs">{children}</table>
           </div>
         ),
         thead: ({ children }) => (
-          <thead className="bg-white/[0.06]">{children}</thead>
+          <thead className="bg-surface-muted">{children}</thead>
         ),
         th: ({ children }) => (
-          <th className="px-3 py-2 text-left font-semibold text-white/80">{children}</th>
+          <th className="px-3 py-2 text-left font-semibold text-primary">{children}</th>
         ),
         td: ({ children }) => (
-          <td className="border-t border-white/8 px-3 py-2 text-white/60">{children}</td>
+          <td className="border-t border-[var(--border-soft)] px-3 py-2 text-secondary">{children}</td>
         ),
       } satisfies Components}
     >
@@ -1203,33 +1211,34 @@ function MoveConversationProjectSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-      <div className="relative flex max-h-[82vh] w-full max-w-[390px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm">
+      <div className="relative flex max-h-[82vh] w-full max-w-[390px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
 
-        <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+        <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-4">
+          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
 
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <Briefcase className="h-3.5 w-3.5" />
                 Projeto
               </div>
 
-              <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+              <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
                 Mover conversa
               </h2>
 
-              <p className="mt-2 text-xs leading-5 text-white/45">
+              <p className="mt-2 text-xs leading-5 text-muted">
                 Escolha em qual projeto esta conversa deve ficar.
               </p>
             </div>
 
             <button
+              type="button"
               onClick={onClose}
               disabled={submitting}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96] disabled:opacity-50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96] disabled:opacity-50"
               aria-label="Fechar"
             >
               <X className="h-5 w-5" />
@@ -1239,7 +1248,7 @@ function MoveConversationProjectSheet({
 
         <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
           {loading ? (
-            <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/45">
+            <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted">
               <Loader2 className="h-4 w-4 animate-spin" />
               Carregando projetos…
             </div>
@@ -1251,21 +1260,21 @@ function MoveConversationProjectSheet({
                 disabled={submitting}
                 className={`flex min-h-14 w-full items-center justify-between rounded-2xl border px-4 text-left active:scale-[0.98] disabled:opacity-60 ${
                   selectedProjectId === null
-                    ? "border-purple-300/25 bg-purple-500/12"
-                    : "border-white/10 bg-white/[0.045]"
+                    ? "border-accent-soft bg-accent-soft"
+                    : "border-soft bg-surface-muted"
                 }`}
               >
                 <div>
-                  <p className="text-sm font-semibold text-white">
+                  <p className="text-sm font-semibold text-primary">
                     Fora de projetos
                   </p>
-                  <p className="mt-1 text-xs text-white/38">
+                  <p className="mt-1 text-xs text-muted">
                     A conversa aparece na aba Todas.
                   </p>
                 </div>
 
                 {selectedProjectId === null ? (
-                  <Check className="h-4 w-4 text-purple-200" />
+                  <Check className="h-4 w-4 text-accent" />
                 ) : null}
               </button>
 
@@ -1280,22 +1289,22 @@ function MoveConversationProjectSheet({
                     disabled={submitting}
                     className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl border px-4 text-left active:scale-[0.98] disabled:opacity-60 ${
                       isSelected
-                        ? "border-purple-300/25 bg-purple-500/12"
-                        : "border-white/10 bg-white/[0.045]"
+                        ? "border-accent-soft bg-accent-soft"
+                        : "border-soft bg-surface-muted"
                     }`}
                   >
                     <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-white">
+                      <p className="truncate text-sm font-semibold text-primary">
                         {project.name}
                       </p>
 
-                      <p className="mt-1 line-clamp-1 text-xs text-white/38">
+                      <p className="mt-1 line-clamp-1 text-xs text-muted">
                         {project.description || "Sem descrição"}
                       </p>
                     </div>
 
                     {isSelected ? (
-                      <Check className="h-4 w-4 text-purple-200" />
+                      <Check className="h-4 w-4 text-accent" />
                     ) : null}
                   </button>
                 );
@@ -1314,12 +1323,12 @@ function MoveConversationProjectSheet({
             <p className="mt-3 text-xs font-medium text-rose-300">{error}</p>
           )}
         </ScrollArea>
-        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
+        <div className="relative border-t border-[var(--border-soft)] bg-surface-elevated px-5 py-4">
           <button
             type="button"
             onClick={handleMove}
             disabled={submitting || selectedProjectId === currentProjectId}
-            className="inline-flex min-h-13 w-full items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
+            className="inline-flex min-h-13 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-5 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
           >
             {submitting ? (
               <>
@@ -1338,7 +1347,7 @@ function MoveConversationProjectSheet({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary transition active:scale-[0.98] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -1392,7 +1401,7 @@ function NotificationsConversation({
   ).length;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
@@ -1400,52 +1409,53 @@ function NotificationsConversation({
           <div className="flex min-w-0 items-center gap-2">
             <button
               onClick={onBack}
-              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+              className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
               aria-label="Voltar"
             >
               <ArrowLeft className="h-5 w-5" />
             </button>
 
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">
+              <p className="truncate text-sm font-semibold text-primary">
                 Notificações do Axon
               </p>
-              <p className="truncate text-xs text-white/38">
+              <p className="truncate text-xs text-muted">
                 Avisos, lembretes e atualizações
               </p>
             </div>
           </div>
 
           <button
+            type="button"
             onClick={onOpenSidebar}
-            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
             aria-label="Abrir menu"
           >
             <Menu className="h-5 w-5" />
           </button>
         </header>
 
-        <section className="mb-4 overflow-hidden rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+        <section className="mb-4 overflow-hidden rounded-[2rem] border border-accent-soft bg-accent-soft p-5 shadow-2xl shadow-soft backdrop-blur-2xl">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
 
           <div className="relative">
             <div className="mb-5 flex items-center justify-between gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/25 bg-purple-500/15 text-purple-100 shadow-lg shadow-purple-950/30">
+              <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated text-accent shadow-card">
                 <Bell className="h-6 w-6" />
               </div>
 
               {unreadCount > 0 && (
-                <div className="rounded-full border border-purple-300/20 bg-purple-500/15 px-3 py-1.5 text-xs font-semibold text-purple-100">
+                <div className="rounded-full border border-accent-soft bg-surface-elevated px-3 py-1.5 text-xs font-semibold text-accent">
                   {unreadCount} novas
                 </div>
               )}
             </div>
 
-            <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.055em] text-white">
+            <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.055em] text-primary">
               Sua central de avisos.
             </h1>
 
-            <p className="mt-3 text-sm leading-6 text-white/50">
+            <p className="mt-3 text-sm leading-6 text-muted">
               Aqui ficam os lembretes importantes, sugestões do Axon e
               atualizações relacionadas ao seu ambiente de produtividade.
             </p>
@@ -1453,7 +1463,7 @@ function NotificationsConversation({
         </section>
 
         <ScrollArea className="flex-1" contentClassName="pr-1">
-          <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/28">
+          <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-soft">
             Recentes
           </p>
 
@@ -1471,14 +1481,14 @@ function NotificationsConversation({
             ))}
           </div>
 
-          <div className="mt-5 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-center backdrop-blur-2xl">
-            <CheckCircle2 className="mx-auto h-5 w-5 text-purple-200/80" />
+          <div className="mt-5 rounded-[1.5rem] border border-soft bg-surface-muted p-4 text-center backdrop-blur-2xl">
+            <CheckCircle2 className="mx-auto h-5 w-5 text-accent" />
 
-            <p className="mt-3 text-sm font-semibold text-white/78">
+            <p className="mt-3 text-sm font-semibold text-primary">
               Você está em dia.
             </p>
 
-            <p className="mt-1 text-xs leading-5 text-white/38">
+            <p className="mt-1 text-xs leading-5 text-muted">
               Novas notificações aparecerão aqui quando o Axon identificar algo
               relevante para sua rotina.
             </p>
@@ -1508,22 +1518,22 @@ function NotificationCard({
 
   return (
     <article
-      className={`relative overflow-hidden rounded-[1.7rem] border p-4 shadow-xl shadow-black/20 backdrop-blur-2xl ${
+      className={`relative overflow-hidden rounded-[1.7rem] border p-4 shadow-card backdrop-blur-2xl ${
         notification.unread
-          ? "border-purple-300/20 bg-purple-500/10"
-          : "border-white/10 bg-[#1b1b27]/76"
+          ? "border-accent-soft bg-accent-soft"
+          : "border-soft bg-surface-elevated"
       }`}
     >
       {notification.unread && (
-        <span className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-purple-300 shadow-[0_0_16px_rgba(216,180,254,0.8)]" />
+        <span className="absolute right-4 top-4 h-2.5 w-2.5 rounded-full bg-[var(--accent)] shadow-[0_0_16px_var(--accent-soft)]" />
       )}
 
       <div className="flex gap-3">
         <div
           className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
             notification.unread
-              ? "border-purple-300/25 bg-purple-500/20 text-purple-100"
-              : "border-white/10 bg-white/[0.05] text-white/45"
+              ? "border-accent-soft bg-surface-elevated text-accent"
+              : "border-soft bg-surface-muted text-muted"
           }`}
         >
           <Icon className="h-5 w-5" />
@@ -1531,25 +1541,26 @@ function NotificationCard({
 
         <div className="min-w-0 flex-1 pr-2">
           <div className="mb-1 flex items-center gap-2">
-            <p className="truncate text-sm font-semibold text-white">
+            <p className="truncate text-sm font-semibold text-primary">
               {notification.title}
             </p>
           </div>
 
-          <p className="text-xs leading-5 text-white/42">
+          <p className="text-xs leading-5 text-muted">
             {notification.description}
           </p>
 
           <div className="mt-3 flex items-center justify-between gap-3">
-            <div className="flex items-center gap-1.5 text-[0.68rem] text-white/30">
+            <div className="flex items-center gap-1.5 text-[0.68rem] text-soft">
               <Clock3 className="h-3.5 w-3.5" />
               {notification.time}
             </div>
 
             {notification.actionLabel && (
               <button
+                type="button"
                 onClick={onAction}
-                className="rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-[0.68rem] font-semibold text-purple-100 active:scale-[0.98]"
+                className="rounded-full border border-accent-soft bg-surface-elevated px-3 py-1.5 text-[0.68rem] font-semibold text-accent transition active:scale-[0.98]"
               >
                 {notification.actionLabel}
               </button>

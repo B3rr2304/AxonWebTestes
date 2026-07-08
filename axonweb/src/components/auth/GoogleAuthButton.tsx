@@ -26,7 +26,7 @@ export default function GoogleAuthButton({ label }: GoogleAuthButtonProps) {
     <button
       type="button"
       onClick={handleClick}
-      className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/72 shadow-xl shadow-black/20 backdrop-blur-2xl transition hover:bg-white/[0.08] active:scale-[0.98]"
+      className="inline-flex min-h-14 w-full items-center justify-center gap-3 rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary shadow-card backdrop-blur-2xl transition hover:text-primary active:scale-[0.98]"
     >
       <GoogleIcon />
       <span>{label}</span>

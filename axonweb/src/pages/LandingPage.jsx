@@ -111,7 +111,7 @@ const onboardingSteps = [
 // ===========================================================================
 // Botão principal usado nos CTAs de cadastro.
 function PrimaryButton({ children, className = "", to, href }) {
-  const cls = `inline-flex min-h-14 items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-[0_0_34px_rgba(168,85,247,0.42)] transition duration-300 hover:bg-purple-400 active:scale-[0.98] ${className}`;
+  const cls = `inline-flex min-h-14 items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition duration-300 hover:brightness-105 active:scale-[0.98] ${className}`;
 
   if (to) {
     return (
@@ -134,7 +134,7 @@ function PrimaryButton({ children, className = "", to, href }) {
 
 // Botão secundário usado para navegação interna ou login.
 function SecondaryButton({ children, className = "", to, href }) {
-  const cls = `inline-flex min-h-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/75 backdrop-blur-2xl transition duration-300 hover:bg-white/[0.08] hover:text-white active:scale-[0.98] ${className}`;
+  const cls = `inline-flex min-h-14 items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition duration-300 hover:text-primary active:scale-[0.98] ${className}`;
 
   if (to) {
     return (
@@ -158,15 +158,15 @@ function SecondaryButton({ children, className = "", to, href }) {
 // Background global da página, mantendo o visual dark premium/glassmorphism.
 function Background() {
   return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden">
-      <div className="absolute left-1/2 top-[-18rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-purple-700/25 blur-[120px]" />
-      <div className="absolute left-1/2 top-[24rem] h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-violet-500/10 blur-[120px]" />
-      <div className="absolute right-[-14rem] top-[48rem] h-[28rem] w-[28rem] rounded-full bg-fuchsia-500/10 blur-[120px]" />
-      <div className="absolute bottom-[16rem] left-[-14rem] h-[28rem] w-[28rem] rounded-full bg-indigo-500/10 blur-[120px]" />
+    <div className="pointer-events-none absolute inset-0 overflow-hidden bg-app">
+      <div className="absolute left-1/2 top-[-18rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-[var(--app-glow-primary)] blur-[120px]" />
+      <div className="absolute left-1/2 top-[24rem] h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-[var(--app-glow-secondary)] blur-[120px]" />
+      <div className="absolute right-[-14rem] top-[48rem] h-[28rem] w-[28rem] rounded-full bg-[var(--app-glow-secondary)] blur-[120px]" />
+      <div className="absolute bottom-[16rem] left-[-14rem] h-[28rem] w-[28rem] rounded-full bg-[var(--app-glow-tertiary)] blur-[120px]" />
 
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:28px_28px] opacity-20" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--app-grid-color)_1px,transparent_1px)] [background-size:28px_28px] opacity-70" />
 
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(5,5,11,0.08),#05050b_76%)]" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent,var(--app-bg)_76%)]" />
     </div>
   );
 }
@@ -175,7 +175,7 @@ function Background() {
 function GlassPanel({ children, className = "" }) {
   return (
     <div
-      className={`rounded-[2rem] border border-white/10 bg-white/[0.055] shadow-2xl shadow-black/25 backdrop-blur-2xl ${className}`}
+      className={`rounded-[2rem] border border-soft bg-surface-elevated shadow-card backdrop-blur-2xl ${className}`}
     >
       {children}
     </div>
@@ -202,15 +202,15 @@ function SectionHeader({ eyebrow, title, description, centered = false }) {
         centered ? "mx-auto max-w-3xl text-center" : "max-w-3xl"
       }`}
     >
-      <p className="mb-3 text-sm font-medium text-purple-200/80">{eyebrow}</p>
+      <p className="mb-3 text-sm font-medium text-accent">{eyebrow}</p>
 
-      <h2 className="text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.055em] text-white sm:text-5xl">
+      <h2 className="text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.055em] text-primary sm:text-5xl">
         {title}
       </h2>
 
       {description && (
         <p
-          className={`mt-4 text-sm leading-7 text-white/50 sm:text-base ${
+          className={`mt-4 text-sm leading-7 text-muted sm:text-base ${
             centered ? "mx-auto max-w-2xl" : "max-w-2xl"
           }`}
         >
@@ -238,14 +238,14 @@ function FloatingCard({
         ease: "easeInOut",
         delay,
       }}
-      className={`absolute rounded-[1.25rem] border border-white/10 bg-[#11101a]/78 p-3 shadow-2xl shadow-black/35 backdrop-blur-2xl ${className}`}
+      className={`absolute rounded-[1.25rem] border border-soft bg-surface-elevated p-3 text-primary shadow-card backdrop-blur-2xl ${className}`}
     >
       <div className="mb-2 flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
+        <div className="flex h-7 w-7 items-center justify-center rounded-xl border border-accent-soft bg-accent-soft text-accent">
           <Icon className="h-3.5 w-3.5" />
         </div>
 
-        <p className="text-[0.68rem] font-semibold text-white/78">{title}</p>
+        <p className="text-[0.68rem] font-semibold text-primary">{title}</p>
       </div>
 
       {children}
@@ -257,7 +257,7 @@ function FloatingCard({
 function ProductOrbit() {
   return (
     <div className="relative mx-auto mt-12 h-[460px] w-full max-w-[380px] overflow-visible sm:mt-16 sm:h-[570px] sm:max-w-5xl">
-      <div className="absolute left-1/2 top-[48%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-500/25 blur-[90px] sm:h-96 sm:w-96" />
+      <div className="absolute left-1/2 top-[48%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft blur-[90px] sm:h-96 sm:w-96" />
 
       <svg
         className="absolute left-1/2 top-[48%] h-[345px] w-[345px] -translate-x-1/2 -translate-y-1/2 opacity-75 sm:h-[520px] sm:w-[520px]"
@@ -310,11 +310,11 @@ function ProductOrbit() {
         </defs>
       </svg>
 
-      <div className="absolute left-1/2 top-[48%] flex h-48 w-48 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-purple-300/15 bg-purple-500/5 sm:h-64 sm:w-64">
+      <div className="absolute left-1/2 top-[48%] flex h-48 w-48 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent-soft bg-accent-muted sm:h-64 sm:w-64">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
-          className="absolute h-full w-full rounded-full border border-purple-300/10"
+          className="absolute h-full w-full rounded-full border border-accent-soft"
         />
 
         <motion.div
@@ -326,10 +326,10 @@ function ProductOrbit() {
         <motion.div
           animate={{ scale: [1, 1.05, 1], opacity: [0.86, 1, 0.86] }}
           transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
-          className="relative flex h-28 w-28 items-center justify-center rounded-full border border-purple-200/25 bg-purple-500/15 shadow-[0_0_90px_rgba(168,85,247,0.65)] backdrop-blur-2xl sm:h-36 sm:w-36"
+          className="relative flex h-28 w-28 items-center justify-center rounded-full border border-accent-soft bg-accent-soft shadow-soft backdrop-blur-2xl sm:h-36 sm:w-36"
         >
-          <div className="absolute inset-3 rounded-full border border-white/10 bg-black/20" />
-          <Brain className="relative h-12 w-12 text-purple-100 sm:h-16 sm:w-16" />
+          <div className="absolute inset-3 rounded-full border border-soft bg-surface-elevated" />
+          <Brain className="relative h-12 w-12 text-accent sm:h-16 sm:w-16" />
         </motion.div>
       </div>
 
@@ -340,14 +340,14 @@ function ProductOrbit() {
         className="left-0 top-4 w-[150px] sm:left-16 sm:top-20 sm:w-[220px]"
       >
         <div className="space-y-2">
-          <div className="h-2 w-24 rounded-full bg-white/12" />
+          <div className="h-2 w-24 rounded-full bg-[var(--border-soft)]" />
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-purple-300" />
-            <div className="h-2 w-20 rounded-full bg-white/10" />
+            <div className="h-2 w-20 rounded-full bg-[var(--border-soft)]" />
           </div>
           <div className="flex items-center gap-2">
             <span className="h-2 w-2 rounded-full bg-fuchsia-300" />
-            <div className="h-2 w-16 rounded-full bg-white/10" />
+            <div className="h-2 w-16 rounded-full bg-[var(--border-soft)]" />
           </div>
         </div>
       </FloatingCard>
@@ -375,7 +375,7 @@ function ProductOrbit() {
         delay={0.65}
         className="bottom-16 left-1 w-[162px] sm:bottom-24 sm:left-20 sm:w-[240px]"
       >
-        <p className="text-[0.68rem] leading-4 text-white/45 sm:text-xs sm:leading-5">
+        <p className="text-[0.68rem] leading-4 text-muted sm:text-xs sm:leading-5">
           Proteja 90 min para a tarefa que mais importa.
         </p>
       </FloatingCard>
@@ -387,8 +387,8 @@ function ProductOrbit() {
         className="bottom-8 right-1 w-[162px] sm:bottom-28 sm:right-20 sm:w-[240px]"
       >
         <div className="flex items-center justify-between">
-          <p className="text-lg font-semibold text-white">10:40</p>
-          <div className="rounded-full border border-purple-300/20 bg-purple-500/10 px-2 py-1 text-[0.62rem] text-purple-100">
+          <p className="text-lg font-semibold text-primary">10:40</p>
+          <div className="rounded-full border border-accent-soft bg-accent-soft px-2 py-1 text-[0.62rem] text-accent">
             ideal
           </div>
         </div>
@@ -434,7 +434,7 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#05050b] pb-28 text-white sm:pb-0">
+    <main className="relative min-h-screen overflow-hidden bg-app pb-28 text-primary sm:pb-0">
       <Background />
 
       <div className="relative z-10">
@@ -449,18 +449,18 @@ export default function LandingPage() {
               className="mb-2 [transform:scale(1.15)]"
             />
 
-            <p className="text-base font-semibold tracking-tight text-white sm:text-lg">
+            <p className="text-base font-semibold tracking-tight text-primary sm:text-lg">
               Axon
             </p>
 
-            <p className="mt-0.5 hidden text-xs text-white/40 sm:block">
+            <p className="mt-0.5 hidden text-xs text-muted sm:block">
               Personal operating system
             </p>
           </Link>
 
           <Link
             to="/login"
-            className="absolute right-8 hidden min-h-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-5 text-sm font-semibold text-white/65 backdrop-blur-2xl transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98] sm:inline-flex"
+            className="absolute right-8 hidden min-h-11 items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary backdrop-blur-2xl transition hover:text-primary active:scale-[0.98] sm:inline-flex"
           >
             Entrar
           </Link>
@@ -474,7 +474,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 14 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
-              className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-xs text-white/55 backdrop-blur-xl sm:text-sm"
+              className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-soft bg-surface-muted px-4 py-2 text-xs text-secondary backdrop-blur-xl sm:text-sm"
             >
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-purple-300 shadow-[0_0_18px_rgba(216,180,254,0.9)]" />
               <span className="truncate">
@@ -486,7 +486,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.08 }}
-              className="mx-auto max-w-[23rem] text-[2.85rem] font-semibold leading-[0.9] tracking-[-0.075em] text-white sm:max-w-4xl sm:text-6xl lg:text-7xl"
+              className="mx-auto max-w-[23rem] text-[2.85rem] font-semibold leading-[0.9] tracking-[-0.075em] text-primary sm:max-w-4xl sm:text-6xl lg:text-7xl"
             >
               Sua rotina organizada pelo seu próprio ritmo.
             </motion.h1>
@@ -495,7 +495,7 @@ export default function LandingPage() {
               initial={{ opacity: 0, y: 18 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.55, delay: 0.16 }}
-              className="mx-auto mt-5 max-w-2xl text-[0.95rem] leading-7 text-white/52 sm:mt-6 sm:text-lg"
+              className="mx-auto mt-5 max-w-2xl text-[0.95rem] leading-7 text-muted sm:mt-6 sm:text-lg"
             >
               O Axon entende seus horários de energia, organiza suas prioridades
               e transforma tarefas soltas em um plano claro para o seu dia.
@@ -526,27 +526,27 @@ export default function LandingPage() {
 
           {/* Métricas rápidas para reforçar simplicidade e uso diário. */}
           <div className="mx-auto mt-2 grid max-w-4xl grid-cols-3 gap-2 px-1 sm:mt-8 sm:gap-4">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-center backdrop-blur-2xl sm:p-4">
-              <p className="text-lg font-semibold text-white sm:text-2xl">
+            <div className="rounded-2xl border border-soft bg-surface-elevated p-3 text-center backdrop-blur-2xl sm:p-4">
+              <p className="text-lg font-semibold text-primary sm:text-2xl">
                 3min
               </p>
-              <p className="mt-1 text-[0.68rem] leading-4 text-white/38 sm:text-xs">
+              <p className="mt-1 text-[0.68rem] leading-4 text-muted sm:text-xs">
                 para configurar
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-center backdrop-blur-2xl sm:p-4">
-              <p className="text-lg font-semibold text-white sm:text-2xl">1</p>
-              <p className="mt-1 text-[0.68rem] leading-4 text-white/38 sm:text-xs">
+            <div className="rounded-2xl border border-soft bg-surface-elevated p-3 text-center backdrop-blur-2xl sm:p-4">
+              <p className="text-lg font-semibold text-primary sm:text-2xl">1</p>
+              <p className="mt-1 text-[0.68rem] leading-4 text-muted sm:text-xs">
                 plano diário
               </p>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-3 text-center backdrop-blur-2xl sm:p-4">
-              <p className="text-lg font-semibold text-white sm:text-2xl">
+            <div className="rounded-2xl border border-soft bg-surface-elevated p-3 text-center backdrop-blur-2xl sm:p-4">
+              <p className="text-lg font-semibold text-primary sm:text-2xl">
                 24h
               </p>
-              <p className="mt-1 text-[0.68rem] leading-4 text-white/38 sm:text-xs">
+              <p className="mt-1 text-[0.68rem] leading-4 text-muted sm:text-xs">
                 de contexto
               </p>
             </div>
@@ -569,13 +569,13 @@ export default function LandingPage() {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, amount: 0.25 }}
                 transition={{ duration: 0.4, delay: index * 0.05 }}
-                className="rounded-[1.5rem] border border-white/10 bg-white/[0.045] p-4 backdrop-blur-2xl"
+                className="rounded-[1.5rem] border border-soft bg-surface-elevated p-4 backdrop-blur-2xl"
               >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
                   <CheckCircle2 className="h-4 w-4" />
                 </div>
 
-                <p className="text-sm leading-6 text-white/58">{pain}</p>
+                <p className="text-sm leading-6 text-muted">{pain}</p>
               </motion.div>
             ))}
           </div>
@@ -605,23 +605,23 @@ export default function LandingPage() {
                   return (
                     <div
                       key={step.title}
-                      className="flex gap-4 rounded-[1.5rem] border border-white/10 bg-black/20 p-4"
+                      className="flex gap-4 rounded-[1.5rem] border border-soft bg-surface-muted p-4"
                     >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
                         <Icon className="h-5 w-5" />
                       </div>
 
                       <div>
                         <div className="mb-1 flex items-center gap-2">
-                          <span className="text-xs font-semibold text-purple-100">
+                          <span className="text-xs font-semibold text-accent">
                             0{index + 1}
                           </span>
-                          <h3 className="text-sm font-semibold text-white">
+                          <h3 className="text-sm font-semibold text-primary">
                             {step.title}
                           </h3>
                         </div>
 
-                        <p className="text-xs leading-5 text-white/42">
+                        <p className="text-xs leading-5 text-muted">
                           {step.description}
                         </p>
                       </div>
@@ -655,15 +655,15 @@ export default function LandingPage() {
                   transition={{ duration: 0.45, delay: index * 0.05 }}
                 >
                   <GlassPanel className="h-full p-5">
-                    <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+                    <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
                       <Icon className="h-5 w-5" />
                     </div>
 
-                    <h3 className="text-lg font-semibold tracking-tight text-white">
+                    <h3 className="text-lg font-semibold tracking-tight text-primary">
                       {feature.title}
                     </h3>
 
-                    <p className="mt-3 text-sm leading-6 text-white/46">
+                    <p className="mt-3 text-sm leading-6 text-muted">
                       {feature.description}
                     </p>
                   </GlassPanel>
@@ -692,15 +692,15 @@ export default function LandingPage() {
                 transition={{ duration: 0.45, delay: index * 0.08 }}
               >
                 <GlassPanel className="h-full p-5">
-                  <div className="mb-7 flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/10 text-sm font-semibold text-purple-100">
+                  <div className="mb-7 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-sm font-semibold text-accent">
                     {step.number}
                   </div>
 
-                  <h3 className="text-xl font-semibold tracking-tight text-white">
+                  <h3 className="text-xl font-semibold tracking-tight text-primary">
                     {step.title}
                   </h3>
 
-                  <p className="mt-4 text-sm leading-6 text-white/48">
+                  <p className="mt-4 text-sm leading-6 text-muted">
                     {step.description}
                   </p>
                 </GlassPanel>
@@ -711,16 +711,16 @@ export default function LandingPage() {
 
         {/* CTA final: última chamada antes do rodapé. */}
         <section className="px-4 py-20 sm:px-8 sm:py-24">
-          <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-6 text-center shadow-[0_0_80px_rgba(88,28,135,0.28)] backdrop-blur-2xl sm:rounded-[2.5rem] sm:p-12">
-            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
+          <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-accent-soft bg-accent-soft p-6 text-center shadow-card backdrop-blur-2xl sm:rounded-[2.5rem] sm:p-12">
+            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated text-accent">
               <Sparkles className="h-6 w-6" />
             </div>
 
-            <h2 className="mx-auto max-w-3xl text-[2.1rem] font-semibold leading-[1.03] tracking-[-0.055em] text-white sm:text-5xl">
+            <h2 className="mx-auto max-w-3xl text-[2.1rem] font-semibold leading-[1.03] tracking-[-0.055em] text-primary sm:text-5xl">
               Comece com clareza. Depois deixe o Axon organizar o resto.
             </h2>
 
-            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-white/55 sm:text-base">
+            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted sm:text-base">
               Crie sua conta, responda o mapeamento inicial e entre em um
               ambiente pensado para transformar rotina em execução.
             </p>
@@ -739,18 +739,18 @@ export default function LandingPage() {
         </section>
 
         {/* Rodapé institucional. */}
-        <footer className="border-t border-white/10 px-4 py-8 sm:px-8">
-          <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 text-sm text-white/40 sm:flex-row sm:items-center">
+        <footer className="border-t border-soft px-4 py-8 sm:px-8">
+          <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 text-sm text-muted sm:flex-row sm:items-center">
             <p>© 2026 Axon. Todos os direitos reservados.</p>
 
             <div className="flex flex-wrap gap-5">
-              <a href="#" className="transition hover:text-white">
+              <a href="#" className="transition hover:text-primary">
                 Privacidade
               </a>
-              <a href="#" className="transition hover:text-white">
+              <a href="#" className="transition hover:text-primary">
                 Termos
               </a>
-              <a href="#" className="transition hover:text-white">
+              <a href="#" className="transition hover:text-primary">
                 Contato
               </a>
             </div>
@@ -759,7 +759,7 @@ export default function LandingPage() {
       </div>
 
       {/* CTA fixo mobile: mantém a ação principal sempre acessível no celular. */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/10 bg-[#05050b]/85 p-4 backdrop-blur-2xl sm:hidden">
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-soft bg-surface-elevated/90 p-4 backdrop-blur-2xl sm:hidden">
         <PrimaryButton to="/login" className="w-full">
           Entrar
           <ArrowRight className="ml-2 h-4 w-4" />

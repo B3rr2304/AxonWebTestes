@@ -43,7 +43,7 @@ const STATUS_TASK: Record<string, string> = {
 };
 
 const INPUT_CLS =
-  "min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35";
+  "min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft";
 
 
 // ===========================================================================
@@ -187,16 +187,17 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
       {embedded && (
         <div className="mb-4 flex items-center justify-between gap-3">
           <div>
-            <h1 className="text-[1.7rem] font-semibold leading-tight tracking-[-0.04em] text-white">
+            <h1 className="text-[1.7rem] font-semibold leading-tight tracking-[-0.04em] text-primary">
               Meus Objetivos
             </h1>
-            <p className="mt-1 text-sm text-white/45">
+            <p className="mt-1 text-sm text-muted">
               Metas que o Axon ajuda a alcançar.
             </p>
           </div>
           <button
+            type="button"
             onClick={() => setIsCreateOpen(true)}
-            className="flex shrink-0 items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/20 px-4 py-2.5 text-sm font-semibold text-purple-100 shadow-lg shadow-purple-950/20 active:scale-[0.97]"
+            className="flex shrink-0 items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-4 py-2.5 text-sm font-semibold text-accent shadow-card transition active:scale-[0.97]"
           >
             <Plus className="h-4 w-4" />
             Novo
@@ -205,7 +206,7 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
       )}
 
       {loading ? (
-          <div className="flex items-center justify-center gap-2 py-20 text-sm text-white/45">
+          <div className="flex items-center justify-center gap-2 py-20 text-sm text-muted">
             <Loader2 className="h-4 w-4 animate-spin" />
             Carregando objetivos…
           </div>
@@ -323,7 +324,7 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
@@ -335,8 +336,9 @@ export default function Goals({ embedded = false }: { embedded?: boolean } = {})
           onMenuClick={() => setIsSidebarOpen(true)}
           rightSlot={
             <button
+              type="button"
               onClick={() => setIsCreateOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 active:scale-[0.96]"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent transition active:scale-[0.96]"
               aria-label="Criar objetivo"
             >
               <Plus className="h-5 w-5" />
@@ -393,21 +395,21 @@ function ObjectiveCard({
   const isDone = objective.status === "done";
 
   return (
-    <div className={`overflow-hidden rounded-[1.7rem] border shadow-xl shadow-black/20 backdrop-blur-2xl ${
-      isDone ? "border-emerald-300/20 bg-emerald-400/[0.06]" : "border-white/10 bg-[#1b1b27]/82"
+    <div className={`overflow-hidden rounded-[1.7rem] border shadow-card backdrop-blur-2xl ${
+      isDone ? "border-emerald-300/25 bg-emerald-400/[0.08]" : "border-soft bg-surface-elevated"
     }`}>
       <div className="p-4">
         {/* Cabeçalho: título + ações */}
         <div className="mb-3 flex items-start justify-between gap-3">
           <div className="min-w-0 flex-1">
             <div className="mb-1 flex items-center gap-2">
-              {isDone && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" />}
-              <p className={`truncate text-sm font-semibold ${isDone ? "text-emerald-100 line-through opacity-70" : "text-white"}`}>
+              {isDone && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-300" />}
+              <p className={`truncate text-sm font-semibold ${isDone ? "text-emerald-700 line-through opacity-70 dark:text-emerald-100" : "text-primary"}`}>
                 {objective.title}
               </p>
             </div>
             {objective.deadline && (
-              <div className="flex items-center gap-1.5 text-[0.68rem] text-white/38">
+              <div className="flex items-center gap-1.5 text-[0.68rem] text-muted">
                 <CalendarDays className="h-3 w-3" />
                 Prazo: {objective.deadline}
               </div>
@@ -416,16 +418,18 @@ function ObjectiveCard({
 
           <div className="flex shrink-0 items-center gap-1.5">
             <button
+              type="button"
               onClick={onEdit}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/45 active:scale-[0.94]"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]"
               aria-label="Editar objetivo"
             >
               <Edit3 className="h-3.5 w-3.5" />
             </button>
             <button
+              type="button"
               onClick={onDelete}
               disabled={isDeleting}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/35 active:scale-[0.94] disabled:opacity-40"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94] disabled:opacity-40"
               aria-label="Excluir objetivo"
             >
               {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
@@ -435,11 +439,11 @@ function ObjectiveCard({
 
         {/* Barra de progresso */}
         <div className="mb-3">
-          <div className="mb-1.5 flex items-center justify-between text-[0.68rem] text-white/35">
+          <div className="mb-1.5 flex items-center justify-between text-[0.68rem] text-muted">
             <span>{objective.done_count} de {objective.subtask_count} etapas</span>
             <span>{objective.progress}%</span>
           </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted">
             <div
               className={`h-full rounded-full transition-all ${isDone ? "bg-emerald-400" : "bg-gradient-to-r from-purple-400 to-fuchsia-300"}`}
               style={{ width: `${objective.progress}%` }}
@@ -451,7 +455,7 @@ function ObjectiveCard({
         <button
           type="button"
           onClick={onToggle}
-          className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/14 px-3 py-2 text-xs font-semibold text-white/45 active:scale-[0.98]"
+          className="flex w-full items-center justify-between rounded-2xl border border-soft bg-surface-muted px-3 py-2 text-xs font-semibold text-muted transition active:scale-[0.98]"
         >
           <span>{isExpanded ? "Ocultar etapas" : `Ver etapas (${objective.subtask_count})`}</span>
           {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -460,22 +464,22 @@ function ObjectiveCard({
 
       {/* Etapas expandidas */}
       {isExpanded && (
-        <div className="border-t border-white/8 px-4 pb-4 pt-3">
+        <div className="border-t border-[var(--border-soft)] px-4 pb-4 pt-3">
           {isLoadingSubtasks ? (
-            <div className="flex items-center gap-2 py-4 text-xs text-white/38">
+            <div className="flex items-center gap-2 py-4 text-xs text-muted">
               <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando etapas…
             </div>
           ) : (
             <>
               {subtasks.length === 0 ? (
-                <p className="pb-3 pt-1 text-xs text-white/38">Nenhuma etapa adicionada ainda.</p>
+                <p className="pb-3 pt-1 text-xs text-muted">Nenhuma etapa adicionada ainda.</p>
               ) : (
                 <div className="mb-3 space-y-2">
                   {subtasks.map((task) => {
                     const done = task.status === "done";
                     const toggling = togglingStepId === task.id;
                     return (
-                      <div key={task.id} className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                      <div key={task.id} className="flex items-center gap-2.5 rounded-xl border border-[var(--border-soft)] bg-surface-muted px-3 py-2">
                         <button
                           type="button"
                           onClick={() => onToggleStep(task)}
@@ -483,21 +487,21 @@ function ObjectiveCard({
                           className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition active:scale-[0.9] ${
                             done
                               ? "border-emerald-400 bg-emerald-400 text-[#11111a]"
-                              : "border-white/25 bg-transparent text-transparent hover:border-purple-300/60"
+                              : "border-soft bg-transparent text-transparent hover:border-accent-soft"
                           }`}
                           aria-label={done ? "Desmarcar etapa" : "Marcar etapa como concluída"}
                         >
                           {toggling
-                            ? <Loader2 className="h-3 w-3 animate-spin text-white/60" />
+                            ? <Loader2 className="h-3 w-3 animate-spin text-secondary" />
                             : <CheckCircle2 className="h-3.5 w-3.5" />}
                         </button>
 
                         <div className="min-w-0 flex-1">
-                          <p className={`truncate text-xs font-semibold ${done ? "text-white/40 line-through" : "text-white/80"}`}>
+                          <p className={`truncate text-xs font-semibold ${done ? "text-soft line-through" : "text-primary"}`}>
                             {task.title}
                           </p>
                           {(task.scheduled_date || task.start_time) && (
-                            <p className="mt-0.5 text-[0.65rem] text-white/30">
+                            <p className="mt-0.5 text-[0.65rem] text-soft">
                               {task.scheduled_date}
                               {task.start_time ? ` · ${task.start_time.slice(0, 5)}` : ""}
                             </p>
@@ -507,7 +511,7 @@ function ObjectiveCard({
                         <button
                           type="button"
                           onClick={() => onEditStep(task)}
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-white/[0.055] text-white/40 active:scale-[0.94]"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-surface-muted text-muted transition active:scale-[0.94]"
                           aria-label="Editar etapa"
                         >
                           <Edit3 className="h-3 w-3" />
@@ -521,7 +525,7 @@ function ObjectiveCard({
               <button
                 type="button"
                 onClick={onAddStep}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-purple-300/25 bg-purple-500/[0.06] py-2.5 text-xs font-semibold text-purple-200/70 active:scale-[0.98]"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-accent-soft bg-accent-soft py-2.5 text-xs font-semibold text-accent transition active:scale-[0.98]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Adicionar etapa
@@ -621,40 +625,40 @@ function CreateObjectiveModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative flex max-h-[90vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
+      <div className="relative flex max-h-[90vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
 
         {/* Cabeçalho com indicador de passo */}
-        <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
-          <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-white/18" />
+        <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-4">
+          <div className="mx-auto mb-3 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
 
           {/* Stepper visual */}
           <div className="mb-4 flex items-center justify-center gap-2">
             <div className="flex items-center gap-1.5">
-              <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[0.65rem] font-bold ${step === 1 ? "bg-purple-500 text-white" : "bg-purple-500/30 text-purple-200"}`}>1</div>
-              <span className={`text-[0.65rem] font-semibold ${step === 1 ? "text-white/70" : "text-white/35"}`}>Objetivo</span>
+              <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[0.65rem] font-bold ${step === 1 ? "bg-[var(--accent-strong)] text-white" : "bg-accent-soft text-accent"}`}>1</div>
+              <span className={`text-[0.65rem] font-semibold ${step === 1 ? "text-secondary" : "text-muted"}`}>Objetivo</span>
             </div>
-            <div className="h-px w-6 bg-white/15" />
+            <div className="h-px w-6 bg-[var(--border-soft)]" />
             <div className="flex items-center gap-1.5">
-              <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[0.65rem] font-bold ${step === 2 ? "bg-purple-500 text-white" : "bg-white/10 text-white/28"}`}>2</div>
-              <span className={`text-[0.65rem] font-semibold ${step === 2 ? "text-white/70" : "text-white/28"}`}>Etapas</span>
+              <div className={`flex h-6 w-6 items-center justify-center rounded-full text-[0.65rem] font-bold ${step === 2 ? "bg-purple-500 text-white" : "bg-surface-muted text-soft"}`}>2</div>
+              <span className={`text-[0.65rem] font-semibold ${step === 2 ? "text-secondary" : "text-soft"}`}>Etapas</span>
             </div>
           </div>
 
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-1 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <Target className="h-3.5 w-3.5" />
                 {step === 1 ? "Novo objetivo" : title}
               </div>
-              <h2 className="text-[1.35rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+              <h2 className="text-[1.35rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
                 {step === 1 ? "Sobre o objetivo" : "Adicionar etapas"}
               </h2>
-              <p className="mt-1 text-xs text-white/38">
+              <p className="mt-1 text-xs text-muted">
                 {step === 1 ? "Nome, prazo e descrição." : "Quais são os passos para chegar lá?"}
               </p>
             </div>
-            <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]">
+            <button type="button" onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -665,7 +669,7 @@ function CreateObjectiveModal({
           {step === 1 ? (
             <div className="space-y-3">
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">Nome do objetivo</span>
+                <span className="mb-2 block text-xs font-medium text-muted">Nome do objetivo</span>
                 <input
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
@@ -675,18 +679,18 @@ function CreateObjectiveModal({
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">Descrição (opcional)</span>
+                <span className="mb-2 block text-xs font-medium text-muted">Descrição (opcional)</span>
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Contexto, meta ou critério de sucesso…"
                   rows={3}
-                  className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                  className="w-full resize-none rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm leading-6 text-primary outline-none placeholder:text-soft focus:border-accent-soft"
                 />
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">Prazo (opcional)</span>
+                <span className="mb-2 block text-xs font-medium text-muted">Prazo (opcional)</span>
                 <input
                   type="date"
                   value={deadline}
@@ -717,7 +721,7 @@ function CreateObjectiveModal({
               <button
                 type="button"
                 onClick={addStep}
-                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-purple-300/20 bg-purple-500/[0.05] py-2.5 text-xs font-semibold text-purple-200/60 active:scale-[0.98]"
+                className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-accent-soft bg-accent-soft py-2.5 text-xs font-semibold text-accent transition active:scale-[0.98]"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Adicionar etapa
@@ -729,32 +733,35 @@ function CreateObjectiveModal({
         </ScrollArea>
 
         {/* Botões de ação */}
-        <div className="border-t border-white/10 px-5 py-4">
+        <div className="border-t border-[var(--border-soft)] px-5 py-4">
           {step === 1 ? (
             <>
               <button
+                type="button"
                 onClick={handleNextStep}
-                className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
+                className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
               >
                 Próximo — Adicionar etapas →
               </button>
-              <button onClick={onClose} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]">
+              <button type="button" onClick={onClose} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98]">
                 Cancelar
               </button>
             </>
           ) : (
             <div className="flex gap-3">
               <button
+                type="button"
                 onClick={() => setStep(1)}
                 disabled={submitting}
-                className="inline-flex min-h-14 w-[44%] items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
+                className="inline-flex min-h-14 w-[44%] items-center justify-center rounded-2xl border border-soft bg-surface-muted px-4 text-sm font-semibold text-secondary transition active:scale-[0.98] disabled:opacity-50"
               >
                 ← Voltar
               </button>
               <button
+                type="button"
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="inline-flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-purple-500 px-4 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+                className="inline-flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-4 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-60"
               >
                 {submitting
                   ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando…</>
@@ -860,22 +867,22 @@ function EditObjectiveModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative flex max-h-[92vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
+      <div className="relative flex max-h-[92vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
 
-        <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+        <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-4">
+          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <Edit3 className="h-3.5 w-3.5" />
                 Editar objetivo
               </div>
-              <h2 className="text-[1.35rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+              <h2 className="text-[1.35rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
                 Editar objetivo
               </h2>
             </div>
-            <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]">
+            <button type="button" onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]">
               <X className="h-5 w-5" />
             </button>
           </div>
@@ -885,23 +892,23 @@ function EditObjectiveModal({
           <div className="space-y-3">
             {/* Campos do objetivo */}
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">Nome do objetivo</span>
+              <span className="mb-2 block text-xs font-medium text-muted">Nome do objetivo</span>
               <input value={title} onChange={(e) => setTitle(e.target.value)} className={INPUT_CLS} />
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">Descrição (opcional)</span>
+              <span className="mb-2 block text-xs font-medium text-muted">Descrição (opcional)</span>
               <textarea
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Contexto, meta ou critério de sucesso…"
                 rows={2}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                className="w-full resize-none rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm leading-6 text-primary outline-none placeholder:text-soft focus:border-accent-soft"
               />
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">Prazo (opcional)</span>
+              <span className="mb-2 block text-xs font-medium text-muted">Prazo (opcional)</span>
               <input
                 type="date"
                 value={deadline}
@@ -911,11 +918,11 @@ function EditObjectiveModal({
             </label>
 
             {/* Divisor */}
-            <div className="!mt-5 border-t border-white/8 pt-4">
-              <p className="mb-3 text-xs font-semibold text-white/42">Etapas</p>
+            <div className="!mt-5 border-t border-[var(--border-soft)] pt-4">
+              <p className="mb-3 text-xs font-semibold text-muted">Etapas</p>
 
               {loadingSteps ? (
-                <div className="flex items-center gap-2 py-3 text-xs text-white/35">
+                <div className="flex items-center gap-2 py-3 text-xs text-muted">
                   <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando etapas…
                 </div>
               ) : (
@@ -924,15 +931,15 @@ function EditObjectiveModal({
                   {existingSteps.length > 0 && (
                     <div className="mb-3 space-y-2">
                       {existingSteps.map((task) => (
-                        <div key={task.id} className="flex items-center gap-2.5 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+                        <div key={task.id} className="flex items-center gap-2.5 rounded-xl border border-[var(--border-soft)] bg-surface-muted px-3 py-2">
                           <div className={`h-2 w-2 shrink-0 rounded-full ${
                             task.status === "done" ? "bg-emerald-400" :
-                            task.status === "progress" ? "bg-purple-300" : "bg-white/25"
+                            task.status === "progress" ? "bg-[var(--accent)]" : "bg-[var(--text-soft)]"
                           }`} />
-                          <p className={`flex-1 truncate text-xs font-semibold ${task.status === "done" ? "text-white/40 line-through" : "text-white/75"}`}>
+                          <p className={`flex-1 truncate text-xs font-semibold ${task.status === "done" ? "text-soft line-through" : "text-primary"}`}>
                             {task.title}
                           </p>
-                          <span className="shrink-0 text-[0.65rem] text-white/28">
+                          <span className="shrink-0 text-[0.65rem] text-soft">
                             {STATUS_TASK[task.status] ?? task.status}
                           </span>
                         </div>
@@ -959,7 +966,7 @@ function EditObjectiveModal({
                   <button
                     type="button"
                     onClick={addNewStep}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-purple-300/20 bg-purple-500/[0.05] py-2.5 text-xs font-semibold text-purple-200/60 active:scale-[0.98]"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-accent-soft bg-accent-soft py-2.5 text-xs font-semibold text-accent transition active:scale-[0.98]"
                   >
                     <Plus className="h-3.5 w-3.5" />
                     Adicionar etapa
@@ -972,15 +979,16 @@ function EditObjectiveModal({
           </div>
         </ScrollArea>
 
-        <div className="border-t border-white/10 px-5 py-4">
+        <div className="border-t border-[var(--border-soft)] px-5 py-4">
           <button
+            type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-card active:scale-[0.98] disabled:opacity-60"
           >
             {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando…</> : "Salvar alterações"}
           </button>
-          <button onClick={onClose} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]">
+          <button type="button" onClick={onClose} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98]">
             Cancelar
           </button>
         </div>
@@ -1036,31 +1044,31 @@ function AddStepModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="w-full max-w-[430px] rounded-[2rem] border border-white/10 bg-[#171720]/95 p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
+      <div className="w-full max-w-[430px] rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
 
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
               <Plus className="h-3.5 w-3.5" />
               Nova etapa
             </div>
-            <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+            <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
               Adicionar etapa
             </h2>
-            <p className="mt-1.5 text-xs text-white/38">
-              em <span className="font-semibold text-white/60">{objective.title}</span>
+            <p className="mt-1.5 text-xs text-muted">
+              em <span className="font-semibold text-secondary">{objective.title}</span>
             </p>
           </div>
-          <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]">
+          <button type="button" onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-3">
           <label className="block">
-            <span className="mb-2 block text-xs font-medium text-white/42">Nome da etapa</span>
+            <span className="mb-2 block text-xs font-medium text-muted">Nome da etapa</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -1070,7 +1078,7 @@ function AddStepModal({
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-xs font-medium text-white/42">Data (opcional)</span>
+            <span className="mb-2 block text-xs font-medium text-muted">Data (opcional)</span>
             <input
               type="date"
               value={date}
@@ -1080,11 +1088,11 @@ function AddStepModal({
           </label>
 
           <label className="block">
-            <span className="mb-2 block text-xs font-medium text-white/42">Prioridade</span>
+            <span className="mb-2 block text-xs font-medium text-muted">Prioridade</span>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
-              className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+              className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
             >
               <option value="low">Baixa</option>
               <option value="medium">Média</option>
@@ -1096,14 +1104,15 @@ function AddStepModal({
         </div>
 
         <button
+          type="button"
           onClick={handleSubmit}
           disabled={submitting}
-          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-60"
         >
           {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Criando…</> : <>Criar etapa <Plus className="ml-2 h-4 w-4" /></>}
         </button>
 
-        <button onClick={onClose} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]">
+        <button type="button" onClick={onClose} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98]">
           Cancelar
         </button>
       </div>
@@ -1162,28 +1171,28 @@ function EditStepModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="w-full max-w-[430px] rounded-[2rem] border border-white/10 bg-[#171720]/95 p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
+      <div className="w-full max-w-[430px] rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
 
         <div className="mb-5 flex items-start justify-between gap-4">
           <div>
-            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+            <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
               <Edit3 className="h-3.5 w-3.5" />
               Editar etapa
             </div>
-            <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+            <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
               Editar etapa
             </h2>
           </div>
-          <button onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]">
+          <button type="button" onClick={onClose} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]">
             <X className="h-5 w-5" />
           </button>
         </div>
 
         <div className="space-y-3">
           <label className="block">
-            <span className="mb-2 block text-xs font-medium text-white/42">Nome da etapa</span>
+            <span className="mb-2 block text-xs font-medium text-muted">Nome da etapa</span>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
@@ -1193,7 +1202,7 @@ function EditStepModal({
 
           <div className="grid grid-cols-2 gap-3">
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">Data</span>
+              <span className="mb-2 block text-xs font-medium text-muted">Data</span>
               <input
                 type="date"
                 value={date}
@@ -1203,7 +1212,7 @@ function EditStepModal({
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">Hora</span>
+              <span className="mb-2 block text-xs font-medium text-muted">Hora</span>
               <input
                 type="time"
                 value={time}
@@ -1214,11 +1223,11 @@ function EditStepModal({
           </div>
 
           <label className="block">
-            <span className="mb-2 block text-xs font-medium text-white/42">Prioridade</span>
+            <span className="mb-2 block text-xs font-medium text-muted">Prioridade</span>
             <select
               value={priority}
               onChange={(e) => setPriority(e.target.value as "low" | "medium" | "high")}
-              className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+              className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
             >
               <option value="low">Baixa</option>
               <option value="medium">Média</option>
@@ -1230,14 +1239,15 @@ function EditStepModal({
         </div>
 
         <button
+          type="button"
           onClick={handleSubmit}
           disabled={submitting}
-          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-60"
         >
           {submitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Salvando…</> : "Salvar alterações"}
         </button>
 
-        <button onClick={onClose} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]">
+        <button type="button" onClick={onClose} className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98]">
           Cancelar
         </button>
       </div>
@@ -1267,9 +1277,9 @@ function StepInput({
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+    <div className="rounded-2xl border border-soft bg-surface-muted p-3">
       <div className="mb-2 flex items-center gap-2">
-        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white/10 text-[0.6rem] font-bold text-white/40">
+        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-surface-muted text-[0.6rem] font-bold text-muted">
           {index + 1}
         </span>
         <input
@@ -1277,12 +1287,12 @@ function StepInput({
           onChange={(e) => onChange({ title: e.target.value })}
           placeholder={`Etapa ${index + 1}`}
           autoFocus={autoFocus}
-          className="min-h-[38px] flex-1 rounded-xl border border-white/10 bg-white/[0.055] px-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-purple-300/35"
+          className="min-h-[38px] flex-1 rounded-xl border border-soft bg-surface-muted px-3 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
         />
         <button
           type="button"
           onClick={onRemove}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/35 active:scale-[0.94]"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]"
         >
           <X className="h-3.5 w-3.5" />
         </button>
@@ -1290,21 +1300,21 @@ function StepInput({
 
       <div className="grid grid-cols-2 gap-2 pl-7">
         <div>
-          <label className="mb-1 block text-[0.65rem] text-white/30">Data (opcional)</label>
+          <label className="mb-1 block text-[0.65rem] text-soft">Data (opcional)</label>
           <input
             type="date"
             value={step.date}
             onChange={(e) => onChange({ date: e.target.value })}
-            className="h-9 w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 text-xs text-white/70 outline-none focus:border-purple-300/30 [color-scheme:dark]"
+            className="h-9 w-full rounded-xl border border-soft bg-surface-muted px-2.5 text-xs text-primary outline-none focus:border-accent-soft"
           />
         </div>
         <div>
-          <label className="mb-1 block text-[0.65rem] text-white/30">Hora (opcional)</label>
+          <label className="mb-1 block text-[0.65rem] text-soft">Hora (opcional)</label>
           <input
             type="time"
             value={step.time}
             onChange={(e) => onChange({ time: e.target.value })}
-            className="h-9 w-full rounded-xl border border-white/10 bg-white/[0.04] px-2.5 text-xs text-white/70 outline-none focus:border-purple-300/30 [color-scheme:dark]"
+            className="h-9 w-full rounded-xl border border-soft bg-surface-muted px-2.5 text-xs text-primary outline-none focus:border-accent-soft"
           />
         </div>
       </div>

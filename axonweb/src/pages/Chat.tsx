@@ -299,17 +299,18 @@ export default function Chat() {
    * -------------------------------------------------------------------------- */
 
   return (
-    <main className="relative h-[100dvh] overflow-hidden bg-[#11111a] text-white">
+    <main className="relative h-[100dvh] overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
         {/* Header fixo: retorno ao dashboard, criação rápida e menu lateral. */}
         <header className="mb-4 flex shrink-0 items-center justify-between">
           <button
+            type="button"
             onClick={() => navigate("/dashboard")}
-            className="flex items-center gap-3 text-left active:scale-[0.98]"
+            className="flex items-center gap-3 text-left transition active:scale-[0.98]"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent shadow-card">
               <img
                 src="/axon-logo.svg"
                 alt="Axon"
@@ -318,27 +319,29 @@ export default function Chat() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-white">Chat</p>
-              <p className="text-xs text-white/40">Conversas com o Axon</p>
+              <p className="text-sm font-semibold text-primary">Chat</p>
+              <p className="text-xs text-muted">Conversas com o Axon</p>
             </div>
           </button>
 
           <div className="flex items-center gap-2">
             <button
+              type="button"
               onClick={() =>
                 openCreateConversationModal(
                   view === "projects" ? selectedProjectId : null
                 )
               }
-              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/35 active:scale-[0.96]"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[var(--accent-strong)] text-white shadow-card transition active:scale-[0.96]"
               aria-label="Nova conversa ou projeto"
             >
               <Plus className="h-5 w-5" />
             </button>
 
             <button
+              type="button"
               onClick={() => setIsSidebarOpen(true)}
-              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+              className="flex h-11 w-11 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
               aria-label="Abrir menu"
             >
               <Menu className="h-5 w-5" />
@@ -349,21 +352,21 @@ export default function Chat() {
         <ScrollArea className="flex-1" contentClassName="pr-1">
           {/* Hero contextual da página de chat. */}
           <div className="mb-4">
-            <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
+            <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
+              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),transparent_40%)] opacity-60 dark:opacity-30" />
 
               <div className="relative">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                   <Sparkles className="h-3.5 w-3.5" />
                   Memória e contexto
                 </div>
 
-                <h1 className="text-[2.05rem] font-semibold leading-[1.02] tracking-[-0.06em] text-white">
+                <h1 className="text-[2.05rem] font-semibold leading-[1.02] tracking-[-0.06em] text-primary">
                   Organize suas conversas por assunto.
                 </h1>
 
-                <p className="mt-3 text-sm leading-6 text-white/50">
+                <p className="mt-3 text-sm leading-6 text-muted">
                   Crie chats separados para rotina, foco, projetos, estudos ou
                   qualquer área que precise de acompanhamento.
                 </p>
@@ -373,24 +376,24 @@ export default function Chat() {
 
           {/* Busca e alternância entre conversas soltas e projetos. */}
           <div className="sticky top-0 z-30 -mx-1 mb-4 space-y-3 bg-transparent px-1 py-3">
-            <label className="flex min-h-13 items-center gap-3 rounded-2xl border border-white/10 bg-[#1b1b27]/90 px-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-              <Search className="h-4 w-4 text-white/35" />
+            <label className="flex min-h-13 items-center gap-3 rounded-2xl border border-soft bg-surface-elevated px-4 shadow-card backdrop-blur-2xl">
+              <Search className="h-4 w-4 text-soft" />
 
               <input
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
                 placeholder="Buscar conversa..."
-                className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/30"
+                className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-soft"
               />
             </label>
 
-            <div className="flex rounded-2xl border border-white/10 bg-[#1b1b27]/90 p-1 shadow-xl shadow-black/20 backdrop-blur-2xl">
+            <div className="flex rounded-2xl border border-soft bg-surface-elevated p-1 shadow-card backdrop-blur-2xl">
               <button
                 onClick={() => setView("all")}
                 className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
                   view === "all"
-                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                    : "text-white/42"
+                    ? "bg-[var(--accent-strong)] text-white shadow-card"
+                    : "text-muted"
                 }`}
               >
                 Todas
@@ -400,8 +403,8 @@ export default function Chat() {
                 onClick={() => setView("projects")}
                 className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
                   view === "projects"
-                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                    : "text-white/42"
+                    ? "bg-[var(--accent-strong)] text-white shadow-card"
+                    : "text-muted"
                 }`}
               >
                 Projetos
@@ -412,8 +415,8 @@ export default function Chat() {
           {/* Lista principal: muda entre conversas, projetos e conversas do projeto selecionado. */}
           <section className="space-y-3 pb-4">
             {loadingConversations || (view === "projects" && loadingProjects) ? (
-              <div className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 text-center shadow-xl shadow-black/20 backdrop-blur-2xl">
-                <p className="text-sm text-white/35">
+              <div className="rounded-[2rem] border border-soft bg-surface-elevated p-5 text-center shadow-card backdrop-blur-2xl">
+                <p className="text-sm text-muted">
                   {view === "projects"
                     ? "Carregando projetos..."
                     : "Carregando conversas..."}
@@ -456,7 +459,7 @@ export default function Chat() {
                         <button
                           type="button"
                           onClick={() => setVisibleCount((current) => current + 8)}
-                          className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
+                          className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
                         >
                           Ver mais conversas
                         </button>
@@ -512,13 +515,13 @@ export default function Chat() {
 
                     {visibleConversations.length > 0 && (
                       <div className="flex items-center gap-3 px-1">
-                        <div className="h-px flex-1 bg-white/10" />
+                        <div className="h-px flex-1 bg-[var(--border-soft)]" />
 
-                        <span className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-white/28">
+                        <span className="text-[0.65rem] font-semibold uppercase tracking-[0.16em] text-soft">
                           Conversas regulares
                         </span>
 
-                        <div className="h-px flex-1 bg-white/10" />
+                        <div className="h-px flex-1 bg-[var(--border-soft)]" />
                       </div>
                     )}
                   </div>
@@ -536,7 +539,7 @@ export default function Chat() {
                   <button
                     type="button"
                     onClick={() => setVisibleCount((current) => current + 8)}
-                    className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
+                    className="mt-2 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
                   >
                     Ver mais conversas
                   </button>
@@ -625,34 +628,34 @@ function SelectedProjectHeader({
   onBack: () => void;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-[1.8rem] border border-purple-300/18 bg-[#21152f]/76 p-4 shadow-xl shadow-purple-950/15 backdrop-blur-2xl">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_52%)]" />
+    <div className="relative overflow-hidden rounded-[1.8rem] border border-accent-soft bg-accent-soft p-4 text-primary shadow-card backdrop-blur-2xl">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_52%)]" />
 
       <div className="relative">
         <button
           type="button"
           onClick={onBack}
-          className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-white/45 active:scale-[0.98]"
+          className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-muted transition active:scale-[0.98]"
         >
           <ArrowLeft className="h-4 w-4" />
           Voltar aos projetos
         </button>
 
         <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/14 text-purple-100">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
             <Briefcase className="h-5 w-5" />
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-purple-100/50">
+            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-accent">
               Projeto
             </p>
 
-            <h2 className="mt-1 truncate text-xl font-semibold tracking-[-0.04em] text-white">
+            <h2 className="mt-1 truncate text-xl font-semibold tracking-[-0.04em] text-primary">
               {project.name}
             </h2>
 
-            <p className="mt-1 line-clamp-2 text-sm leading-6 text-white/45">
+            <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted">
               {project.description || "Sem descrição"}
             </p>
           </div>
@@ -694,26 +697,27 @@ function ConversationCard({
 
   return (
     <button
+      type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-[1.7rem] border p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99] ${
+      className={`flex w-full items-center gap-3 rounded-[1.7rem] border p-4 text-left shadow-card backdrop-blur-2xl transition active:scale-[0.99] ${
         isFixed
-          ? "border-purple-300/20 bg-purple-500/10"
+          ? "border-accent-soft bg-accent-soft"
           : conversation.archived
-            ? "border-white/10 bg-white/[0.04]"
-            : "border-white/10 bg-[#1b1b27]/76"
+            ? "border-soft bg-surface-muted opacity-70"
+            : "border-soft bg-surface-elevated"
       }`}
     >
       <div
         className={`relative flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border ${
           isFixed
-            ? "border-purple-300/25 bg-purple-500/20 text-purple-100"
-            : "border-purple-300/15 bg-purple-500/10 text-purple-200"
+            ? "border-accent-soft bg-surface-elevated text-accent"
+            : "border-accent-soft bg-accent-soft text-accent"
         }`}
       >
         <Icon className="h-5 w-5" />
 
         {isFixed && (
-          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border border-[#1b1b27] bg-purple-400 px-1 text-[0.58rem] font-bold text-white">
+          <span className="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full border border-[var(--surface-elevated)] bg-[var(--accent)] px-1 text-[0.58rem] font-bold text-white">
             1
           </span>
         )}
@@ -722,44 +726,44 @@ function ConversationCard({
       <div className="min-w-0 flex-1">
         <div className="mb-1 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <p className="truncate text-sm font-semibold text-white">
+            <p className="truncate text-sm font-semibold text-primary">
               {conversation.title}
             </p>
 
             {isFixed && (
-              <span className="shrink-0 rounded-full border border-purple-300/20 bg-purple-500/15 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-purple-100">
+              <span className="shrink-0 rounded-full border border-accent-soft bg-accent-soft px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-accent">
                 Fixo
               </span>
             )}
           </div>
 
-          <p className="shrink-0 text-[0.68rem] text-white/32">
+          <p className="shrink-0 text-[0.68rem] text-soft">
             {formattedDate}
           </p>
         </div>
 
         <div className="mb-2 flex items-center gap-2">
-          <p className="truncate text-xs text-white/38 capitalize">
+          <p className="truncate text-xs text-muted capitalize">
             {conversation.type === "general" ? "Geral" :
              conversation.type === "planning" ? "Planejamento" :
              conversation.type === "focus" ? "Foco" : "Projeto"}
           </p>
 
           {conversation.archived && (
-            <span className="shrink-0 rounded-full border border-white/10 bg-white/[0.045] px-2 py-0.5 text-[0.6rem] font-semibold text-white/38">
+            <span className="shrink-0 rounded-full border border-soft bg-surface-muted px-2 py-0.5 text-[0.6rem] font-semibold text-muted">
               Arquivada
             </span>
           )}
         </div>
 
         {conversation.last_message && (
-          <p className="line-clamp-1 text-xs leading-5 text-white/50">
+          <p className="line-clamp-1 text-xs leading-5 text-muted">
             {conversation.last_message}
           </p>
         )}
       </div>
 
-      <ChevronRight className="h-5 w-5 shrink-0 text-white/22" />
+      <ChevronRight className="h-5 w-5 shrink-0 text-soft" />
     </button>
   );
 }
@@ -799,11 +803,11 @@ function AxonDirectConversationCard({
     <button
       type="button"
       onClick={onClick}
-      className="relative flex w-full items-center gap-3 overflow-hidden rounded-[1.8rem] border border-purple-300/25 bg-purple-500/12 p-4 text-left shadow-xl shadow-purple-950/20 backdrop-blur-2xl active:scale-[0.99]"
+      className="relative flex w-full items-center gap-3 overflow-hidden rounded-[1.8rem] border border-accent-soft bg-accent-soft p-4 text-left text-primary shadow-card backdrop-blur-2xl transition active:scale-[0.99]"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_52%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_52%)]" />
 
-      <div className="relative flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-purple-300/25 bg-purple-500/20">
+      <div className="relative flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated">
         <img
           src="/axon-logo.svg"
           alt="Axon"
@@ -814,32 +818,32 @@ function AxonDirectConversationCard({
       <div className="relative min-w-0 flex-1">
         <div className="mb-1 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <p className="truncate text-sm font-semibold text-white">
+            <p className="truncate text-sm font-semibold text-primary">
               Axon
             </p>
 
-            <span className="shrink-0 rounded-full border border-purple-300/20 bg-purple-500/15 px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-purple-100">
+            <span className="shrink-0 rounded-full border border-accent-soft bg-accent-soft px-2 py-0.5 text-[0.6rem] font-semibold uppercase tracking-[0.12em] text-accent">
               Canal do Axon
             </span>
           </div>
 
-          <p className="shrink-0 text-[0.68rem] text-white/36">
+          <p className="shrink-0 text-[0.68rem] text-soft">
             {formattedDate}
           </p>
         </div>
 
-        <p className="mb-2 truncate text-xs text-purple-100/55">
+        <p className="mb-2 truncate text-xs text-accent">
           Conversa principal
         </p>
 
         {conversation.last_message && (
-          <p className="line-clamp-1 text-xs leading-5 text-white/50">
+          <p className="line-clamp-1 text-xs leading-5 text-muted">
             {conversation.last_message}
           </p>
         )}
       </div>
 
-      <ChevronRight className="relative h-5 w-5 shrink-0 text-white/28" />
+      <ChevronRight className="relative h-5 w-5 shrink-0 text-soft" />
     </button>
   );
 }
@@ -945,21 +949,21 @@ function CreateConversationModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative flex max-h-[88vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
+      <div className="relative flex max-h-[88vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
 
-        <div className="relative border-b border-white/10 px-5 pb-4 pt-4">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+        <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-4">
+          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
 
           <div className="flex items-start justify-between gap-4">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <Plus className="h-3.5 w-3.5" />
                 {isInsideProject ? "Nova conversa" : "Novo espaço"}
               </div>
 
-              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
                 {isInsideProject
                   ? "Criar conversa no projeto"
                   : createMode === "project"
@@ -967,7 +971,7 @@ function CreateConversationModal({
                   : "Criar conversa"}
               </h2>
 
-              <p className="mt-2 text-xs leading-5 text-white/45">
+              <p className="mt-2 text-xs leading-5 text-muted">
                 {isInsideProject
                   ? "Esta conversa será vinculada ao projeto selecionado."
                   : createMode === "project"
@@ -979,7 +983,7 @@ function CreateConversationModal({
             <button
               onClick={onClose}
               disabled={isLoading}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96] disabled:opacity-50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96] disabled:opacity-50"
               aria-label="Fechar"
             >
               <X className="h-5 w-5" />
@@ -990,14 +994,14 @@ function CreateConversationModal({
         <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
           {/* Quando não veio de um projeto, o modal também permite criar uma nova pasta. */}
           {!isInsideProject && (
-            <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-white/10 bg-white/[0.045] p-1">
+            <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-soft bg-surface-muted p-1">
               <button
                 type="button"
                 onClick={() => setCreateMode("conversation")}
                 className={`min-h-11 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
                   createMode === "conversation"
-                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                    : "text-white/42"
+                    ? "bg-[var(--accent-strong)] text-white shadow-card"
+                    : "text-muted"
                 }`}
               >
                 Conversa
@@ -1008,8 +1012,8 @@ function CreateConversationModal({
                 onClick={() => setCreateMode("project")}
                 className={`min-h-11 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
                   createMode === "project"
-                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                    : "text-white/42"
+                    ? "bg-[var(--accent-strong)] text-white shadow-card"
+                    : "text-muted"
                 }`}
               >
                 Projeto
@@ -1053,7 +1057,7 @@ function CreateConversationModal({
               )}
 
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Nome da conversa
                 </span>
 
@@ -1062,20 +1066,20 @@ function CreateConversationModal({
                   onChange={(event) => setTitle(event.target.value)}
                   type="text"
                   placeholder="Ex: Estudos, Trabalho, Rotina..."
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
                 />
               </label>
 
               {isInsideProject && (
-                <div className="mt-4 rounded-2xl border border-purple-300/15 bg-purple-500/10 p-4">
+                <div className="mt-4 rounded-2xl border border-accent-soft bg-accent-soft p-4">
                   <div className="mb-2 flex items-center gap-2">
-                    <Briefcase className="h-4 w-4 text-purple-200" />
-                    <p className="text-sm font-semibold text-purple-100">
+                    <Briefcase className="h-4 w-4 text-accent" />
+                    <p className="text-sm font-semibold text-primary">
                       Conversa de projeto
                     </p>
                   </div>
 
-                  <p className="text-xs leading-5 text-white/50">
+                  <p className="text-xs leading-5 text-muted">
                     Esta conversa será criada diretamente dentro do projeto atual.
                   </p>
                 </div>
@@ -1084,7 +1088,7 @@ function CreateConversationModal({
           ) : (
             <div className="space-y-3">
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Nome do projeto
                 </span>
 
@@ -1093,12 +1097,12 @@ function CreateConversationModal({
                   onChange={(event) => setProjectName(event.target.value)}
                   type="text"
                   placeholder="Ex: AXON WebApp"
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
                 />
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Descrição
                 </span>
 
@@ -1107,19 +1111,19 @@ function CreateConversationModal({
                   onChange={(event) => setProjectDescription(event.target.value)}
                   placeholder="Ex: Conversas sobre telas, fluxo, backend e decisões do produto."
                   rows={3}
-                  className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                  className="w-full resize-none rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm leading-6 text-primary outline-none placeholder:text-soft focus:border-accent-soft"
                 />
               </label>
 
-              <div className="rounded-2xl border border-purple-300/15 bg-purple-500/10 p-4">
+              <div className="rounded-2xl border border-accent-soft bg-accent-soft p-4">
                 <div className="mb-2 flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-purple-200" />
-                  <p className="text-sm font-semibold text-purple-100">
+                  <Sparkles className="h-4 w-4 text-accent" />
+                  <p className="text-sm font-semibold text-primary">
                     Como o Axon usa projetos
                   </p>
                 </div>
 
-                <p className="text-xs leading-5 text-white/50">
+                <p className="text-xs leading-5 text-muted">
                   Projetos servem para reunir conversas relacionadas em um mesmo contexto.
                 </p>
               </div>
@@ -1133,12 +1137,12 @@ function CreateConversationModal({
           )}
         </ScrollArea>
 
-        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
+        <div className="relative border-t border-[var(--border-soft)] bg-surface-elevated px-5 py-4">
           <button
             type="button"
             onClick={handleCreate}
             disabled={isLoading}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isLoading
               ? "Criando..."
@@ -1152,7 +1156,7 @@ function CreateConversationModal({
             type="button"
             onClick={onClose}
             disabled={isLoading}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -1182,8 +1186,8 @@ function ConversationTypeButton({
       onClick={onClick}
       className={`flex min-h-[4.6rem] flex-col items-center justify-center gap-2 rounded-2xl border text-xs font-semibold transition active:scale-[0.98] ${
         active
-          ? "border-purple-300/30 bg-purple-500/20 text-purple-100 shadow-lg shadow-purple-950/20"
-          : "border-white/10 bg-white/[0.045] text-white/42"
+          ? "border-accent-soft bg-accent-soft text-accent shadow-card"
+          : "border-soft bg-surface-muted text-muted"
       }`}
     >
       <Icon className="h-[18px] w-[18px]" />
@@ -1217,23 +1221,23 @@ function ProjectFolderCard({
       <button
         type="button"
         onClick={onClick}
-        className="group w-full rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-5 pr-16 text-left shadow-xl shadow-black/20 backdrop-blur-2xl transition active:scale-[0.98]"
+        className="group w-full rounded-[2rem] border border-soft bg-surface-elevated p-5 pr-16 text-left text-primary shadow-card backdrop-blur-2xl transition active:scale-[0.98]"
       >
         <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/12 text-purple-200">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
             <Briefcase className="h-5 w-5" />
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-semibold text-white">
+            <p className="truncate text-base font-semibold text-primary">
               {project.name}
             </p>
 
-            <p className="mt-1 line-clamp-2 text-xs leading-5 text-white/42">
+            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
               {project.description || "Sem descrição"}
             </p>
 
-            <div className="mt-3 inline-flex rounded-full border border-white/10 bg-white/[0.045] px-3 py-1 text-[0.68rem] font-semibold text-white/42">
+            <div className="mt-3 inline-flex rounded-full border border-soft bg-surface-muted px-3 py-1 text-[0.68rem] font-semibold text-muted">
               {count} {count === 1 ? "conversa" : "conversas"}
             </div>
           </div>
@@ -1246,14 +1250,14 @@ function ProjectFolderCard({
           event.stopPropagation();
           setIsMenuOpen((current) => !current);
         }}
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] text-white/45 active:scale-[0.96]"
+        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
         aria-label="Ações do projeto"
       >
         <MoreVertical className="h-5 w-5" />
       </button>
 
       {isMenuOpen && (
-        <div className="absolute right-4 top-16 z-40 w-56 overflow-hidden rounded-2xl border border-white/10 bg-[#1b1b27]/95 p-1 shadow-2xl shadow-black/40 backdrop-blur-2xl">
+        <div className="absolute right-4 top-16 z-40 w-56 overflow-hidden rounded-2xl border border-soft bg-surface-elevated p-1 shadow-soft backdrop-blur-2xl">
           <button
             type="button"
             onClick={(event) => {
@@ -1261,7 +1265,7 @@ function ProjectFolderCard({
               setIsMenuOpen(false);
               onCreateConversation();
             }}
-            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-white/58 active:scale-[0.98]"
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-secondary transition hover:bg-surface-muted active:scale-[0.98]"
           >
             <Plus className="h-4 w-4" />
             Nova conversa
@@ -1274,7 +1278,7 @@ function ProjectFolderCard({
               setIsMenuOpen(false);
               onEdit();
             }}
-            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-white/58 active:scale-[0.98]"
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-secondary transition hover:bg-surface-muted active:scale-[0.98]"
           >
             <Edit3 className="h-4 w-4" />
             Editar projeto
@@ -1287,7 +1291,7 @@ function ProjectFolderCard({
               setIsMenuOpen(false);
               onDelete();
             }}
-            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-red-200/80 active:scale-[0.98]"
+            className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-red-600 transition hover:bg-red-500/10 active:scale-[0.98] dark:text-red-200/80"
           >
             <Trash2 className="h-4 w-4" />
             Excluir projeto
@@ -1354,23 +1358,23 @@ function EditProjectModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-      <div className="relative flex max-h-[82vh] w-full max-w-[390px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm">
+      <div className="relative flex max-h-[82vh] w-full max-w-[390px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
 
-        <div className="relative border-b border-white/10 px-5 pb-4 pt-5">
+        <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <Edit3 className="h-3.5 w-3.5" />
                 Projeto
               </div>
 
-              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
                 Editar projeto
               </h2>
 
-              <p className="mt-2 text-xs leading-5 text-white/45">
+              <p className="mt-2 text-xs leading-5 text-muted">
                 Atualize o nome e a descrição deste projeto.
               </p>
             </div>
@@ -1379,7 +1383,7 @@ function EditProjectModal({
               type="button"
               onClick={onClose}
               disabled={submitting}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96] disabled:opacity-50"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96] disabled:opacity-50"
               aria-label="Fechar"
             >
               <X className="h-5 w-5" />
@@ -1390,7 +1394,7 @@ function EditProjectModal({
         <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
           <div className="space-y-3">
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">
+              <span className="mb-2 block text-xs font-medium text-muted">
                 Nome
               </span>
 
@@ -1398,12 +1402,12 @@ function EditProjectModal({
                 value={name}
                 onChange={(event) => setName(event.target.value)}
                 type="text"
-                className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
               />
             </label>
 
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">
+              <span className="mb-2 block text-xs font-medium text-muted">
                 Descrição
               </span>
 
@@ -1411,7 +1415,7 @@ function EditProjectModal({
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
                 rows={3}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                className="w-full resize-none rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm leading-6 text-primary outline-none placeholder:text-soft focus:border-accent-soft"
               />
             </label>
 
@@ -1421,12 +1425,12 @@ function EditProjectModal({
           </div>
         </ScrollArea>
 
-        <div className="relative border-t border-white/10 bg-[#171720]/95 px-5 py-4">
+        <div className="relative border-t border-[var(--border-soft)] bg-surface-elevated px-5 py-4">
           <button
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="inline-flex min-h-13 w-full items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+            className="inline-flex min-h-13 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-5 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-60"
           >
             {submitting ? (
               <>
@@ -1445,7 +1449,7 @@ function EditProjectModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary transition active:scale-[0.98] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -1479,18 +1483,18 @@ function DeleteProjectModal({
         <>
           <p>
             Essa ação vai excluir o projeto{" "}
-            <span className="font-semibold text-white/75">
+            <span className="font-semibold text-primary">
               "{project.name}"
             </span>
             .
           </p>
 
-          <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+          <div className="mt-5 rounded-[1.35rem] border border-soft bg-surface-muted p-3 text-left">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-soft">
               Atenção
             </p>
 
-            <p className="mt-2 text-xs leading-5 text-white/42">
+            <p className="mt-2 text-xs leading-5 text-muted">
               Confirme com o backend se as conversas serão mantidas fora do
               projeto ou excluídas junto com ele.
             </p>

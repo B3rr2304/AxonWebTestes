@@ -43,8 +43,8 @@ export default function AuthCallback() {
 
   // Feedback mínimo enquanto o código do Google é convertido em sessão do Axon.
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#05050b]">
-      <p className="text-sm text-white/50">Autenticando com Google...</p>
+    <div className="flex min-h-screen items-center justify-center bg-app">
+      <p className="text-sm text-muted">Autenticando com Google...</p>
     </div>
   );
 }

@@ -35,7 +35,7 @@ export default function DashboardLoading() {
   }, [navigate]);
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#0f1018] px-4 text-white">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app px-4 text-primary">
       <OnboardingBackground />
 
       <section className="relative z-10 flex w-full max-w-[360px] flex-col items-center text-center">
@@ -51,7 +51,7 @@ export default function DashboardLoading() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute h-52 w-52 rounded-full border border-purple-300/10"
+            className="absolute h-52 w-52 rounded-full border border-accent-soft"
           />
 
           <motion.div
@@ -65,7 +65,7 @@ export default function DashboardLoading() {
               ease: "easeInOut",
               delay: 0.2,
             }}
-            className="absolute h-40 w-40 rounded-full border border-fuchsia-300/10"
+            className="absolute h-40 w-40 rounded-full border border-accent-soft"
           />
 
           <motion.div
@@ -77,7 +77,7 @@ export default function DashboardLoading() {
               repeat: Infinity,
               ease: "linear",
             }}
-            className="absolute h-44 w-44 rounded-full border border-transparent border-t-purple-300/40"
+            className="absolute h-44 w-44 rounded-full border border-transparent border-t-[var(--accent)]"
           />
 
           <motion.div
@@ -90,7 +90,7 @@ export default function DashboardLoading() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="relative flex h-28 w-28 items-center justify-center rounded-[2rem] border border-purple-300/25 bg-purple-500/10 shadow-[0_0_90px_rgba(168,85,247,0.42)] backdrop-blur-2xl"
+            className="relative flex h-28 w-28 items-center justify-center rounded-[2rem] border border-accent-soft bg-accent-soft shadow-soft backdrop-blur-2xl"
           >
             <img
               src={favicon}
@@ -109,23 +109,23 @@ export default function DashboardLoading() {
           transition={{ duration: 0.35 }}
           className="mt-6"
         >
-          <p className="text-sm font-semibold text-purple-100">
+          <p className="text-sm font-semibold text-accent">
             {loadingTexts[textIndex]}
           </p>
 
-          <p className="mt-3 text-xs leading-5 text-white/42">
+          <p className="mt-3 text-xs leading-5 text-muted">
             O Axon está montando uma visão inicial baseada no seu ritmo,
             energia e prioridades.
           </p>
         </motion.div>
 
         {/* Progresso visual sincronizado com o redirecionamento. */}
-        <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+        <div className="mt-8 h-1.5 w-full overflow-hidden rounded-full bg-[var(--border-soft)]">
           <motion.div
             initial={{ width: "0%" }}
             animate={{ width: "100%" }}
             transition={{ duration: 3.1, ease: "easeInOut" }}
-            className="h-full rounded-full bg-gradient-to-r from-purple-400 via-fuchsia-300 to-purple-500 shadow-[0_0_18px_rgba(192,132,252,0.7)]"
+            className="h-full rounded-full bg-[var(--accent)] shadow-[0_0_18px_var(--accent-soft)]"
           />
         </div>
       </section>
