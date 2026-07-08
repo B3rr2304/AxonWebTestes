@@ -72,28 +72,30 @@ export default function Focus() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#0f1018] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
         <header className="mb-4 flex shrink-0 items-center justify-between">
           <button
+            type="button"
             onClick={() => navigate("/dashboard")}
             className="flex items-center gap-3 text-left active:scale-[0.98]"
           >
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent shadow-card">
               <img src="/axon-logo.svg" alt="Axon" className="h-8 w-8 object-contain" />
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-white">Focus</p>
-              <p className="text-xs text-white/40">Modo silencioso</p>
+              <p className="text-sm font-semibold text-primary">Focus</p>
+              <p className="text-xs text-muted">Modo silencioso</p>
             </div>
           </button>
 
           <button
+            type="button"
             onClick={() => setIsSidebarOpen(true)}
-            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
+            className="flex h-11 w-11 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
             aria-label="Abrir menu"
           >
             <Menu className="h-5 w-5" />
@@ -101,13 +103,13 @@ export default function Focus() {
         </header>
 
         <section className="flex flex-1 flex-col justify-center">
-          <div className="relative overflow-hidden rounded-[2.4rem] border border-white/10 bg-[#171722]/78 px-5 pb-6 pt-5 shadow-2xl shadow-black/35 backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.24),transparent_52%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.07),transparent_36%)]" />
+          <div className="relative overflow-hidden rounded-[2.4rem] border border-soft bg-surface-elevated px-5 pb-6 pt-5 text-primary shadow-soft backdrop-blur-2xl">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--accent-soft),transparent_52%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(145deg,rgba(255,255,255,0.18),transparent_36%)] opacity-60 dark:opacity-30" />
 
             <div className="relative">
               <div className="mb-5 flex items-center justify-between gap-3">
-                <div className="inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <div className="inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                   <Sparkles className="h-3.5 w-3.5" />
                   Uma coisa por vez
                 </div>
@@ -115,29 +117,29 @@ export default function Focus() {
                 <div
                   className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${
                     isRunning
-                      ? "border-purple-300/25 bg-purple-500/15 text-purple-100"
-                      : "border-white/10 bg-white/[0.055] text-white/42"
+                      ? "border-accent-soft bg-accent-soft text-accent"
+                      : "border-soft bg-surface-muted text-muted"
                   }`}
                 >
                   {statusLabel}
                 </div>
               </div>
 
-              <div className="mb-6 rounded-[1.6rem] border border-white/10 bg-black/20 p-4">
+              <div className="mb-6 rounded-[1.6rem] border border-soft bg-surface-muted p-4">
                 <div className="mb-2 flex items-center gap-2">
-                  <Target className="h-4 w-4 text-purple-200" />
-                  <p className="text-sm font-semibold text-white">
+                  <Target className="h-4 w-4 text-accent" />
+                  <p className="text-sm font-semibold text-primary">
                     Tarefa atual
                   </p>
                 </div>
 
-                <p className="text-sm leading-6 text-white/58">
+                <p className="text-sm leading-6 text-muted">
                   Trabalhar na proposta comercial
                 </p>
               </div>
 
-              <div className="relative mx-auto flex h-[285px] max-w-[330px] items-center justify-center overflow-hidden rounded-[2.2rem] border border-white/10 bg-[#101018]/72 shadow-inner shadow-black/40">
-                <div className="absolute h-64 w-64 rounded-full bg-purple-500/20 blur-[70px]" />
+              <div className="relative mx-auto flex h-[285px] max-w-[330px] items-center justify-center overflow-hidden rounded-[2.2rem] border border-soft bg-surface-muted shadow-inner">
+                <div className="absolute h-64 w-64 rounded-full bg-accent-soft blur-[70px]" />
 
                 <BreathingRings isRunning={isRunning} />
 
@@ -149,7 +151,7 @@ export default function Focus() {
                     cx="60"
                     cy="60"
                     r="52"
-                    stroke="rgba(255,255,255,0.08)"
+                    stroke="var(--border-soft)"
                     strokeWidth="7"
                     fill="none"
                   />
@@ -183,11 +185,11 @@ export default function Focus() {
                 </svg>
 
                 <div className="relative text-center">
-                  <p className="text-[4.2rem] font-semibold leading-none tracking-[-0.08em] text-white">
+                  <p className="text-[4.2rem] font-semibold leading-none tracking-[-0.08em] text-primary">
                     {selectedMinutes}:00
                   </p>
 
-                  <p className="mt-3 text-xs font-medium uppercase tracking-[0.22em] text-white/34">
+                  <p className="mt-3 text-xs font-medium uppercase tracking-[0.22em] text-soft">
                     {isRunning ? "respire e execute" : "preparar bloco"}
                   </p>
                 </div>
@@ -197,11 +199,12 @@ export default function Focus() {
                 {durations.map((minutes) => (
                   <button
                     key={minutes}
+                    type="button"
                     onClick={() => setSelectedMinutes(minutes)}
                     className={`min-h-11 rounded-2xl border text-sm font-semibold transition active:scale-[0.98] ${
                       selectedMinutes === minutes
-                        ? "border-purple-300/30 bg-purple-500/18 text-purple-100 shadow-lg shadow-purple-950/20"
-                        : "border-white/10 bg-white/[0.05] text-white/42"
+                        ? "border-accent-soft bg-accent-soft text-accent shadow-card"
+                        : "border-soft bg-surface-muted text-muted"
                     }`}
                   >
                     {minutes}min
@@ -211,8 +214,9 @@ export default function Focus() {
 
               <div className="mt-4 grid grid-cols-[1fr_3.5rem] gap-3">
                 <button
+                  type="button"
                   onClick={handleStartPause}
-                  className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition active:scale-[0.98]"
+                  className="inline-flex min-h-14 items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
                 >
                   {isRunning ? (
                     <>
@@ -228,8 +232,9 @@ export default function Focus() {
                 </button>
 
                 <button
+                  type="button"
                   onClick={handleReset}
-                  className="flex min-h-14 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/50 backdrop-blur-2xl active:scale-[0.98]"
+                  className="flex min-h-14 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted backdrop-blur-2xl transition active:scale-[0.98]"
                   aria-label="Resetar foco"
                 >
                   <RotateCcw className="h-5 w-5" />
@@ -238,23 +243,24 @@ export default function Focus() {
             </div>
           </div>
 
-          <section className="mt-4 rounded-[1.8rem] border border-purple-300/20 bg-purple-500/10 p-4 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
+          <section className="mt-4 rounded-[1.8rem] border border-accent-soft bg-accent-soft p-4 text-primary shadow-card backdrop-blur-2xl">
             <div className="mb-2 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-purple-200" />
-              <p className="text-sm font-semibold text-purple-100">
+              <Sparkles className="h-4 w-4 text-accent" />
+              <p className="text-sm font-semibold text-accent">
                 Sugestão do Axon
               </p>
             </div>
 
-            <p className="text-sm leading-6 text-white/56">
+            <p className="text-sm leading-6 text-muted">
               Mantenha este bloco livre de mensagens até o timer terminar.
               Depois, revise o que avançou.
             </p>
           </section>
 
           <button
+            type="button"
             onClick={() => setShowEndModal(true)}
-            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 backdrop-blur-2xl active:scale-[0.98]"
+            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
           >
             Finalizar sessão
             <CheckCircle2 className="ml-2 h-4 w-4" />
@@ -296,7 +302,7 @@ function BreathingRings({ isRunning }: { isRunning: boolean }) {
         }`}
       />
 
-      <div className="absolute h-32 w-32 rounded-full border border-white/10 bg-purple-500/5" />
+      <div className="absolute h-32 w-32 rounded-full border border-soft bg-accent-muted" />
     </>
   );
 }
@@ -313,12 +319,12 @@ function EndFocusModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/60 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative w-full max-w-[430px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 p-5 shadow-2xl shadow-black/50 backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
+      <div className="relative w-full max-w-[430px] overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
 
         <div className="relative">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-white/18" />
+          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
 
           <div className="mb-5 flex items-start justify-between gap-4">
             <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/10 text-purple-100">
@@ -326,34 +332,37 @@ function EndFocusModal({
             </div>
 
             <button
+              type="button"
               onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
               aria-label="Fechar"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <h2 className="text-[1.65rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+          <h2 className="text-[1.65rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
             Finalizar sessão de foco?
           </h2>
 
-          <p className="mt-3 text-sm leading-6 text-white/48">
+          <p className="mt-3 text-sm leading-6 text-muted">
             O Axon pode registrar este bloco como concluído e liberar você para
             revisar o próximo movimento.
           </p>
 
           <button
+            type="button"
             onClick={onConfirm}
-            className="mt-6 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98]"
+            className="mt-6 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
           >
             Sim, finalizar
             <CheckCircle2 className="ml-2 h-4 w-4" />
           </button>
 
           <button
+            type="button"
             onClick={onClose}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]"
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98]"
           >
             Continuar focando
           </button>

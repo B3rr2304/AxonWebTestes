@@ -35,19 +35,22 @@ const VARIANT_CONFIG: Record<
 > = {
   default: {
     icon: AlertTriangle,
-    iconClassName: "border-purple-300/20 bg-purple-500/10 text-purple-200",
-    confirmClassName: "bg-purple-500/90 text-white shadow-purple-950/30",
+    iconClassName: "border-accent-soft bg-accent-soft text-accent",
+    confirmClassName:
+      "bg-[var(--accent-strong)] text-white shadow-card hover:brightness-105",
   },
   danger: {
     icon: AlertTriangle,
-    iconClassName: "border-red-300/20 bg-red-500/10 text-red-200",
-    confirmClassName: "bg-red-500/90 text-white shadow-red-950/30",
+    iconClassName: "border-red-300/25 bg-red-500/10 text-red-600 dark:text-red-200",
+    confirmClassName:
+      "bg-red-500/90 text-white shadow-card hover:bg-red-500",
   },
   success: {
     icon: CheckCircle2,
     iconClassName:
-      "border-emerald-300/20 bg-emerald-500/10 text-emerald-200",
-    confirmClassName: "bg-emerald-500/90 text-white shadow-emerald-950/30",
+      "border-emerald-300/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-200",
+    confirmClassName:
+      "bg-emerald-500/90 text-white shadow-card hover:bg-emerald-500",
   },
 };
 
@@ -55,6 +58,7 @@ const VARIANT_CONFIG: Record<
 // MODAL GLOBAL DE CONFIRMAÇÃO
 // ===========================================================================
 // Use para ações sensíveis: excluir, sair, confirmar criação contínua etc.
+// As cores usam tokens globais para responder aos temas claro/escuro.
 
 export default function ConfirmDialog({
   isOpen,
@@ -80,7 +84,7 @@ export default function ConfirmDialog({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-[140] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
+          className="fixed inset-0 z-[140] flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -97,59 +101,69 @@ export default function ConfirmDialog({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 18, scale: 0.96 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="relative w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[#15141f]/95 p-5 text-center shadow-2xl shadow-black/50 backdrop-blur-2xl"
+            className="relative w-full max-w-[360px] overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-center text-primary shadow-soft backdrop-blur-2xl"
             role="dialog"
             aria-modal="true"
             aria-labelledby="confirm-dialog-title"
           >
+            <div
+              className="pointer-events-none absolute inset-0"
+              style={{
+                background:
+                  "radial-gradient(circle at top right, var(--accent-soft), transparent 52%)",
+              }}
+            />
+
             <button
               type="button"
               onClick={handleClose}
               disabled={loading}
-              className="absolute right-4 top-4 flex h-8 w-8 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] text-white/40 active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40"
+              className="absolute right-4 top-4 z-10 flex h-8 w-8 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40"
               aria-label="Fechar"
             >
               <X className="h-4 w-4" />
             </button>
 
-            <div
-              className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border ${config.iconClassName}`}
-            >
-              <Icon className="h-6 w-6" />
-            </div>
-
-            <h2
-              id="confirm-dialog-title"
-              className="text-xl font-semibold tracking-[-0.035em] text-white"
-            >
-              {title}
-            </h2>
-
-            {description && (
-              <div className="mt-3 text-sm leading-6 text-white/45">
-                {description}
+            <div className="relative">
+              <div
+                className={`mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border ${config.iconClassName}`}
+              >
+                <Icon className="h-6 w-6" />
               </div>
-            )}
 
-            <div className="mt-6 grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={handleClose}
-                disabled={loading}
-                className="min-h-12 rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm font-semibold text-white/60 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+              <h2
+                id="confirm-dialog-title"
+                className="text-xl font-semibold tracking-[-0.035em] text-primary"
               >
-                {cancelLabel}
-              </button>
+                {title}
+              </h2>
 
-              <button
-                type="button"
-                onClick={onConfirm}
-                disabled={loading}
-                className={`inline-flex min-h-12 items-center justify-center rounded-2xl px-4 text-sm font-semibold shadow-lg active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${config.confirmClassName}`}
-              >
-                {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                {confirmLabel}
-              </button>
+              {description && (
+                <div className="mt-3 text-sm leading-6 text-muted">
+                  {description}
+                </div>
+              )}
+
+              <div className="mt-6 grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={handleClose}
+                  disabled={loading}
+                  className="min-h-12 rounded-2xl border border-soft bg-surface-muted px-4 text-sm font-semibold text-secondary transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {cancelLabel}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onConfirm}
+                  disabled={loading}
+                  className={`inline-flex min-h-12 items-center justify-center rounded-2xl px-4 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60 ${config.confirmClassName}`}
+                >
+                  {loading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {confirmLabel}
+                </button>
+              </div>
             </div>
           </motion.div>
         </motion.div>

@@ -330,9 +330,9 @@ const questions: Question[] = [
 // Barra superior que acompanha a posição atual no questionário.
 function ProgressBar({ progress }: { progress: number }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-white/10">
+    <div className="h-2 overflow-hidden rounded-full bg-[var(--border-soft)]">
       <motion.div
-        className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_18px_rgba(192,132,252,0.5)]"
+        className="h-full rounded-full bg-[var(--accent)] shadow-[0_0_18px_var(--accent-soft)]"
         initial={{ width: 0 }}
         animate={{ width: `${progress}%` }}
         transition={{ duration: 0.35 }}
@@ -461,7 +461,7 @@ export default function Questionnaire() {
   const Icon = currentQuestion.icon;
 
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[#05050b] px-4 py-5 text-white">
+    <main className="relative min-h-screen overflow-x-hidden bg-app px-4 py-5 text-primary">
       <OnboardingBackground />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col">
@@ -471,10 +471,10 @@ export default function Questionnaire() {
         <section className="flex flex-1 flex-col py-6">
           <div className="mb-6">
             <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm text-white/45">
+              <p className="text-sm text-muted">
                 Pergunta {currentIndex + 1} de {questions.length}
               </p>
-              <p className="text-sm text-purple-100">
+              <p className="text-sm text-accent">
                 {Math.round(progress)}%
               </p>
             </div>
@@ -489,17 +489,17 @@ export default function Questionnaire() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -24 }}
               transition={{ duration: 0.28 }}
-              className="overflow-hidden rounded-[2.2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/35 backdrop-blur-2xl"
+              className="overflow-hidden rounded-[2.2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl"
             >
-              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-[1.4rem] border border-purple-300/20 bg-purple-500/15 text-purple-100 shadow-[0_0_50px_rgba(168,85,247,0.22)]">
+              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-[1.4rem] border border-accent-soft bg-accent-soft text-accent shadow-card">
                 <Icon className="h-7 w-7" />
               </div>
 
-              <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 {currentQuestion.category}
               </div>
 
-              <h1 className="text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.04em] text-white">
+              <h1 className="text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.04em] text-primary">
                 {currentQuestion.title}
               </h1>
 
@@ -511,30 +511,31 @@ export default function Questionnaire() {
                   return (
                     <button
                       key={option.id}
+                      type="button"
                       onClick={() => selectAnswer(option.id)}
                       className={`flex min-h-[60px] w-full items-center gap-3 rounded-3xl border p-4 text-left transition duration-300 active:scale-[0.99] ${
                         isSelected
-                          ? "border-purple-300/40 bg-purple-500/15 shadow-[0_0_30px_rgba(168,85,247,0.16)]"
-                          : "border-white/10 bg-black/20 hover:bg-white/[0.06]"
+                          ? "border-accent-soft bg-accent-soft shadow-card"
+                          : "border-soft bg-surface-muted hover:bg-accent-muted"
                       }`}
                     >
                       <div
                         className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border transition ${
                           isSelected
-                            ? "border-purple-300/30 bg-purple-500 text-white"
-                            : "border-white/10 bg-white/[0.045] text-white/35"
+                            ? "border-accent-soft bg-[var(--accent-strong)] text-white"
+                            : "border-soft bg-surface-elevated text-muted"
                         }`}
                       >
                         {isSelected ? (
                           <Check className="h-4 w-4" />
                         ) : (
-                          <span className="text-xs font-semibold text-white/40">
+                          <span className="text-xs font-semibold text-muted">
                             {option.id}
                           </span>
                         )}
                       </div>
 
-                      <p className="text-sm font-medium leading-5 text-white">
+                      <p className="text-sm font-medium leading-5 text-primary">
                         {option.label}
                       </p>
                     </button>
@@ -548,9 +549,10 @@ export default function Questionnaire() {
         {/* Ações fixas do fluxo: avançar/finalizar e voltar. */}
         <footer className="space-y-3 pb-2">
           <button
+            type="button"
             onClick={goNext}
             disabled={!selectedAnswer || submitted}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/30 disabled:shadow-none"
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-soft disabled:shadow-none"
           >
             {currentIndex === questions.length - 1 ? (
               <>
@@ -566,9 +568,10 @@ export default function Questionnaire() {
           </button>
 
           <button
+            type="button"
             onClick={goBack}
             disabled={submitted}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/60 backdrop-blur-2xl transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition hover:text-primary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Voltar
@@ -584,13 +587,13 @@ function Header() {
   return (
     <header className="flex items-center justify-between">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
           <Brain className="h-5 w-5" />
         </div>
 
         <div>
-          <p className="text-sm font-semibold text-white">Axon</p>
-          <p className="text-xs text-white/40">Mapeamento inicial</p>
+          <p className="text-sm font-semibold text-primary">Axon</p>
+          <p className="text-xs text-muted">Mapeamento inicial</p>
         </div>
       </div>
     </header>

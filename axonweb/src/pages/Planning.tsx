@@ -248,7 +248,7 @@ export default function Planning({
   const result = results[resultKey];
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
@@ -260,18 +260,19 @@ export default function Planning({
         />
 
         {/* Seletor de visão */}
-        <div className="mb-5 flex rounded-2xl border border-white/10 bg-black/20 p-1">
+        <div className="mb-5 flex rounded-2xl border border-soft bg-surface-elevated p-1 shadow-card backdrop-blur-2xl">
           {TABS.map((tab) => {
             const Icon = tab.icon;
             const active = view === tab.key;
             return (
               <button
                 key={tab.key}
+                type="button"
                 onClick={() => setView(tab.key)}
                 className={`flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
                   active
-                    ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                    : "text-white/42"
+                    ? "bg-[var(--accent-strong)] text-white shadow-card"
+                    : "text-muted"
                 }`}
               >
                 <Icon className="h-3.5 w-3.5" />
@@ -640,13 +641,14 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
   const inner = (
     <>
       {carriedCount > 0 && (
-          <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-300/20 bg-amber-400/10 px-4 py-3">
-            <p className="text-xs leading-5 text-amber-100">
+          <div className="mb-4 flex items-center justify-between gap-3 rounded-2xl border border-amber-300/25 bg-amber-400/10 px-4 py-3">
+            <p className="text-xs leading-5 text-amber-700 dark:text-amber-100">
               <span className="font-semibold">{carriedCount} {carriedCount === 1 ? "tarefa pendente" : "tarefas pendentes"}</span> de ontem {carriedCount === 1 ? "foi movida" : "foram movidas"} para hoje.
             </p>
             <button
+              type="button"
               onClick={() => setCarriedCount(0)}
-              className="shrink-0 text-amber-200/60 active:scale-95"
+              className="shrink-0 text-amber-700/60 transition active:scale-95 dark:text-amber-200/60"
               aria-label="Fechar aviso"
             >
               <X className="h-4 w-4" />
@@ -655,24 +657,24 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
         )}
 
         <section className="mb-4">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.24),transparent_48%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
+          <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),transparent_40%)] opacity-60 dark:opacity-30" />
 
             <div className="relative">
               <div className="mb-4">
-                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                   <Sparkles className="h-3.5 w-3.5" />
                   Hoje
                 </div>
 
-                <h1 className="text-[1.8rem] font-semibold leading-[1.02] tracking-[-0.055em] text-white">
+                <h1 className="text-[1.8rem] font-semibold leading-[1.02] tracking-[-0.055em] text-primary">
                   {actionable.length === 0
                     ? "Seu plano começa aqui."
                     : "Seu plano está em movimento."}
                 </h1>
 
-                <p className="mt-2 text-sm leading-6 text-white/46">
+                <p className="mt-2 text-sm leading-6 text-muted">
                   {actionable.length === 0
                     ? "Nenhuma tarefa ainda — crie pela conversa com o Axon ou no botão +."
                     : `${completedItems} de ${totalItems} itens concluídos.`}
@@ -682,7 +684,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
               <div className="flex flex-col items-center">
                 <CircularProgress value={progress} />
 
-                <div className="mt-4 grid w-full grid-cols-3 gap-2 rounded-[1.4rem] border border-white/10 bg-black/20 p-2">
+                <div className="mt-4 grid w-full grid-cols-3 gap-2 rounded-[1.4rem] border border-soft bg-surface-muted p-2">
                   <LegendItem color="bg-white/30" label="A fazer" />
                   <LegendItem color="bg-purple-300" label="Em andamento" />
                   <LegendItem color="bg-emerald-300" label="Concluído" />
@@ -692,13 +694,13 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
           </div>
         </section>
 
-        <section className="mb-4 rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+        <section className="mb-4 rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">
+              <p className="text-sm font-semibold text-primary">
                 {calendarSetupChoice ? "Calendário" : "Configurar calendário"}
               </p>
-              <p className="mt-1 text-xs text-white/38">
+              <p className="mt-1 text-xs text-muted">
                 {calendarSetupChoice
                   ? "Mês, semana e blocos do dia"
                   : "Escolha como deseja usar sua agenda no Axon"}
@@ -707,8 +709,9 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
 
             {calendarSetupChoice && (
               <button
+                type="button"
                 onClick={() => setIsCreateModalOpen(true)}
-                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-purple-500 text-white shadow-xl shadow-purple-950/35 active:scale-[0.96]"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-strong)] text-white shadow-card transition active:scale-[0.96]"
                 aria-label="Criar novo item"
               >
                 <Plus className="h-5 w-5" />
@@ -726,8 +729,8 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
           ) : (
             <>
               {calendarSetupChoice === "independent" && (
-                <div className="mb-4 rounded-[1.4rem] border border-white/10 bg-white/[0.035] p-3">
-                  <p className="text-xs leading-5 text-white/42">
+                <div className="mb-4 rounded-[1.4rem] border border-soft bg-surface-muted p-3">
+                  <p className="text-xs leading-5 text-muted">
                     Você está usando o calendário independente do Axon. Depois será
                     possível conectar o Google Calendar pelas configurações.
                   </p>
@@ -735,32 +738,34 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
               )}
 
               {calendarSetupChoice === "google" && (
-                <div className="mb-4 rounded-[1.4rem] border border-purple-300/15 bg-purple-500/10 p-3">
-                  <p className="text-xs leading-5 text-purple-100/65">
+                <div className="mb-4 rounded-[1.4rem] border border-accent-soft bg-accent-soft p-3">
+                  <p className="text-xs leading-5 text-accent">
                     Google Calendar selecionado. Se a autorização ainda não foi
                     concluída, o Axon terminará a conexão após o retorno do Google.
                   </p>
                 </div>
               )}
 
-              <div className="mb-4 flex rounded-2xl border border-white/10 bg-black/20 p-1">
+              <div className="mb-4 flex rounded-2xl border border-soft bg-surface-muted p-1">
                 <button
+                  type="button"
                   onClick={() => setViewMode("month")}
                   className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
                     viewMode === "month"
-                      ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                      : "text-white/42"
+                      ? "bg-[var(--accent-strong)] text-white shadow-card"
+                      : "text-muted"
                   }`}
                 >
                   Mês
                 </button>
 
                 <button
+                  type="button"
                   onClick={() => setViewMode("week")}
                   className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
                     viewMode === "week"
-                      ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                      : "text-white/42"
+                      ? "bg-[var(--accent-strong)] text-white shadow-card"
+                      : "text-muted"
                   }`}
                 >
                   Dia/Semana
@@ -787,14 +792,14 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
                       <button
                         type="button"
                         onClick={() => setIsQueueOpen(true)}
-                        className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-indigo-300/20 bg-indigo-500/10 px-4 py-3 text-left transition active:scale-[0.98]"
+                        className="mb-4 flex w-full items-center gap-3 rounded-2xl border border-indigo-300/25 bg-indigo-500/10 px-4 py-3 text-left transition active:scale-[0.98]"
                       >
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-500/20 text-indigo-200">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-500/15 text-indigo-700 dark:text-indigo-200">
                           <ListTodo className="h-4 w-4" />
                         </div>
                         <div className="min-w-0 flex-1">
-                          <p className="text-sm font-semibold text-indigo-100">Fila de tarefas</p>
-                          <p className="text-xs text-indigo-200/55">
+                          <p className="text-sm font-semibold text-indigo-700 dark:text-indigo-100">Fila de tarefas</p>
+                          <p className="text-xs text-indigo-700/55 dark:text-indigo-200/55">
                             {undatedTasks.length} {undatedTasks.length === 1 ? "tarefa sem data definida" : "tarefas sem data definida"}
                           </p>
                         </div>
@@ -805,12 +810,12 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
                     )}
 
                     {loading ? (
-                      <div className="flex items-center justify-center gap-2 py-10 text-sm text-white/45">
+                      <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted">
                         <Loader2 className="h-4 w-4 animate-spin" />
                         Carregando tarefas…
                       </div>
                     ) : error ? (
-                      <div className="rounded-2xl border border-rose-300/20 bg-rose-500/10 p-4 text-sm text-rose-100">
+                      <div className="rounded-2xl border border-rose-300/25 bg-rose-500/10 p-4 text-sm text-rose-700 dark:text-rose-100">
                         {error}
                       </div>
                     ) : dayTasks.length === 0 && undatedTasks.length === 0 ? (
@@ -849,15 +854,15 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
         </section>
 
         {viewMode === "month" && (
-          <section className="rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-4 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
+          <section className="rounded-[2rem] border border-accent-soft bg-accent-soft p-4 text-primary shadow-card backdrop-blur-2xl">
             <div className="mb-3 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-purple-200" />
-              <p className="text-sm font-semibold text-purple-100">
+              <Sparkles className="h-4 w-4 text-accent" />
+              <p className="text-sm font-semibold text-accent">
                 Visão do mês
               </p>
             </div>
 
-            <p className="text-sm leading-6 text-white/58">
+            <p className="text-sm leading-6 text-muted">
               Os pontos indicam dias com tarefas agendadas. Toque em um dia e volte
               para a visão de semana para ver os detalhes.
             </p>
@@ -910,7 +915,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
 
       {toast && (
         <div className="pointer-events-none fixed inset-x-0 bottom-6 z-[120] flex justify-center px-4">
-          <div className="flex items-center gap-2 rounded-full border border-amber-300/25 bg-[#1b1b27]/95 px-4 py-2.5 text-sm font-medium text-amber-100 shadow-xl shadow-black/40 backdrop-blur-xl">
+          <div className="flex items-center gap-2 rounded-full border border-amber-300/25 bg-surface-elevated px-4 py-2.5 text-sm font-medium text-amber-700 shadow-soft backdrop-blur-xl dark:text-amber-100">
             <Star className="h-4 w-4 fill-amber-300 text-amber-300" />
             {toast}
           </div>
@@ -931,7 +936,7 @@ function AgendaView({ embedded = false }: { embedded?: boolean } = {}) {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
@@ -973,18 +978,18 @@ function CalendarSetupCard({
   onUseIndependent: () => void;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-[1.7rem] border border-purple-300/20 bg-purple-500/10 p-5">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(216,180,254,0.22),transparent_48%)]" />
+    <div className="relative overflow-hidden rounded-[1.7rem] border border-accent-soft bg-accent-soft p-5 text-primary">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
       <div className="relative">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-100">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated text-accent">
           <CalendarDays className="h-5 w-5" />
         </div>
 
-        <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+        <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
           Como você quer usar sua agenda?
         </h2>
 
-        <p className="mt-3 text-sm leading-6 text-white/50">
+        <p className="mt-3 text-sm leading-6 text-muted">
           Conecte o Google Calendar para sincronizar seus compromissos ou use o
           calendário independente do Axon por enquanto.
         </p>
@@ -994,7 +999,7 @@ function CalendarSetupCard({
             type="button"
             onClick={onConnect}
             disabled={isConnecting}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-5 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
             {isConnecting ? (
               <>
@@ -1013,19 +1018,19 @@ function CalendarSetupCard({
             type="button"
             onClick={onUseIndependent}
             disabled={isConnecting}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-5 text-sm font-semibold text-white/58 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
           >
             Continuar sem vincular
           </button>
         </div>
 
         {error && (
-          <p className="mt-4 rounded-2xl border border-rose-300/20 bg-rose-500/10 p-3 text-xs leading-5 text-rose-100">
+          <p className="mt-4 rounded-2xl border border-rose-300/25 bg-rose-500/10 p-3 text-xs leading-5 text-rose-700 dark:text-rose-100">
             {error}
           </p>
         )}
 
-        <p className="mt-4 text-xs leading-5 text-white/34">
+        <p className="mt-4 text-xs leading-5 text-soft">
           Você poderá conectar o Google Calendar depois em Configurações.
         </p>
       </div>
@@ -1044,14 +1049,14 @@ function CircularProgress({ value }: { value: number }) {
 
   return (
     <div className="relative flex h-48 w-48 items-center justify-center">
-      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,rgba(168,85,247,0.24),transparent_62%)] blur-xl" />
+      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle,var(--accent-soft),transparent_62%)] blur-xl" />
 
       <svg className="relative h-44 w-44 -rotate-90" viewBox="0 0 150 150">
         <circle
           cx="75"
           cy="75"
           r={radius}
-          stroke="rgba(255,255,255,0.11)"
+          stroke="var(--border-medium)"
           strokeWidth="14"
           fill="none"
         />
@@ -1085,10 +1090,10 @@ function CircularProgress({ value }: { value: number }) {
       </svg>
 
       <div className="absolute text-center">
-        <p className="text-4xl font-semibold tracking-[-0.06em] text-white">
+        <p className="text-4xl font-semibold tracking-[-0.06em] text-primary">
           {value}%
         </p>
-        <p className="mt-1 text-xs font-medium text-white/42">concluído</p>
+        <p className="mt-1 text-xs font-medium text-muted">concluído</p>
       </div>
     </div>
   );
@@ -1096,9 +1101,9 @@ function CircularProgress({ value }: { value: number }) {
 
 function LegendItem({ color, label }: { color: string; label: string }) {
   return (
-    <div className="flex min-h-9 items-center justify-center gap-2 rounded-xl bg-white/[0.035] px-2">
+    <div className="flex min-h-9 items-center justify-center gap-2 rounded-xl bg-surface-muted px-2">
       <span className={`h-2 w-2 shrink-0 rounded-full ${color}`} />
-      <p className="text-[0.62rem] font-medium text-white/48">{label}</p>
+      <p className="text-[0.62rem] font-medium text-muted">{label}</p>
     </div>
   );
 }
@@ -1163,25 +1168,27 @@ function MonthCalendar({
   }
 
   return (
-    <div className="rounded-[1.6rem] border border-white/10 bg-black/20 p-4">
+    <div className="rounded-[1.6rem] border border-soft bg-surface-muted p-4">
       <div className="mb-5 flex items-center justify-between">
         <button
+          type="button"
           onClick={() => shiftMonth(-1)}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/45 active:scale-[0.96]"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
 
         <div className="text-center">
-          <p className="text-sm font-semibold text-white">
+          <p className="text-sm font-semibold text-primary">
             {monthNames[month]} {year}
           </p>
-          <p className="mt-1 text-xs text-white/35">Planejamento mensal</p>
+          <p className="mt-1 text-xs text-muted">Planejamento mensal</p>
         </div>
 
         <button
+          type="button"
           onClick={() => shiftMonth(1)}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/45 active:scale-[0.96]"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -1189,7 +1196,7 @@ function MonthCalendar({
 
       <div className="mb-3 grid grid-cols-7 gap-2 text-center">
         {["D", "S", "T", "Q", "Q", "S", "S"].map((day, index) => (
-          <p key={`${day}-${index}`} className="text-[0.68rem] text-white/35">
+          <p key={`${day}-${index}`} className="text-[0.68rem] text-muted">
             {day}
           </p>
         ))}
@@ -1218,13 +1225,14 @@ function MonthCalendar({
           return (
             <button
               key={day}
+              type="button"
               onClick={() => onSelect(date)}
               className={`relative flex min-h-[4.4rem] flex-col items-center justify-start rounded-xl border px-1.5 py-2 text-xs font-medium transition active:scale-[0.96] ${
                 isSelected
-                  ? "border-purple-300/30 bg-purple-500 text-white shadow-lg shadow-purple-950/30"
+                  ? "border-accent-soft bg-[var(--accent-strong)] text-white shadow-card"
                   : isToday
-                  ? "border-purple-300/30 bg-white/[0.08] text-white"
-                  : "border-white/10 bg-white/[0.035] text-white/50"
+                  ? "border-accent-soft bg-accent-soft text-accent"
+                  : "border-soft bg-surface-muted text-muted"
               }`}
             >
               <span className="text-sm font-semibold">{day}</span>
@@ -1254,7 +1262,7 @@ function MonthCalendar({
                   {extraCount > 0 && (
                     <span
                       className={`text-[0.58rem] font-semibold leading-none ${
-                        isSelected ? "text-white/80" : "text-white/35"
+                        isSelected ? "text-white/80" : "text-muted"
                       }`}
                     >
                       +{extraCount}
@@ -1267,7 +1275,7 @@ function MonthCalendar({
         })}
       </div>
 
-      <div className="mt-4 grid grid-cols-3 gap-2 rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-2">
+      <div className="mt-4 grid grid-cols-3 gap-2 rounded-[1.25rem] border border-soft bg-surface-muted p-2">
         <MonthLegendDot color="bg-purple-300" label="Tarefa" />
         <MonthLegendDot color="bg-cyan-300" label="Evento" />
         <MonthLegendDot color="bg-fuchsia-300" label="Rotina" />
@@ -1287,9 +1295,9 @@ function getMonthItemColor(taskType: TaskType, isSelected: boolean) {
 
 function MonthLegendDot({ color, label }: { color: string; label: string }) {
   return (
-    <div className="flex items-center justify-center gap-1.5 rounded-xl bg-black/15 px-2 py-2">
+    <div className="flex items-center justify-center gap-1.5 rounded-xl bg-surface-muted px-2 py-2">
       <span className={`h-1.5 w-1.5 rounded-full ${color}`} />
-      <span className="text-[0.62rem] font-medium text-white/42">{label}</span>
+      <span className="text-[0.62rem] font-medium text-muted">{label}</span>
     </div>
   );
 }
@@ -1335,20 +1343,22 @@ function WeekCalendar({
     <div>
       <div className="mb-4 flex items-center justify-between">
         <button
+          type="button"
           onClick={() => shiftWeek(-1)}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/45 active:scale-[0.96]"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
         >
           <ChevronLeft className="h-4 w-4" />
         </button>
 
         <div className="text-center">
-          <p className="text-sm font-semibold text-white">{monthLabel}</p>
-          <p className="mt-1 text-xs text-white/35">Semana atual</p>
+          <p className="text-sm font-semibold text-primary">{monthLabel}</p>
+          <p className="mt-1 text-xs text-muted">Semana atual</p>
         </div>
 
         <button
+          type="button"
           onClick={() => shiftWeek(1)}
-          className="flex h-9 w-9 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] text-white/45 active:scale-[0.96]"
+          className="flex h-9 w-9 items-center justify-center rounded-xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
         >
           <ChevronRight className="h-4 w-4" />
         </button>
@@ -1364,13 +1374,14 @@ function WeekCalendar({
           return (
             <button
               key={iso}
+              type="button"
               onClick={() => onSelect(date)}
               className={`relative flex min-h-[82px] min-w-[62px] flex-col items-center justify-center rounded-[1.4rem] border transition active:scale-[0.98] sm:min-w-0 sm:w-full ${
                 isSelected
-                  ? "border-purple-300/25 bg-purple-300 text-[#161622]"
+                  ? "border-accent-soft bg-[var(--accent-strong)] text-white shadow-card"
                   : isToday
-                  ? "border-purple-300/30 bg-black/20 text-white"
-                  : "border-white/10 bg-black/20 text-white/45"
+                  ? "border-accent-soft bg-accent-soft text-accent"
+                  : "border-soft bg-surface-muted text-muted"
               }`}
             >
               <p className="text-xl font-semibold">{date.getDate()}</p>
@@ -1379,7 +1390,7 @@ function WeekCalendar({
               {hasTask && (
                 <span
                   className={`absolute bottom-2 h-1 w-1 rounded-full ${
-                    isSelected ? "bg-[#161622]" : "bg-purple-300"
+                    isSelected ? "bg-white" : "bg-[var(--accent)]"
                   }`}
                 />
               )}
@@ -1467,21 +1478,21 @@ function TimelineItem({
   return (
     <div className="grid grid-cols-[3.4rem_1fr] gap-3">
       <div className="flex flex-col pt-1">
-        <p className="text-xs font-semibold text-white/55">{start ?? "—"}</p>
+        <p className="text-xs font-semibold text-secondary">{start ?? "—"}</p>
 
         <div
           className={`mx-auto my-2 w-px flex-1 border-l ${
             isRoutine
-              ? "border-dashed border-purple-300/35"
-              : "border-dashed border-white/15"
+              ? "border-dashed border-accent-soft"
+              : "border-dashed border-[var(--border-soft)]"
           }`}
         />
 
-        <p className="pb-1 text-xs font-semibold text-white/35">{end ?? "—"}</p>
+        <p className="pb-1 text-xs font-semibold text-muted">{end ?? "—"}</p>
       </div>
 
       <div
-        className={`rounded-[1.55rem] border p-4 shadow-xl shadow-black/20 ${
+        className={`rounded-[1.55rem] border p-4 shadow-xl shadow-card ${
           isKey ? "ring-1 ring-amber-300/45 " : ""
         }${
           isKey
@@ -1489,14 +1500,14 @@ function TimelineItem({
             : isDisplayDone
             ? "border-emerald-300/20 bg-emerald-400/10"
             : isEvent && isDisplayProgress
-            ? "border-purple-300/25 bg-purple-500/12"
+            ? "border-accent-soft bg-accent-soft"
             : isEvent
             ? "border-cyan-300/20 bg-cyan-400/10"
             : isRoutine
             ? "border-fuchsia-300/20 bg-fuchsia-400/10"
             : isDisplayProgress
-            ? "border-purple-300/25 bg-purple-500/12"
-            : "border-white/10 bg-white/[0.055]"
+            ? "border-accent-soft bg-accent-soft"
+            : "border-soft bg-surface-muted"
         }`}
       >
         {/* Header do card: tipo, status, subtarefas e ações rápidas. */}
@@ -1518,8 +1529,8 @@ function TimelineItem({
                   : isDisplayDone
                   ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
                   : isDisplayProgress
-                  ? "border-purple-300/25 bg-purple-500/15 text-purple-100"
-                  : "border-white/10 bg-white/[0.055] text-white/52"
+                  ? "border-accent-soft bg-accent-soft text-accent"
+                  : "border-soft bg-surface-muted text-muted"
               }`}
             >
               <Icon className="h-3 w-3" />
@@ -1531,17 +1542,17 @@ function TimelineItem({
                 isDisplayDone
                   ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
                   : isDisplayProgress
-                  ? "border-purple-300/25 bg-purple-500/15 text-purple-100"
+                  ? "border-accent-soft bg-accent-soft text-accent"
                   : isDisplayScheduled
                   ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
-                  : "border-white/10 bg-white/[0.055] text-white/52"
+                  : "border-soft bg-surface-muted text-muted"
               }`}
             >
               {statusLabels[displayStatus]}
             </span>
 
             {hasSubtasks && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-purple-300/20 bg-purple-500/12 px-3 py-1 text-[0.65rem] font-semibold text-purple-100">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-accent-soft bg-accent-soft px-3 py-1 text-[0.65rem] font-semibold text-accent">
                 <CheckCircle2 className="h-3 w-3" />
                 {completedSubtasks}/{subtasks.length}
               </span>
@@ -1551,11 +1562,12 @@ function TimelineItem({
           <div className="flex shrink-0 items-center gap-2">
             {onToggleKey && (
               <button
+                type="button"
                 onClick={() => onToggleKey(task)}
                 className={`flex h-8 w-8 items-center justify-center rounded-xl active:scale-[0.94] ${
                   isKey
                     ? "bg-amber-400/15 text-amber-200"
-                    : "bg-white/[0.055] text-white/45"
+                    : "bg-surface-muted text-muted"
                 }`}
                 aria-label={
                   isKey ? "Desmarcar tarefa chave" : "Marcar como tarefa chave"
@@ -1571,16 +1583,18 @@ function TimelineItem({
             )}
 
             <button
+              type="button"
               onClick={() => onEdit(task)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/45 active:scale-[0.94]"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]"
               aria-label="Editar item"
             >
               <Edit3 className="h-4 w-4" />
             </button>
 
             <button
+              type="button"
               onClick={() => onDelete(task)}
-              className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/45 active:scale-[0.94]"
+              className="flex h-8 w-8 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]"
               aria-label="Remover item"
             >
               <Trash2 className="h-4 w-4" />
@@ -1595,14 +1609,14 @@ function TimelineItem({
               isDisplayDone
                 ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
                 : isEvent && isDisplayProgress
-                ? "border-purple-300/25 bg-purple-500/12 text-purple-100"
+                ? "border-accent-soft bg-accent-soft text-accent"
                 : isEvent
                 ? "border-cyan-300/20 bg-cyan-400/10 text-cyan-100"
                 : isRoutine
                 ? "border-fuchsia-300/20 bg-fuchsia-400/10 text-fuchsia-100"
                 : isDisplayProgress
-                ? "border-purple-300/25 bg-purple-500/12 text-purple-100"
-                : "border-white/10 bg-white/[0.055] text-white/50"
+                ? "border-accent-soft bg-accent-soft text-accent"
+                : "border-soft bg-surface-muted text-muted"
             }`}
           >
             {isDisplayDone ? (
@@ -1613,12 +1627,12 @@ function TimelineItem({
           </div>
 
           <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-white">
+            <p className="truncate text-base font-semibold text-primary">
               {task.title}
             </p>
-            <p className="mt-1 truncate text-xs text-white/42">{subtitle}</p>
+            <p className="mt-1 truncate text-xs text-muted">{subtitle}</p>
             {task.objective_title && (
-              <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-purple-300/20 bg-purple-500/10 px-2.5 py-0.5 text-[0.65rem] font-medium text-purple-200/80">
+              <div className="mt-1.5 inline-flex items-center gap-1.5 rounded-full border border-accent-soft bg-accent-soft px-2.5 py-0.5 text-[0.65rem] font-medium text-accent">
                 <Target className="h-2.5 w-2.5" />
                 {task.objective_title}
               </div>
@@ -1628,10 +1642,11 @@ function TimelineItem({
 
         {/* Linha de horário e ação de conclusão. */}
         <div className="mb-3 flex items-center justify-between gap-3">
-          <p className="truncate text-xs text-white/38">{detailLabel}</p>
+          <p className="truncate text-xs text-muted">{detailLabel}</p>
 
           {isMultiDayEvent ? (
             <button
+              type="button"
               onClick={() => {
                 if (canCompleteMultiDayEvent) {
                   onToggle(task);
@@ -1642,8 +1657,8 @@ function TimelineItem({
                 isDone
                   ? "text-emerald-200"
                   : canCompleteMultiDayEvent
-                  ? "text-purple-200"
-                  : "text-white/28"
+                  ? "text-accent"
+                  : "text-soft"
               }`}
             >
               {isDone ? (
@@ -1665,8 +1680,9 @@ function TimelineItem({
             </button>
           ) : !isEvent ? (
             <button
+              type="button"
               onClick={() => onToggle(task)}
-              className="inline-flex items-center gap-1.5 text-xs font-semibold text-purple-200 active:scale-[0.97]"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-accent transition active:scale-[0.97]"
             >
               {isDone ? (
                 <>
@@ -1686,7 +1702,7 @@ function TimelineItem({
         {/* Barra de progresso. Em tarefas com subtarefas, usa o checklist como fonte. */}
         {isMultiDayEvent ? (
           <div>
-            <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/35">
+            <div className="mb-2 flex items-center justify-between text-[0.68rem] text-muted">
               <span>
                 Dia {multiDayProgress?.currentDay} de {multiDayProgress?.totalDays}
               </span>
@@ -1694,7 +1710,7 @@ function TimelineItem({
               <span>{isDone ? "100" : multiDayProgress?.progress}%</span>
             </div>
 
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--border-soft)]">
               <div
                 className={`h-full rounded-full ${
                   isDone
@@ -1709,7 +1725,7 @@ function TimelineItem({
           </div>
         ) : !isEvent ? (
           <div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="h-1.5 overflow-hidden rounded-full bg-[var(--border-soft)]">
               <div
                 className={`h-full rounded-full ${
                   isDisplayDone
@@ -1781,15 +1797,15 @@ function SubtasksPreview({
   }
 
   return (
-    <div className="mt-4 space-y-2 rounded-[1.25rem] border border-white/10 bg-black/15 p-3">
+    <div className="mt-4 space-y-2 rounded-[1.25rem] border border-soft bg-surface-muted p-3">
       {hasSubtasks && (
         <>
           <div className="flex items-center justify-between gap-3">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-soft">
               Subtarefas
             </p>
 
-            <p className="text-[0.68rem] font-semibold text-purple-100/70">
+            <p className="text-[0.68rem] font-semibold text-accent">
               {completedSubtasks} de {subtasks.length}
             </p>
           </div>
@@ -1805,7 +1821,7 @@ function SubtasksPreview({
                 className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border ${
                   subtask.done
                     ? "border-emerald-300/30 bg-emerald-400/15 text-emerald-100"
-                    : "border-white/14 bg-white/[0.04] text-white/30"
+                    : "border-soft bg-surface-muted text-soft"
                 }`}
               >
                 {subtask.done && <CheckCircle2 className="h-3.5 w-3.5" />}
@@ -1813,7 +1829,7 @@ function SubtasksPreview({
 
               <span
                 className={`min-w-0 flex-1 break-words text-xs ${
-                  subtask.done ? "text-white/32 line-through" : "text-white/58"
+                  subtask.done ? "text-soft line-through" : "text-secondary"
                 }`}
               >
                 {subtask.title}
@@ -1825,7 +1841,7 @@ function SubtasksPreview({
             <button
               type="button"
               onClick={() => setExpanded((v) => !v)}
-              className="flex items-center gap-1 pl-7 text-[0.68rem] font-semibold text-purple-100/70 active:scale-[0.98]"
+              className="flex items-center gap-1 pl-7 text-[0.68rem] font-semibold text-accent transition active:scale-[0.98]"
             >
               <ChevronDown
                 className={`h-3.5 w-3.5 transition-transform ${
@@ -1855,13 +1871,13 @@ function SubtasksPreview({
               }
             }}
             placeholder="Nome da subtarefa…"
-            className="min-h-[34px] flex-1 rounded-xl border border-purple-300/30 bg-white/[0.055] px-3 text-xs text-white outline-none placeholder:text-white/25"
+            className="min-h-[34px] flex-1 rounded-xl border border-accent-soft bg-surface-muted px-3 text-xs text-primary outline-none placeholder:text-soft"
           />
           <button
             type="button"
             onClick={handleAdd}
             disabled={saving || !newTitle.trim()}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-purple-500 text-white active:scale-[0.94] disabled:opacity-45"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-strong)] text-white transition active:scale-[0.94] disabled:opacity-45"
           >
             {saving ? (
               <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1875,7 +1891,7 @@ function SubtasksPreview({
               setAdding(false);
               setNewTitle("");
             }}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94]"
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]"
           >
             <X className="h-3.5 w-3.5" />
           </button>
@@ -1884,7 +1900,7 @@ function SubtasksPreview({
         <button
           type="button"
           onClick={() => setAdding(true)}
-          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-white/15 py-1.5 text-[0.68rem] font-semibold text-white/35 active:scale-[0.98]"
+          className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-[var(--border-soft)] py-1.5 text-[0.68rem] font-semibold text-muted active:scale-[0.98]"
         >
           <Plus className="h-3.5 w-3.5" />
           Adicionar subtarefa
@@ -2056,14 +2072,14 @@ function CreatePlanningItemModal({
       closeOnOverlayClick={false}
       ariaLabel="Adicionar ao planejamento"
       maxHeightClassName="max-h-[88vh]"
-      surfaceClassName="bg-[#171720]/95"
+      surfaceClassName="bg-surface-elevated"
       footer={
         <>
           <button
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-60"
           >
             {submitting ? (
               <>
@@ -2081,7 +2097,7 @@ function CreatePlanningItemModal({
           <button
             type="button"
             onClick={onClose}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98]"
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98]"
           >
             Cancelar
           </button>
@@ -2090,16 +2106,16 @@ function CreatePlanningItemModal({
     >
       {/* Cabeçalho mantido no conteúdo para preservar o visual. */}
       <div className="mb-4">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
           <Plus className="h-3.5 w-3.5" />
           Novo item
         </div>
 
-        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
           Adicionar ao planejamento
         </h2>
 
-        <p className="mt-2 text-xs leading-5 text-white/45">
+        <p className="mt-2 text-xs leading-5 text-muted">
           {description_text}
         </p>
       </div>
@@ -2129,7 +2145,7 @@ function CreatePlanningItemModal({
 
           <div className="space-y-3">
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">
+              <span className="mb-2 block text-xs font-medium text-muted">
                 Nome
               </span>
 
@@ -2138,14 +2154,14 @@ function CreatePlanningItemModal({
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder={titlePlaceholder}
-                className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
               />
             </label>
 
             {selectedType === "event" ? (
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-white/42">
+                  <span className="mb-2 block text-xs font-medium text-muted">
                     Data inicial
                   </span>
 
@@ -2159,12 +2175,12 @@ function CreatePlanningItemModal({
                         setEndDate(e.target.value);
                       }
                     }}
-                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                    className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-white/42">
+                  <span className="mb-2 block text-xs font-medium text-muted">
                     Data final
                   </span>
 
@@ -2173,13 +2189,13 @@ function CreatePlanningItemModal({
                     value={endDate}
                     min={date}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                    className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                   />
                 </label>
               </div>
             ) : (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Data
                 </span>
 
@@ -2187,14 +2203,14 @@ function CreatePlanningItemModal({
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                 />
               </label>
             )}
 
             {selectedType !== "routine" && (
               <div>
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Horário
                 </span>
                 <div className="mb-3 grid grid-cols-2 gap-2">
@@ -2203,8 +2219,8 @@ function CreatePlanningItemModal({
                     onClick={() => setAxonPickTime(false)}
                     className={`flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition active:scale-[0.97] ${
                       !axonPickTime
-                        ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
-                        : "border-white/10 bg-white/[0.045] text-white/42"
+                        ? "border-accent-soft bg-accent-soft text-accent"
+                        : "border-soft bg-surface-muted text-muted"
                     }`}
                   >
                     <Clock className="h-3.5 w-3.5" />
@@ -2215,8 +2231,8 @@ function CreatePlanningItemModal({
                     onClick={() => setAxonPickTime(true)}
                     className={`flex items-center justify-center gap-1.5 rounded-2xl border px-3 py-2.5 text-xs font-semibold transition active:scale-[0.97] ${
                       axonPickTime
-                        ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
-                        : "border-white/10 bg-white/[0.045] text-white/42"
+                        ? "border-accent-soft bg-accent-soft text-accent"
+                        : "border-soft bg-surface-muted text-muted"
                     }`}
                   >
                     <Sparkles className="h-3.5 w-3.5" />
@@ -2227,7 +2243,7 @@ function CreatePlanningItemModal({
                 {axonPickTime ? (
                   <div>
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-white/42">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Duração (minutos)
                       </span>
                       <input
@@ -2236,35 +2252,35 @@ function CreatePlanningItemModal({
                         value={duration}
                         onChange={(e) => setDuration(e.target.value)}
                         placeholder="Ex: 45"
-                        className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                        className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
                       />
                     </label>
-                    <p className="mt-2 text-[0.7rem] leading-4 text-white/38">
+                    <p className="mt-2 text-[0.7rem] leading-4 text-muted">
                       O Axon escolhe o melhor horário com base no seu cronotipo e no que já está agendado no dia.
                     </p>
                   </div>
                 ) : (
                   <div className="grid grid-cols-2 gap-3">
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-white/42">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Início
                       </span>
                       <input
                         type="time"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                        className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                       />
                     </label>
                     <label className="block">
-                      <span className="mb-2 block text-xs font-medium text-white/42">
+                      <span className="mb-2 block text-xs font-medium text-muted">
                         Fim
                       </span>
                       <input
                         type="time"
                         value={endTime}
                         onChange={(e) => setEndTime(e.target.value)}
-                        className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                        className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                       />
                     </label>
                   </div>
@@ -2283,26 +2299,26 @@ function CreatePlanningItemModal({
                 className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition active:scale-[0.98] ${
                   isKeyTask
                     ? "border-amber-300/30 bg-amber-400/[0.08]"
-                    : "border-white/10 bg-white/[0.045]"
+                    : "border-soft bg-surface-muted"
                 }`}
               >
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
                   isKeyTask
-                    ? "border-amber-300/30 bg-amber-400/15 text-amber-200"
-                    : "border-white/10 bg-white/[0.06] text-white/35"
+                    ? "border-amber-300/30 bg-amber-400/15 text-amber-700 dark:text-amber-200"
+                    : "border-soft bg-surface-muted text-muted"
                 }`}>
                   <Star className={`h-4.5 w-4.5 ${isKeyTask ? "fill-amber-300 text-amber-300" : ""}`} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-semibold ${isKeyTask ? "text-amber-100" : "text-white/70"}`}>
+                  <p className={`text-sm font-semibold ${isKeyTask ? "text-amber-700 dark:text-amber-100" : "text-secondary"}`}>
                     Tarefa chave do dia
                   </p>
-                  <p className="mt-0.5 text-xs leading-4 text-white/38">
+                  <p className="mt-0.5 text-xs leading-4 text-muted">
                     A única que, se feita, torna o dia bem-sucedido.
                   </p>
                 </div>
                 <div className={`h-5 w-5 shrink-0 rounded-full border-2 transition ${
-                  isKeyTask ? "border-amber-400 bg-amber-400" : "border-white/20 bg-transparent"
+                  isKeyTask ? "border-amber-400 bg-amber-400" : "border-soft bg-transparent"
                 }`} />
               </button>
             )}
@@ -2310,7 +2326,7 @@ function CreatePlanningItemModal({
             {selectedType === "task" && (
               <label className="block">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-white/42">
+                  <span className="text-xs font-medium text-muted">
                     Prioridade
                   </span>
                   {isKeyTask && (
@@ -2329,7 +2345,7 @@ function CreatePlanningItemModal({
                   className={`min-h-[52px] w-full rounded-2xl border px-4 text-sm text-white outline-none transition ${
                     isKeyTask
                       ? "cursor-not-allowed border-amber-300/20 bg-amber-400/[0.06] opacity-70"
-                      : "border-white/10 bg-[#222230] focus:border-purple-300/35"
+                      : "border-soft bg-surface-muted focus:border-accent-soft"
                   }`}
                 >
                   <option value="low">Baixa</option>
@@ -2341,14 +2357,14 @@ function CreatePlanningItemModal({
 
             {selectedType === "task" && objectives.length > 0 && (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Vincular a objetivo
                 </span>
 
                 <select
                   value={objectiveId}
                   onChange={(e) => setObjectiveId(e.target.value)}
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none transition focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none transition focus:border-accent-soft"
                 >
                   <option value="">Nenhum</option>
                   {objectives.map((objective) => (
@@ -2362,7 +2378,7 @@ function CreatePlanningItemModal({
 
             {selectedType === "event" && (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Local ou link
                 </span>
 
@@ -2371,14 +2387,14 @@ function CreatePlanningItemModal({
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Ex: Google Meet, sala 203..."
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
                 />
               </label>
             )}
 
             {selectedType === "routine" && (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Repetição
                 </span>
 
@@ -2387,7 +2403,7 @@ function CreatePlanningItemModal({
                   onChange={(e) =>
                     setRecurrence(e.target.value as "daily" | "weekly" | "monthly")
                   }
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                 >
                   <option value="daily">Todos os dias</option>
                   <option value="weekly">Toda semana</option>
@@ -2397,7 +2413,7 @@ function CreatePlanningItemModal({
             )}
 
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">
+              <span className="mb-2 block text-xs font-medium text-muted">
                 Observação
               </span>
 
@@ -2406,18 +2422,18 @@ function CreatePlanningItemModal({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Adicione detalhes, contexto ou instruções..."
                 rows={3}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                className="w-full resize-none rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm leading-6 text-primary outline-none placeholder:text-soft focus:border-accent-soft"
               />
             </label>
 
             {selectedType === "task" && (
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <p className="mb-3 text-xs font-semibold text-white/42">Subtarefas (opcional)</p>
+              <div className="rounded-2xl border border-soft bg-surface-muted p-4">
+                <p className="mb-3 text-xs font-semibold text-muted">Subtarefas (opcional)</p>
                 {draftSubtasks.length > 0 && (
                   <div className="mb-3 space-y-2">
                     {draftSubtasks.map((s, idx) => (
                       <div key={s.key} className="flex items-center gap-2">
-                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-white/20 text-[0.55rem] font-bold text-white/30">
+                        <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border border-soft text-[0.55rem] font-bold text-soft">
                           {idx + 1}
                         </span>
                         <input
@@ -2425,12 +2441,12 @@ function CreatePlanningItemModal({
                           onChange={(e) => updateDraftSubtask(s.key, e.target.value)}
                           placeholder={`Subtarefa ${idx + 1}`}
                           autoFocus={idx === draftSubtasks.length - 1}
-                          className="min-h-[38px] flex-1 rounded-xl border border-white/10 bg-white/[0.055] px-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-purple-300/35"
+                          className="min-h-[38px] flex-1 rounded-xl border border-soft bg-surface-muted px-3 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
                         />
                         <button
                           type="button"
                           onClick={() => removeDraftSubtask(s.key)}
-                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/35 active:scale-[0.94]"
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]"
                         >
                           <X className="h-3.5 w-3.5" />
                         </button>
@@ -2441,7 +2457,7 @@ function CreatePlanningItemModal({
                 <button
                   type="button"
                   onClick={addDraftSubtask}
-                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 py-2 text-xs font-semibold text-white/35 active:scale-[0.98]"
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-soft)] py-2 text-xs font-semibold text-muted active:scale-[0.98]"
                 >
                   <Plus className="h-3.5 w-3.5" />
                   Adicionar subtarefa
@@ -2474,8 +2490,8 @@ function TypeButton({
       onClick={onClick}
       className={`flex min-h-[4.4rem] flex-col items-center justify-center gap-2 rounded-2xl border text-[0.68rem] font-semibold transition active:scale-[0.98] ${
         active
-          ? "border-purple-300/30 bg-purple-500/20 text-purple-100 shadow-lg shadow-purple-950/20"
-          : "border-white/10 bg-white/[0.045] text-white/42"
+          ? "border-accent-soft bg-accent-soft text-accent shadow-card"
+          : "border-soft bg-surface-muted text-muted"
       }`}
     >
       <Icon className="h-4.5 w-4.5" />
@@ -2512,20 +2528,20 @@ function DeletePlanningItemModal({
         <>
           <p>
             Essa ação vai excluir{" "}
-            <span className="font-semibold text-white/75">"{task.title}"</span>{" "}
+            <span className="font-semibold text-primary">"{task.title}"</span>{" "}
             do seu planejamento.
           </p>
 
-          <div className="mt-5 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+          <div className="mt-5 rounded-[1.35rem] border border-soft bg-surface-muted p-3 text-left">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-soft">
               Item selecionado
             </p>
 
-            <p className="mt-2 truncate text-sm font-semibold text-white">
+            <p className="mt-2 truncate text-sm font-semibold text-primary">
               {task.title}
             </p>
 
-            <p className="mt-1 text-xs text-white/38">
+            <p className="mt-1 text-xs text-muted">
               {typeLabels[task.task_type]} · {statusLabels[task.status]}
             </p>
           </div>
@@ -2670,14 +2686,14 @@ function EditPlanningItemModal({
       dismissDisabled={submitting}
       ariaLabel="Ajustar planejamento"
       maxHeightClassName="max-h-[88vh]"
-      surfaceClassName="bg-[#171720]/95"
+      surfaceClassName="bg-surface-elevated"
       footer={
         <>
           <button
             type="button"
             onClick={handleSubmit}
             disabled={submitting}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/35 active:scale-[0.98] disabled:opacity-60"
+            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-60"
           >
             {submitting ? (
               <>
@@ -2696,7 +2712,7 @@ function EditPlanningItemModal({
             type="button"
             onClick={onClose}
             disabled={submitting}
-            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 active:scale-[0.98] disabled:opacity-50"
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98] disabled:opacity-50"
           >
             Cancelar
           </button>
@@ -2705,30 +2721,30 @@ function EditPlanningItemModal({
     >
       {/* Cabeçalho mantido no conteúdo para preservar o visual. */}
       <div className="mb-4">
-        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+        <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
           <Edit3 className="h-3.5 w-3.5" />
           Editar {typeLabels[task.task_type].toLowerCase()}
         </div>
 
-        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-white">
+        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
           Ajustar planejamento
         </h2>
 
-        <p className="mt-2 text-xs leading-5 text-white/45">
+        <p className="mt-2 text-xs leading-5 text-muted">
           {descriptionText}
         </p>
       </div>
 
-          <div className="mb-4 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3">
-            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+          <div className="mb-4 rounded-[1.35rem] border border-soft bg-surface-muted p-3">
+            <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-soft">
               Tipo de item
             </p>
 
-            <p className="mt-1 text-sm font-semibold text-white">
+            <p className="mt-1 text-sm font-semibold text-primary">
               {typeLabels[task.task_type]}
             </p>
 
-            <p className="mt-1 text-xs leading-5 text-white/35">
+            <p className="mt-1 text-xs leading-5 text-muted">
               O tipo não pode ser alterado depois da criação. Para trocar de tipo,
               exclua este item e crie um novo.
             </p>
@@ -2736,7 +2752,7 @@ function EditPlanningItemModal({
 
           <div className="space-y-3">
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">
+              <span className="mb-2 block text-xs font-medium text-muted">
                 Nome
               </span>
 
@@ -2744,14 +2760,14 @@ function EditPlanningItemModal({
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
               />
             </label>
 
             {isEvent ? (
               <div className="grid grid-cols-2 gap-3">
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-white/42">
+                  <span className="mb-2 block text-xs font-medium text-muted">
                     Data inicial
                   </span>
 
@@ -2765,12 +2781,12 @@ function EditPlanningItemModal({
                         setEndDate(e.target.value);
                       }
                     }}
-                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                    className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                   />
                 </label>
 
                 <label className="block">
-                  <span className="mb-2 block text-xs font-medium text-white/42">
+                  <span className="mb-2 block text-xs font-medium text-muted">
                     Data final
                   </span>
 
@@ -2779,13 +2795,13 @@ function EditPlanningItemModal({
                     value={endDate}
                     min={date}
                     onChange={(e) => setEndDate(e.target.value)}
-                    className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                    className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                   />
                 </label>
               </div>
             ) : (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Data
                 </span>
 
@@ -2793,14 +2809,14 @@ function EditPlanningItemModal({
                   type="date"
                   value={date}
                   onChange={(e) => setDate(e.target.value)}
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                 />
               </label>
             )}
 
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Início
                 </span>
 
@@ -2808,12 +2824,12 @@ function EditPlanningItemModal({
                   type="time"
                   value={startTime}
                   onChange={(e) => setStartTime(e.target.value)}
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                 />
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Fim
                 </span>
 
@@ -2821,7 +2837,7 @@ function EditPlanningItemModal({
                   type="time"
                   value={endTime}
                   onChange={(e) => setEndTime(e.target.value)}
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                 />
               </label>
             </div>
@@ -2837,26 +2853,26 @@ function EditPlanningItemModal({
                 className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition active:scale-[0.98] ${
                   isKeyTask
                     ? "border-amber-300/30 bg-amber-400/[0.08]"
-                    : "border-white/10 bg-white/[0.045]"
+                    : "border-soft bg-surface-muted"
                 }`}
               >
                 <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
                   isKeyTask
-                    ? "border-amber-300/30 bg-amber-400/15 text-amber-200"
-                    : "border-white/10 bg-white/[0.06] text-white/35"
+                    ? "border-amber-300/30 bg-amber-400/15 text-amber-700 dark:text-amber-200"
+                    : "border-soft bg-surface-muted text-muted"
                 }`}>
                   <Star className={`h-4.5 w-4.5 ${isKeyTask ? "fill-amber-300 text-amber-300" : ""}`} />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className={`text-sm font-semibold ${isKeyTask ? "text-amber-100" : "text-white/70"}`}>
+                  <p className={`text-sm font-semibold ${isKeyTask ? "text-amber-700 dark:text-amber-100" : "text-secondary"}`}>
                     Tarefa chave do dia
                   </p>
-                  <p className="mt-0.5 text-xs leading-4 text-white/38">
+                  <p className="mt-0.5 text-xs leading-4 text-muted">
                     A única que, se feita, torna o dia bem-sucedido.
                   </p>
                 </div>
                 <div className={`h-5 w-5 shrink-0 rounded-full border-2 transition ${
-                  isKeyTask ? "border-amber-400 bg-amber-400" : "border-white/20 bg-transparent"
+                  isKeyTask ? "border-amber-400 bg-amber-400" : "border-soft bg-transparent"
                 }`} />
               </button>
             )}
@@ -2864,7 +2880,7 @@ function EditPlanningItemModal({
             {isTask && (
               <label className="block">
                 <div className="mb-2 flex items-center justify-between">
-                  <span className="text-xs font-medium text-white/42">
+                  <span className="text-xs font-medium text-muted">
                     Prioridade
                   </span>
                   {isKeyTask && (
@@ -2883,7 +2899,7 @@ function EditPlanningItemModal({
                   className={`min-h-[52px] w-full rounded-2xl border px-4 text-sm text-white outline-none transition ${
                     isKeyTask
                       ? "cursor-not-allowed border-amber-300/20 bg-amber-400/[0.06] opacity-70"
-                      : "border-white/10 bg-[#222230] focus:border-purple-300/35"
+                      : "border-soft bg-surface-muted focus:border-accent-soft"
                   }`}
                 >
                   <option value="low">Baixa</option>
@@ -2895,14 +2911,14 @@ function EditPlanningItemModal({
 
             {isTask && objectives.length > 0 && (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Vincular a objetivo
                 </span>
 
                 <select
                   value={objectiveId}
                   onChange={(e) => setObjectiveId(e.target.value)}
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none transition focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none transition focus:border-accent-soft"
                 >
                   <option value="">Nenhum</option>
                   {objectives.map((objective) => (
@@ -2916,7 +2932,7 @@ function EditPlanningItemModal({
 
             {isEvent && (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Local ou link
                 </span>
 
@@ -2925,14 +2941,14 @@ function EditPlanningItemModal({
                   value={location}
                   onChange={(e) => setLocation(e.target.value)}
                   placeholder="Ex: Google Meet, sala 203..."
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-sm text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
                 />
               </label>
             )}
 
             {isRoutine && (
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-white/42">
+                <span className="mb-2 block text-xs font-medium text-muted">
                   Repetição
                 </span>
 
@@ -2941,7 +2957,7 @@ function EditPlanningItemModal({
                   onChange={(e) =>
                     setRecurrence(e.target.value as "daily" | "weekly" | "monthly")
                   }
-                  className="min-h-[52px] w-full rounded-2xl border border-white/10 bg-[#222230] px-4 text-sm text-white outline-none focus:border-purple-300/35"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none focus:border-accent-soft"
                 >
                   <option value="daily">Todos os dias</option>
                   <option value="weekly">Toda semana</option>
@@ -2951,7 +2967,7 @@ function EditPlanningItemModal({
             )}
 
             <label className="block">
-              <span className="mb-2 block text-xs font-medium text-white/42">
+              <span className="mb-2 block text-xs font-medium text-muted">
                 Observação
               </span>
 
@@ -2960,7 +2976,7 @@ function EditPlanningItemModal({
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Adicione detalhes, contexto ou instruções..."
                 rows={3}
-                className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.055] px-4 py-3 text-sm leading-6 text-white outline-none placeholder:text-white/28 focus:border-purple-300/35"
+                className="w-full resize-none rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm leading-6 text-primary outline-none placeholder:text-soft focus:border-accent-soft"
               />
             </label>
 
@@ -3037,11 +3053,11 @@ function SubtaskEditor({
   }
 
   return (
-    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-      <p className="mb-3 text-xs font-semibold text-white/42">Subtarefas</p>
+    <div className="rounded-2xl border border-soft bg-surface-muted p-4">
+      <p className="mb-3 text-xs font-semibold text-muted">Subtarefas</p>
 
       {loading ? (
-        <div className="flex items-center gap-2 py-2 text-xs text-white/35">
+        <div className="flex items-center gap-2 py-2 text-xs text-muted">
           <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando…
         </div>
       ) : (
@@ -3056,18 +3072,18 @@ function SubtaskEditor({
                     className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border transition active:scale-90 ${
                       s.done
                         ? "border-emerald-400 bg-emerald-400 text-[#11111a]"
-                        : "border-white/25 hover:border-purple-300/60"
+                        : "border-soft hover:border-accent-soft"
                     }`}
                   >
                     {s.done && <CheckCircle2 className="h-3 w-3" />}
                   </button>
-                  <p className={`flex-1 truncate text-sm ${s.done ? "text-white/35 line-through" : "text-white/75"}`}>
+                  <p className={`flex-1 truncate text-sm ${s.done ? "text-soft line-through" : "text-primary"}`}>
                     {s.title}
                   </p>
                   <button
                     type="button"
                     onClick={() => handleDelete(s.id)}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/35 active:scale-[0.94]"
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -3087,12 +3103,12 @@ function SubtaskEditor({
                   if (e.key === "Escape") { setAdding(false); setNewTitle(""); }
                 }}
                 placeholder="Nome da subtarefa…"
-                className="min-h-[38px] flex-1 rounded-xl border border-purple-300/30 bg-white/[0.055] px-3 text-sm text-white outline-none placeholder:text-white/25"
+                className="min-h-[38px] flex-1 rounded-xl border border-accent-soft bg-surface-muted px-3 text-sm text-primary outline-none placeholder:text-soft"
               />
-              <button type="button" onClick={handleAdd} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-purple-500 text-white active:scale-[0.94]">
+              <button type="button" onClick={handleAdd} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[var(--accent-strong)] text-white transition active:scale-[0.94]">
                 <Plus className="h-3.5 w-3.5" />
               </button>
-              <button type="button" onClick={() => { setAdding(false); setNewTitle(""); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94]">
+              <button type="button" onClick={() => { setAdding(false); setNewTitle(""); }} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]">
                 <X className="h-3.5 w-3.5" />
               </button>
             </div>
@@ -3100,7 +3116,7 @@ function SubtaskEditor({
             <button
               type="button"
               onClick={() => setAdding(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/15 py-2 text-xs font-semibold text-white/35 active:scale-[0.98]"
+              className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-[var(--border-soft)] py-2 text-xs font-semibold text-muted active:scale-[0.98]"
             >
               <Plus className="h-3.5 w-3.5" />
               Adicionar subtarefa
@@ -3147,7 +3163,7 @@ function UndatedTasksSheet({
       onClose={onClose}
       ariaLabel="Tarefas sem data"
       maxHeightClassName="max-h-[82vh]"
-      surfaceClassName="bg-[#171720]/95"
+      surfaceClassName="bg-surface-elevated"
     >
       {/* Cabeçalho da fila mantido no conteúdo para preservar o visual. */}
       <div className="mb-4">
@@ -3155,10 +3171,10 @@ function UndatedTasksSheet({
           <ListTodo className="h-3.5 w-3.5" />
           Fila · {tasks.length} {tasks.length === 1 ? "tarefa" : "tarefas"}
         </div>
-        <h2 className="text-[1.35rem] font-semibold leading-tight tracking-[-0.04em] text-white">
+        <h2 className="text-[1.35rem] font-semibold leading-tight tracking-[-0.04em] text-primary">
           Tarefas sem data
         </h2>
-        <p className="mt-1 text-xs text-white/38">
+        <p className="mt-1 text-xs text-muted">
           Ordenadas por prioridade. Toque no lápis para atribuir uma data.
         </p>
       </div>
@@ -3183,21 +3199,21 @@ function UndatedTasksSheet({
                     key={task.id}
                     className={`flex items-center gap-3 rounded-2xl border p-3 ${
                       isDone
-                        ? "border-emerald-300/15 bg-emerald-400/[0.05]"
-                        : "border-white/10 bg-white/[0.04]"
+                        ? "border-emerald-300/20 bg-emerald-400/[0.08]"
+                        : "border-soft bg-surface-muted"
                     }`}
                   >
                     <span className={`h-2 w-2 shrink-0 rounded-full ${meta.dot}`} />
 
                     <div className="min-w-0 flex-1">
-                      <p className={`truncate text-sm font-semibold ${isDone ? "text-white/38 line-through" : "text-white/85"}`}>
+                      <p className={`truncate text-sm font-semibold ${isDone ? "text-soft line-through" : "text-primary"}`}>
                         {task.title}
                       </p>
                       <div className="mt-1 flex items-center gap-2">
                         <span className={`rounded-full border px-2 py-0.5 text-[0.6rem] font-semibold ${meta.badge}`}>
                           {meta.label}
                         </span>
-                        <span className="flex items-center gap-1 text-[0.6rem] text-white/28">
+                        <span className="flex items-center gap-1 text-[0.6rem] text-soft">
                           <Icon className="h-2.5 w-2.5" />
                           {typeLabels[task.task_type]}
                         </span>
@@ -3206,24 +3222,27 @@ function UndatedTasksSheet({
 
                     <div className="flex shrink-0 items-center gap-1.5">
                       <button
+                        type="button"
                         onClick={() => onToggle(task)}
                         className={`flex h-7 w-7 items-center justify-center rounded-xl active:scale-[0.94] ${
-                          isDone ? "bg-emerald-400/15 text-emerald-300" : "bg-white/[0.055] text-white/40"
+                          isDone ? "bg-emerald-400/15 text-emerald-600 dark:text-emerald-300" : "bg-surface-muted text-muted"
                         }`}
                         aria-label={isDone ? "Desmarcar" : "Marcar como feita"}
                       >
                         {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Circle className="h-3.5 w-3.5" />}
                       </button>
                       <button
+                        type="button"
                         onClick={() => onEdit(task)}
-                        className="flex h-7 w-7 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94]"
+                        className="flex h-7 w-7 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]"
                         aria-label="Editar"
                       >
                         <Edit3 className="h-3.5 w-3.5" />
                       </button>
                       <button
+                        type="button"
                         onClick={() => onDelete(task)}
-                        className="flex h-7 w-7 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94]"
+                        className="flex h-7 w-7 items-center justify-center rounded-xl bg-surface-muted text-muted transition active:scale-[0.94]"
                         aria-label="Excluir"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -3237,7 +3256,7 @@ function UndatedTasksSheet({
                 <button
                   type="button"
                   onClick={() => setShowAll(true)}
-                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] py-3 text-xs font-semibold text-white/50 active:scale-[0.98]"
+                  className="mt-1 flex w-full items-center justify-center gap-2 rounded-2xl border border-soft bg-surface-muted py-3 text-xs font-semibold text-secondary transition active:scale-[0.98]"
                 >
                   Mostrar mais {hidden} {hidden === 1 ? "tarefa" : "tarefas"}
                 </button>

@@ -73,31 +73,31 @@ export default function Analyzing() {
   }, [navigate]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <OnboardingBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
         {/* Header compacto mantém a identidade do Axon durante a transição. */}
         <header className="flex shrink-0 items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
+          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
             <Brain className="h-5 w-5" />
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-white">Axon</p>
-            <p className="text-xs text-white/40">Análise do seu ritmo</p>
+            <p className="text-sm font-semibold text-primary">Axon</p>
+            <p className="text-xs text-muted">Análise do seu ritmo</p>
           </div>
         </header>
 
         <section className="flex flex-1 flex-col justify-center py-6">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-2xl shadow-black/35 backdrop-blur-2xl">
+          <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-soft backdrop-blur-2xl">
             {/* Camadas internas dão profundidade glassmorphism ao card principal. */}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/14 via-transparent to-fuchsia-400/10" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:26px_26px] opacity-20" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_52%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--app-grid-color)_1px,transparent_1px)] [background-size:26px_26px] opacity-70" />
 
             <div className="relative">
               {/* Ilustração neural central: órbitas, linhas e pulso visual do Axon. */}
-              <div className="mb-6 flex h-[230px] items-center justify-center overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/25">
+              <div className="mb-6 flex h-[230px] items-center justify-center overflow-hidden rounded-[1.7rem] border border-soft bg-surface-muted">
                 <motion.div
                   animate={{ rotate: 360 }}
                   transition={{
@@ -105,7 +105,7 @@ export default function Analyzing() {
                     repeat: Infinity,
                     ease: "linear",
                   }}
-                  className="absolute h-44 w-44 rounded-full border border-purple-300/15"
+                  className="absolute h-44 w-44 rounded-full border border-accent-soft"
                 />
 
                 <motion.div
@@ -125,7 +125,7 @@ export default function Analyzing() {
                     repeat: Infinity,
                     ease: "linear",
                   }}
-                  className="absolute h-24 w-24 rounded-full border border-white/10"
+                  className="absolute h-24 w-24 rounded-full border border-soft"
                 />
 
                 <svg
@@ -237,7 +237,7 @@ export default function Analyzing() {
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="absolute h-24 w-24 rounded-[1.8rem] border border-purple-300/25 bg-purple-500/15 shadow-[0_0_70px_rgba(168,85,247,0.38)] backdrop-blur-2xl"
+                  className="absolute h-24 w-24 rounded-[1.8rem] border border-accent-soft bg-accent-soft shadow-card backdrop-blur-2xl"
                 />
 
                 <motion.div
@@ -247,31 +247,31 @@ export default function Analyzing() {
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="relative flex h-20 w-20 items-center justify-center rounded-[1.5rem] border border-white/10 bg-black/35"
+                  className="relative flex h-20 w-20 items-center justify-center rounded-[1.5rem] border border-soft bg-surface-elevated"
                 >
-                  <Brain className="h-10 w-10 text-purple-100" />
+                  <Brain className="h-10 w-10 text-accent" />
                 </motion.div>
               </div>
 
               {/* Texto principal explica a espera sem expor detalhes técnicos do cálculo. */}
               <div className="text-center">
-                <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+                <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                   <Activity className="h-3.5 w-3.5" />
                   Processando respostas
                 </div>
 
-                <h1 className="mx-auto max-w-[19rem] text-[1.9rem] font-semibold leading-[1.04] tracking-[-0.055em] text-white">
+                <h1 className="mx-auto max-w-[19rem] text-[1.9rem] font-semibold leading-[1.04] tracking-[-0.055em] text-primary">
                   Estamos montando seu perfil inicial.
                 </h1>
 
-                <p className="mx-auto mt-3 max-w-[18.5rem] text-sm leading-6 text-white/50">
+                <p className="mx-auto mt-3 max-w-[18.5rem] text-sm leading-6 text-muted">
                   O Axon está analisando seu ritmo para criar uma experiência
                   mais alinhada com você.
                 </p>
               </div>
 
               {/* Card dinâmico mostra qual parte da análise está em destaque. */}
-              <div className="mt-6 overflow-hidden rounded-3xl border border-white/10 bg-black/25 p-4">
+              <div className="mt-6 overflow-hidden rounded-3xl border border-soft bg-surface-muted p-4">
                 <AnimatePresence mode="wait">
                   <motion.div
                     key={currentStep.title}
@@ -281,15 +281,15 @@ export default function Analyzing() {
                     transition={{ duration: 0.25 }}
                     className="flex items-center gap-3"
                   >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated text-accent">
                       <CurrentIcon className="h-5 w-5" />
                     </div>
 
                     <div>
-                      <p className="text-sm font-semibold text-white">
+                      <p className="text-sm font-semibold text-primary">
                         {currentStep.title}
                       </p>
-                      <p className="mt-1 text-xs leading-5 text-white/42">
+                      <p className="mt-1 text-xs leading-5 text-muted">
                         {currentStep.text}
                       </p>
                     </div>
@@ -300,15 +300,15 @@ export default function Analyzing() {
               {/* Progresso calculado pela etapa ativa; não depende de resposta do backend. */}
               <div className="mt-5">
                 <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs text-white/35">Análise em andamento</p>
-                  <p className="text-xs text-purple-100">
+                  <p className="text-xs text-muted">Análise em andamento</p>
+                  <p className="text-xs text-accent">
                     {Math.round(progress)}%
                   </p>
                 </div>
 
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="h-2 overflow-hidden rounded-full bg-[var(--border-soft)]">
                   <motion.div
-                    className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_18px_rgba(192,132,252,0.6)]"
+                    className="h-full rounded-full bg-[var(--accent)] shadow-[0_0_18px_var(--accent-soft)]"
                     animate={{ width: `${progress}%` }}
                     transition={{ duration: 0.45, ease: "easeOut" }}
                   />
@@ -321,8 +321,9 @@ export default function Analyzing() {
         {/* Atalho manual evita prender o usuário caso ele queira pular a animação. */}
         <footer className="shrink-0">
           <button
+            type="button"
             onClick={() => navigate("/result")}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
           >
             Ver resultado agora
             <ArrowRight className="ml-2 h-4 w-4" />

@@ -195,7 +195,7 @@ export default function TagEditorSheet({ isOpen, onClose }: Props) {
       maxHeightClassName="max-h-[88vh]"
     >
       {/* Abas de categoria fixas no topo do conteúdo rolável. */}
-      <div className="sticky -top-4 z-10 -mx-5 mb-4 bg-[#15141f]/97 px-5 pb-3 pt-1 backdrop-blur-xl">
+      <div className="sticky -top-4 z-10 -mx-5 mb-4 bg-surface-elevated px-5 pb-3 pt-1 backdrop-blur-xl">
         <CategoryTabs activeTab={activeTab} onChangeTab={changeTab} />
       </div>
 
@@ -245,8 +245,8 @@ function CategoryTabs({
           onClick={() => onChangeTab(key)}
           className={`flex-1 rounded-2xl border py-2.5 text-xs font-semibold transition active:scale-[0.97] ${
             activeTab === key
-              ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
-              : "border-white/10 bg-white/[0.04] text-white/45"
+              ? "border-accent-soft bg-accent-soft text-accent"
+              : "border-soft bg-surface-muted text-muted"
           }`}
         >
           {label}
@@ -285,16 +285,16 @@ function TagList({
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.85 }}
               transition={{ duration: 0.15 }}
-              className="flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.06] py-1.5 pl-3.5 pr-2"
+              className="flex items-center gap-1.5 rounded-full border border-soft bg-surface-muted py-1.5 pl-3.5 pr-2"
             >
-              <span className="text-xs font-medium text-white/75">
+              <span className="text-xs font-medium text-primary">
                 {tag.label}
               </span>
 
               <button
                 type="button"
                 onClick={() => onRemove(tag.slug)}
-                className="flex h-5 w-5 items-center justify-center rounded-full bg-white/10 text-white/40 transition hover:bg-red-500/20 hover:text-red-400 active:scale-[0.9]"
+                className="flex h-5 w-5 items-center justify-center rounded-full bg-surface-muted text-muted transition hover:bg-red-500/20 hover:text-red-600 active:scale-[0.9] dark:hover:text-red-400"
                 aria-label={`Remover ${tag.label}`}
               >
                 <X className="h-3 w-3" />
@@ -331,21 +331,21 @@ function AddTagControl({
           onKeyDown={(event) => event.key === "Enter" && onAdd()}
           maxLength={40}
           placeholder="Nova tag..."
-          className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-white outline-none ring-purple-500/40 transition placeholder:text-white/25 focus:border-purple-400/40 focus:ring-2"
+          className="min-w-0 flex-1 rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm text-primary outline-none ring-[var(--accent-soft)] transition placeholder:text-soft focus:border-accent-soft focus:ring-2"
         />
 
         <button
           type="button"
           onClick={onAdd}
           disabled={!value.trim()}
-          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-purple-500/80 text-white shadow-lg shadow-purple-950/20 active:scale-[0.96] disabled:opacity-30"
+          className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-[var(--accent-strong)] text-white shadow-card transition active:scale-[0.96] disabled:opacity-30"
           aria-label="Adicionar tag"
         >
           <Plus className="h-5 w-5" />
         </button>
       </div>
 
-      {error && <p className="mt-2 px-1 text-xs text-red-400">{error}</p>}
+      {error && <p className="mt-2 px-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </div>
   );
 }
@@ -363,7 +363,7 @@ function ResetCategoryButton({
     <button
       type="button"
       onClick={onReset}
-      className="mb-6 flex items-center gap-1.5 px-1 text-xs text-white/30 transition hover:text-white/55 active:scale-[0.97]"
+      className="mb-6 flex items-center gap-1.5 px-1 text-xs text-soft transition hover:text-secondary active:scale-[0.97]"
     >
       <RefreshCcw className="h-3 w-3" />
       Restaurar padrões de {label}
@@ -378,7 +378,7 @@ function ResetCategoryButton({
 function LoadingState() {
   return (
     <div className="flex items-center justify-center py-12">
-      <Loader2 className="h-6 w-6 animate-spin text-purple-300" />
+      <Loader2 className="h-6 w-6 animate-spin text-accent" />
     </div>
   );
 }
@@ -395,7 +395,7 @@ function SaveButton({
       type="button"
       onClick={onSave}
       disabled={saving}
-      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-purple-500 px-5 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98] disabled:opacity-50"
+      className="inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[var(--accent-strong)] px-5 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-50"
     >
       {saving ? (
         <Loader2 className="h-4 w-4 animate-spin" />

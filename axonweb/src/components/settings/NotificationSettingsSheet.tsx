@@ -152,7 +152,7 @@ export default function NotificationSettingsSheet({ isOpen, onClose }: Props) {
 function LoadingState() {
   return (
     <div className="flex items-center justify-center py-16">
-      <div className="h-6 w-6 animate-spin rounded-full border-2 border-purple-400 border-t-transparent" />
+      <div className="h-6 w-6 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
     </div>
   );
 }
@@ -207,7 +207,7 @@ function DailyPlanningSection({
                   onChange={(event) =>
                     onUpdate({ daily_planning_time: event.target.value })
                   }
-                  className="rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2 text-sm font-medium text-white outline-none focus:border-purple-400/40"
+                  className="rounded-xl border border-soft bg-surface-muted px-3 py-2 text-sm font-medium text-primary outline-none focus:border-accent-soft"
                   style={{ colorScheme: "dark" }}
                 />
               </PickerRow>
@@ -266,14 +266,14 @@ function WeeklyPlanningSection({
                       weekly_planning_day: Number(event.target.value),
                     })
                   }
-                  className="rounded-xl border border-white/10 bg-white/[0.07] px-3 py-2 text-sm font-medium text-white outline-none focus:border-purple-400/40"
+                  className="rounded-xl border border-soft bg-surface-muted px-3 py-2 text-sm font-medium text-primary outline-none focus:border-accent-soft"
                   style={{ colorScheme: "dark" }}
                 >
                   {WEEK_DAYS.map((day) => (
                     <option
                       key={day.value}
                       value={day.value}
-                      className="bg-[#1b1b27]"
+                      className="bg-surface-elevated"
                     >
                       {day.label}
                     </option>
@@ -290,7 +290,7 @@ function WeeklyPlanningSection({
 
 function SectionTitle({ title }: { title: string }) {
   return (
-    <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-white/28">
+    <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-soft">
       {title}
     </p>
   );
@@ -317,27 +317,27 @@ function ToggleRow({
     <button
       type="button"
       onClick={onToggle}
-      className="flex w-full items-center gap-3 rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/76 p-4 text-left shadow-xl shadow-black/20 backdrop-blur-2xl active:scale-[0.99]"
+      className="flex w-full items-center gap-3 rounded-[1.7rem] border border-soft bg-surface-elevated p-4 text-left text-primary shadow-card backdrop-blur-2xl transition active:scale-[0.99]"
     >
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
         <Icon className="h-5 w-5" />
       </div>
 
       <div className="min-w-0 flex-1">
-        <p className="text-sm font-semibold text-white">{title}</p>
-        <p className="mt-1 text-xs leading-5 text-white/38">{description}</p>
+        <p className="text-sm font-semibold text-primary">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-muted">{description}</p>
       </div>
 
       <div
         className={`flex h-7 w-12 shrink-0 items-center rounded-full border p-1 transition ${
           enabled
-            ? "justify-end border-purple-300/25 bg-purple-500/30"
-            : "justify-start border-white/10 bg-white/10"
+            ? "justify-end border-accent-soft bg-accent-soft"
+            : "justify-start border-soft bg-surface-muted"
         }`}
       >
         <div
           className={`h-5 w-5 rounded-full transition ${
-            enabled ? "bg-purple-100" : "bg-white/35"
+            enabled ? "bg-[var(--accent)]" : "bg-[var(--text-soft)]"
           }`}
         />
       </div>
@@ -355,12 +355,12 @@ function PickerRow({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-[1.7rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+    <div className="flex items-center gap-3 rounded-[1.7rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
         <Icon className="h-5 w-5" />
       </div>
 
-      <p className="flex-1 text-sm font-semibold text-white">{label}</p>
+      <p className="flex-1 text-sm font-semibold text-primary">{label}</p>
 
       {children}
     </div>

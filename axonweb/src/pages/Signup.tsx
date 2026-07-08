@@ -42,12 +42,12 @@ function InputField({
 }: InputFieldProps) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-white/55">
+      <span className="mb-2 block text-sm font-medium text-muted">
         {label}
       </span>
 
-      <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.055] px-4 backdrop-blur-2xl transition focus-within:border-purple-300/35 focus-within:bg-white/[0.075]">
-        <Icon className="h-5 w-5 text-purple-200/80" />
+      <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-soft bg-surface-muted px-4 backdrop-blur-2xl transition focus-within:border-accent-soft focus-within:bg-accent-muted">
+        <Icon className="h-5 w-5 text-accent" />
 
         <input
           type={type}
@@ -55,7 +55,7 @@ function InputField({
           value={value}
           onChange={onChange}
           required
-          className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/28"
+          className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-soft"
         />
       </div>
     </label>
@@ -80,25 +80,25 @@ function PasswordField({
 
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-white/55">
+      <span className="mb-2 block text-sm font-medium text-muted">
         {label}
       </span>
 
-      <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.055] px-4 backdrop-blur-2xl transition focus-within:border-purple-300/35 focus-within:bg-white/[0.075]">
-        <Lock className="h-5 w-5 text-purple-200/80" />
+      <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-soft bg-surface-muted px-4 backdrop-blur-2xl transition focus-within:border-accent-soft focus-within:bg-accent-muted">
+        <Lock className="h-5 w-5 text-accent" />
 
         <input
           type={showPassword ? "text" : "password"}
           placeholder={placeholder}
           value={value}
           onChange={onChange}
-          className="w-full bg-transparent text-sm text-white outline-none placeholder:text-white/28"
+          className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-soft"
         />
 
         <button
           type="button"
           onClick={() => setShowPassword((prev) => !prev)}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white/38 transition hover:bg-white/10 hover:text-white/70 active:scale-[0.96]"
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-surface-muted hover:text-secondary active:scale-[0.96]"
           aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
         >
           {showPassword ? (
@@ -175,7 +175,7 @@ export default function Signup() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#05050b] px-4 py-8 text-white">
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app px-4 py-8 text-primary">
       <AuthBackground />
 
       <div className="relative z-10 w-full max-w-[440px]">
@@ -185,23 +185,23 @@ export default function Signup() {
           initial={{ opacity: 0, y: 24, scale: 0.98 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           transition={{ duration: 0.55 }}
-          className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/35 backdrop-blur-2xl sm:p-6"
+          className="overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl sm:p-6"
         >
           {/* Cabeçalho: prepara o usuário para o cadastro e o questionário. */}
           <div className="mb-4">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs text-purple-100">
+            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs text-accent">
               <Sparkles className="h-3.5 w-3.5" />
               Primeiro acesso
             </div>
 
-            <h1 className="text-[2rem] font-semibold leading-[1.05] tracking-[-0.045em] text-white">
+            <h1 className="text-[2rem] font-semibold leading-[1.05] tracking-[-0.045em] text-primary">
               Crie seu Axon pessoal.
             </h1>
 
             <div className="flex items-start gap-3 py-4">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-purple-200" />
+              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
 
-              <p className="text-sm leading-6 text-white/48">
+              <p className="text-sm leading-6 text-muted">
                 Depois do cadastro, você responderá um questionário rápido para
                 personalizar sua experiência.
               </p>
@@ -249,8 +249,8 @@ export default function Signup() {
 
             {error && (
               <div className="flex items-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-300" />
-                <p className="text-xs text-red-200">{error}</p>
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-300" />
+                <p className="text-xs text-red-600 dark:text-red-200">{error}</p>
               </div>
             )}
 
@@ -265,15 +265,15 @@ export default function Signup() {
                 className="peer sr-only"
               />
 
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-white/10 bg-white/[0.055] transition peer-checked:border-purple-300/30 peer-checked:bg-purple-500" />
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-soft bg-surface-muted transition peer-checked:border-accent-soft peer-checked:bg-[var(--accent-strong)]" />
 
-              <span className="text-xs leading-5 text-white/45">
+              <span className="text-xs leading-5 text-muted">
                 Li e concordo com os{" "}
-                <a href="#" className="font-medium text-purple-200">
+                <a href="#" className="font-medium text-accent">
                   Termos de Uso
                 </a>{" "}
                 e a{" "}
-                <a href="#" className="font-medium text-purple-200">
+                <a href="#" className="font-medium text-accent">
                   Política de Privacidade
                 </a>
                 .
@@ -285,16 +285,16 @@ export default function Signup() {
               <GoogleAuthButton label="Cadastrar com o Google" />
 
               <div className="my-5 flex items-center gap-3">
-                <div className="h-px flex-1 bg-white/10" />
-                <span className="text-xs font-medium text-white/42">ou</span>
-                <div className="h-px flex-1 bg-white/10" />
+                <div className="h-px flex-1 bg-[var(--border-soft)]" />
+                <span className="text-xs font-medium text-muted">ou</span>
+                <div className="h-px flex-1 bg-[var(--border-soft)]" />
               </div>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-1 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? "Criando conta..." : "Criar minha conta"}
               {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
@@ -302,12 +302,11 @@ export default function Signup() {
           </form>
 
           {/* Link para quem já possui uma conta. */}
-          <p className="mt-6 text-center text-xs text-white/40">
+          <p className="mt-6 text-center text-xs text-muted">
             Já tem conta?{" "}
             <Link
               to="/login"
-              className="font-medium"
-              style={{ color: "#a855f7" }}
+              className="font-medium text-accent"
             >
               Entrar
             </Link>

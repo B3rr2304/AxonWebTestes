@@ -76,19 +76,19 @@ export default function Result() {
   const ResultIcon = getResultIcon(resultKey);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
         {/* Header: identifica o contexto do resultado. */}
         <header className="mb-5 flex shrink-0 items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200 shadow-lg shadow-purple-950/30">
+          <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent shadow-card">
             <Brain className="h-5 w-5" />
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-white">Axon</p>
-            <p className="text-xs text-white/40">
+            <p className="text-sm font-semibold text-primary">Axon</p>
+            <p className="text-xs text-muted">
               {fromProfile ? "Resultado completo" : "Resultado inicial"}
             </p>
           </div>
@@ -100,14 +100,14 @@ export default function Result() {
             initial={{ opacity: 0, y: 18, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             transition={{ duration: 0.45 }}
-            className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/82 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl"
+            className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl"
           >
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.26),transparent_48%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),transparent_40%)] opacity-60 dark:opacity-30" />
 
             <div className="relative">
-              <div className="mb-6 flex h-[215px] items-center justify-center overflow-hidden rounded-[1.7rem] border border-white/10 bg-black/25">
-                <div className="absolute h-44 w-44 rounded-full bg-purple-500/20 blur-[70px]" />
+              <div className="mb-6 flex h-[215px] items-center justify-center overflow-hidden rounded-[1.7rem] border border-soft bg-surface-muted">
+                <div className="absolute h-44 w-44 rounded-full bg-accent-soft blur-[70px]" />
 
                 <motion.div
                   animate={{ rotate: 360 }}
@@ -116,7 +116,7 @@ export default function Result() {
                     repeat: Infinity,
                     ease: "linear",
                   }}
-                  className="absolute h-44 w-44 rounded-full border border-purple-300/15"
+                  className="absolute h-44 w-44 rounded-full border border-accent-soft"
                 />
 
                 <motion.div
@@ -136,26 +136,26 @@ export default function Result() {
                     repeat: Infinity,
                     ease: "easeInOut",
                   }}
-                  className="relative flex h-24 w-24 items-center justify-center rounded-[1.7rem] border border-purple-300/25 bg-purple-500/15 shadow-[0_0_80px_rgba(168,85,247,0.42)] backdrop-blur-2xl"
+                  className="relative flex h-24 w-24 items-center justify-center rounded-[1.7rem] border border-accent-soft bg-accent-soft shadow-card backdrop-blur-2xl"
                 >
-                  <ResultIcon className="h-11 w-11 text-purple-100" />
+                  <ResultIcon className="h-11 w-11 text-accent" />
                 </motion.div>
               </div>
 
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <Sparkles className="h-3.5 w-3.5" />
                 {result.label}
               </div>
 
-              <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-white">
+              <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-primary">
                 {result.title}
               </h1>
 
-              <p className="mt-4 text-sm leading-6 text-white/58">
+              <p className="mt-4 text-sm leading-6 text-muted">
                 {result.subtitle}
               </p>
 
-              <p className="mt-4 text-sm leading-7 text-white/45">
+              <p className="mt-4 text-sm leading-7 text-muted">
                 {result.description}
               </p>
 
@@ -163,7 +163,7 @@ export default function Result() {
                 {result.profileTags.map((tag) => (
                   <span
                     key={tag}
-                    className="rounded-full border border-white/10 bg-white/[0.055] px-3 py-1.5 text-xs font-medium text-white/55"
+                    className="rounded-full border border-soft bg-surface-muted px-3 py-1.5 text-xs font-medium text-secondary"
                   >
                     {tag}
                   </span>
@@ -200,22 +200,22 @@ export default function Result() {
           </section>
 
           {/* Leitura resumida do Axon sobre o perfil produtivo. */}
-          <section className="rounded-[1.8rem] border border-purple-300/20 bg-purple-500/10 p-4 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
+          <section className="rounded-[1.8rem] border border-accent-soft bg-accent-soft p-4 text-primary shadow-card backdrop-blur-2xl">
             <div className="mb-3 flex items-center gap-2">
-              <Brain className="h-4 w-4 text-purple-200" />
-              <p className="text-sm font-semibold text-purple-100">
+              <Brain className="h-4 w-4 text-accent" />
+              <p className="text-sm font-semibold text-accent">
                 Leitura do Axon
               </p>
             </div>
 
-            <p className="text-sm leading-6 text-white/58">{result.summary}</p>
+            <p className="text-sm leading-6 text-muted">{result.summary}</p>
           </section>
 
           {/* Janelas sugeridas para orientar o planejamento inicial. */}
-          <section className="rounded-[1.8rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+          <section className="rounded-[1.8rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
             <div className="mb-4 flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-purple-200" />
-              <p className="text-sm font-semibold text-white">
+              <CalendarDays className="h-4 w-4 text-accent" />
+              <p className="text-sm font-semibold text-primary">
                 Janelas sugeridas
               </p>
             </div>
@@ -224,19 +224,19 @@ export default function Result() {
               {result.focusBlocks.map((block) => (
                 <div
                   key={`${block.period}-${block.title}`}
-                  className="rounded-[1.45rem] border border-white/10 bg-black/20 p-4"
+                  className="rounded-[1.45rem] border border-soft bg-surface-muted p-4"
                 >
                   <div className="mb-2 flex items-center justify-between gap-3">
-                    <p className="text-sm font-semibold text-white">
+                    <p className="text-sm font-semibold text-primary">
                       {block.title}
                     </p>
 
-                    <span className="shrink-0 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1 text-[0.68rem] font-semibold text-purple-100">
+                    <span className="shrink-0 rounded-full border border-accent-soft bg-surface-elevated px-3 py-1 text-[0.68rem] font-semibold text-accent">
                       {block.period}
                     </span>
                   </div>
 
-                  <p className="text-xs leading-5 text-white/44">
+                  <p className="text-xs leading-5 text-muted">
                     {block.description}
                   </p>
                 </div>
@@ -245,10 +245,10 @@ export default function Result() {
           </section>
 
           {/* Atividades que tendem a combinar melhor com esse ritmo. */}
-          <section className="rounded-[1.8rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+          <section className="rounded-[1.8rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
             <div className="mb-4 flex items-center gap-2">
-              <CheckCircle2 className="h-4 w-4 text-purple-200" />
-              <p className="text-sm font-semibold text-white">
+              <CheckCircle2 className="h-4 w-4 text-accent" />
+              <p className="text-sm font-semibold text-primary">
                 O que funciona melhor para você
               </p>
             </div>
@@ -261,10 +261,10 @@ export default function Result() {
           </section>
 
           {/* Alertas para evitar atrito entre energia e tipo de tarefa. */}
-          <section className="rounded-[1.8rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+          <section className="rounded-[1.8rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
             <div className="mb-4 flex items-center gap-2">
-              <Coffee className="h-4 w-4 text-purple-200" />
-              <p className="text-sm font-semibold text-white">
+              <Coffee className="h-4 w-4 text-accent" />
+              <p className="text-sm font-semibold text-primary">
                 Pontos de atenção
               </p>
             </div>
@@ -277,10 +277,10 @@ export default function Result() {
           </section>
 
           {/* Como o app usará o resultado para personalizar a experiência. */}
-          <section className="rounded-[1.8rem] border border-purple-300/20 bg-purple-500/10 p-4 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
+          <section className="rounded-[1.8rem] border border-accent-soft bg-accent-soft p-4 text-primary shadow-card backdrop-blur-2xl">
             <div className="mb-3 flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-purple-200" />
-              <p className="text-sm font-semibold text-purple-100">
+              <Sparkles className="h-4 w-4 text-accent" />
+              <p className="text-sm font-semibold text-accent">
                 Como o Axon vai se adaptar
               </p>
             </div>
@@ -288,18 +288,18 @@ export default function Result() {
             <div className="space-y-3">
               {result.axonSetup.map((item, index) => (
                 <div key={item} className="flex gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-purple-300/20 bg-purple-500/15 text-xs font-semibold text-purple-100">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-accent-soft bg-surface-elevated text-xs font-semibold text-accent">
                     {index + 1}
                   </div>
 
-                  <p className="text-sm leading-6 text-white/56">{item}</p>
+                  <p className="text-sm leading-6 text-muted">{item}</p>
                 </div>
               ))}
             </div>
           </section>
 
           {/* Recomendações práticas para os primeiros ajustes de rotina. */}
-          <section className="rounded-[1.8rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+          <section className="rounded-[1.8rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
             <p className="mb-4 text-sm font-semibold text-white">
               Como começar melhor
             </p>
@@ -307,11 +307,11 @@ export default function Result() {
             <div className="space-y-3">
               {result.routineTips.map((tip, index) => (
                 <div key={tip} className="flex gap-3">
-                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-purple-300/20 bg-purple-500/15 text-xs font-semibold text-purple-100">
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full border border-accent-soft bg-surface-elevated text-xs font-semibold text-accent">
                     {index + 1}
                   </div>
 
-                  <p className="text-sm leading-6 text-white/48">{tip}</p>
+                  <p className="text-sm leading-6 text-muted">{tip}</p>
                 </div>
               ))}
             </div>
@@ -323,16 +323,18 @@ export default function Result() {
           {fromProfile ? (
             <>
               <button
+                type="button"
                 onClick={() => navigate("/profile")}
-                className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition active:scale-[0.98]"
+                className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
               >
                 <ArrowLeft className="mr-2 h-4 w-4" />
                 Voltar para o perfil
               </button>
 
               <button
+                type="button"
                 onClick={() => navigate("/questionnaire")}
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
               >
                 Refazer questionário
                 <RefreshCcw className="ml-2 h-4 w-4" />
@@ -341,16 +343,18 @@ export default function Result() {
           ) : (
             <>
               <button
+                type="button"
                 onClick={() => navigate("/dashboard-loading")}
-                className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition active:scale-[0.98]"
+                className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
               >
                 Montar meu Dashboard
                 <ArrowRight className="ml-2 h-4 w-4" />
               </button>
 
               <button
+                type="button"
                 onClick={() => navigate("/questionnaire")}
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-6 text-sm font-semibold text-white/55 backdrop-blur-2xl transition active:scale-[0.98]"
+                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
               >
                 Refazer questionário
                 <RefreshCcw className="ml-2 h-4 w-4" />
@@ -391,13 +395,13 @@ function InfoCard({
   value: string;
 }) {
   return (
-    <div className="rounded-[1.5rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+    <div className="rounded-[1.5rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
+      <div className="mb-3 flex h-9 w-9 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
         <Icon className="h-4 w-4" />
       </div>
 
-      <p className="text-xs leading-5 text-white/38">{label}</p>
-      <p className="mt-1 text-sm font-semibold leading-5 text-white">
+      <p className="text-xs leading-5 text-muted">{label}</p>
+      <p className="mt-1 text-sm font-semibold leading-5 text-primary">
         {value}
       </p>
     </div>
@@ -415,18 +419,18 @@ function ListItem({
   muted?: boolean;
 }) {
   return (
-    <div className="flex gap-3 rounded-[1.35rem] border border-white/10 bg-black/20 p-3">
+    <div className="flex gap-3 rounded-[1.35rem] border border-soft bg-surface-muted p-3">
       <div
         className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-2xl border ${
           muted
-            ? "border-white/10 bg-white/[0.04] text-white/38"
-            : "border-purple-300/20 bg-purple-500/10 text-purple-200"
+            ? "border-soft bg-surface-elevated text-muted"
+            : "border-accent-soft bg-surface-elevated text-accent"
         }`}
       >
         <Icon className="h-4 w-4" />
       </div>
 
-      <p className="text-sm leading-6 text-white/50">{text}</p>
+      <p className="text-sm leading-6 text-muted">{text}</p>
     </div>
   );
 }

@@ -303,7 +303,7 @@ export default function Insights() {
       : "variação ao longo do dia";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#05050b] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
@@ -315,34 +315,34 @@ export default function Insights() {
         />
 
         <section className="mb-5">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-purple-500/14 via-transparent to-fuchsia-400/10" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.055)_1px,transparent_1px)] [background-size:26px_26px] opacity-20" />
+          <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_50%)]" />
+            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--app-grid-color)_1px,transparent_1px)] [background-size:26px_26px] opacity-70" />
 
             <div className="relative">
-              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <Sparkles className="h-3.5 w-3.5" />
                 Análise personalizada
               </div>
 
-              <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-white">
+              <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-primary">
                 Seu melhor desempenho aparece mais na {bestFocusLabel}.
               </h1>
 
-              <p className="mt-4 text-sm leading-6 text-white/50">
+              <p className="mt-4 text-sm leading-6 text-muted">
                 O Axon usa seus dados iniciais para identificar padrões de
                 energia, foco e queda de rendimento ao longo do dia.
               </p>
 
-              <div className="mt-6 rounded-[1.5rem] border border-purple-300/20 bg-purple-500/10 p-4">
+              <div className="mt-6 rounded-[1.5rem] border border-accent-soft bg-accent-soft p-4">
                 <div className="mb-3 flex items-center gap-2">
                   <img src="/axon-logo.svg" alt="Axon" className="h-6 w-6 object-contain" />
-                  <p className="text-sm font-semibold text-purple-100">
+                  <p className="text-sm font-semibold text-accent">
                     {result.label}
                   </p>
                 </div>
 
-                <p className="text-sm leading-6 text-white/55">
+                <p className="text-sm leading-6 text-muted">
                   {result.recommendation}
                 </p>
               </div>
@@ -355,28 +355,28 @@ export default function Insights() {
           <button
             type="button"
             onClick={() => setReviewOpen(true)}
-            className={`group w-full overflow-hidden rounded-[2rem] border p-4 text-left shadow-xl backdrop-blur-2xl active:scale-[0.98] ${
+            className={`group w-full overflow-hidden rounded-[2rem] border p-4 text-left shadow-card backdrop-blur-2xl active:scale-[0.98] ${
               todayLog
-                ? "border-emerald-300/20 bg-emerald-400/[0.07] shadow-emerald-950/10"
-                : "border-purple-300/20 bg-purple-500/10 shadow-purple-950/20"
+                ? "border-emerald-300/25 bg-emerald-400/[0.08] shadow-card"
+                : "border-accent-soft bg-accent-soft shadow-card"
             }`}
           >
             <div className="flex items-center gap-3">
               <div
                 className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
                   todayLog
-                    ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-200"
-                    : "border-purple-300/20 bg-purple-500/15 text-purple-200"
+                    ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-700 dark:text-emerald-200"
+                    : "border-accent-soft bg-surface-elevated text-accent"
                 }`}
               >
                 {todayLog ? <CheckCircle2 className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
               </div>
 
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white">
+                <p className="text-sm font-semibold text-primary">
                   {todayLog ? "Dia registrado" : "Como foi o seu dia?"}
                 </p>
-                <p className="mt-0.5 text-xs text-white/45">
+                <p className="mt-0.5 text-xs text-muted">
                   {todayLog
                     ? "Toque para revisar ou ajustar o registro de hoje."
                     : "Leva menos de 1 minuto · Alimenta os insights abaixo."}
@@ -386,8 +386,8 @@ export default function Insights() {
               <span
                 className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   todayLog
-                    ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
-                    : "border-purple-300/20 bg-purple-500/20 text-purple-100"
+                    ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-700 dark:text-emerald-100"
+                    : "border-accent-soft bg-surface-elevated text-accent"
                 }`}
               >
                 {todayLog ? "Editar" : "Registrar"}
@@ -396,7 +396,7 @@ export default function Insights() {
           </button>
         </section>
 
-        <section className="mb-5 rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-5 shadow-xl shadow-purple-950/20 backdrop-blur-2xl">
+        <section className="mb-5 rounded-[2rem] border border-accent-soft bg-accent-soft p-5 text-primary shadow-card backdrop-blur-2xl">
           <div className="mb-4 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <img
@@ -404,14 +404,14 @@ export default function Insights() {
                 alt="Axon"
                 className="h-5 w-5 object-contain"
               />
-              <p className="text-sm font-semibold text-purple-100">
+              <p className="text-sm font-semibold text-accent">
                 O que o Axon descobriu
               </p>
             </div>
 
             {patterns?.status === "ready" &&
               formatUpdatedBadge(patterns.generated_at) && (
-                <span className="rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/45">
+                <span className="rounded-full border border-soft bg-surface-muted px-2.5 py-1 text-[0.65rem] font-medium text-muted">
                   {formatUpdatedBadge(patterns.generated_at)}
                 </span>
               )}
@@ -422,25 +422,25 @@ export default function Insights() {
               {[0, 1, 2].map((i) => (
                 <div
                   key={i}
-                  className="h-16 animate-pulse rounded-[1.4rem] border border-white/10 bg-white/[0.04]"
+                  className="h-16 animate-pulse rounded-[1.4rem] border border-soft bg-surface-muted"
                 />
               ))}
             </div>
           ) : patterns?.status === "collecting" ? (
-            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5 text-center">
-              <Sparkles className="mx-auto mb-3 h-6 w-6 text-purple-200" />
-              <p className="text-sm leading-6 text-white/65">
+            <div className="rounded-[1.5rem] border border-soft bg-surface-muted p-5 text-center">
+              <Sparkles className="mx-auto mb-3 h-6 w-6 text-accent" />
+              <p className="text-sm leading-6 text-secondary">
                 {patterns.message}
               </p>
 
               <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/40">
+                <div className="mb-2 flex items-center justify-between text-[0.68rem] text-muted">
                   <span>Progresso</span>
                   <span>
                     {patterns.data_points ?? 0}/{patterns.days_needed ?? 7} dias
                   </span>
                 </div>
-                <div className="h-2 overflow-hidden rounded-full bg-white/10">
+                <div className="h-2 overflow-hidden rounded-full bg-[var(--border-soft)]">
                   <div
                     className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300"
                     style={{
@@ -464,11 +464,11 @@ export default function Insights() {
                 return (
                   <div
                     key={i}
-                    className="rounded-[1.4rem] border border-white/10 bg-black/20 p-4"
+                    className="rounded-[1.4rem] border border-soft bg-surface-muted p-4"
                   >
                     <div className="mb-2 flex items-start gap-3">
                       <div
-                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-white/10"
+                        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border border-soft"
                         style={{
                           backgroundColor: `${style.color}1a`,
                           color: style.color,
@@ -476,11 +476,11 @@ export default function Insights() {
                       >
                         <Icon className="h-4 w-4" />
                       </div>
-                      <p className="pt-1 text-sm font-semibold leading-5 text-white">
+                      <p className="pt-1 text-sm font-semibold leading-5 text-primary">
                         {it.title}
                       </p>
                     </div>
-                    <p className="text-xs leading-6 text-white/55">
+                    <p className="text-xs leading-6 text-muted">
                       {it.detail}
                     </p>
                   </div>
@@ -488,8 +488,8 @@ export default function Insights() {
               })}
             </div>
           ) : (
-            <div className="rounded-[1.5rem] border border-white/10 bg-black/20 p-5 text-center">
-              <p className="text-sm leading-6 text-white/55">
+            <div className="rounded-[1.5rem] border border-soft bg-surface-muted p-5 text-center">
+              <p className="text-sm leading-6 text-muted">
                 {patterns?.message ??
                   "Os insights do Axon aparecerão aqui conforme você registra seus dias."}
               </p>
@@ -498,6 +498,7 @@ export default function Insights() {
 
           {patterns?.status === "ready" && (
             <button
+              type="button"
               onClick={() => {
                 setLoadingPatterns(true);
                 api
@@ -506,7 +507,7 @@ export default function Insights() {
                   .catch(() => {})
                   .finally(() => setLoadingPatterns(false));
               }}
-              className="mt-4 inline-flex items-center gap-2 rounded-full px-1 text-xs font-semibold text-purple-200/80 active:scale-[0.98]"
+              className="mt-4 inline-flex items-center gap-2 rounded-full px-1 text-xs font-semibold text-accent/80 active:scale-[0.98]"
             >
               <RefreshCw className="h-3.5 w-3.5" />
               Atualizar insights
@@ -516,12 +517,12 @@ export default function Insights() {
 
         {/* Blocos de foco — sempre visível: barra + legenda; lista expandível */}
         {focusBlocks.length > 0 && (
-          <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+          <section className="mb-5 rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
             {/* Cabeçalho com toggle */}
             <div className="mb-4 flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-white">Blocos de foco</p>
-                <p className="mt-1 text-xs text-white/38">
+                <p className="text-sm font-semibold text-primary">Blocos de foco</p>
+                <p className="mt-1 text-xs text-muted">
                   Seu mapa de energia nas 24h
                 </p>
 
@@ -529,7 +530,7 @@ export default function Insights() {
                 {blocksCalibrated ? (
                   <div className="mt-2 flex items-center gap-1.5">
                     <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                    <span className="text-[0.65rem] font-medium text-emerald-300/80">
+                    <span className="text-[0.65rem] font-medium text-emerald-700 dark:text-emerald-300/80">
                       Perfil personalizado · {blocksDataPoints} dias de dados
                     </span>
                   </div>
@@ -537,11 +538,11 @@ export default function Insights() {
                   <div className="mt-2">
                     <div className="mb-1 flex items-center gap-1.5">
                       <span className="h-1.5 w-1.5 rounded-full bg-amber-400" />
-                      <span className="text-[0.65rem] font-medium text-white/40">
+                      <span className="text-[0.65rem] font-medium text-muted">
                         Perfil base · {blocksDataPoints}/{blocksMinPoints} dias para personalização
                       </span>
                     </div>
-                    <div className="h-1 w-28 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-1 w-28 overflow-hidden rounded-full bg-[var(--border-soft)]">
                       <div
                         className="h-full rounded-full bg-gradient-to-r from-amber-400 to-purple-400 transition-all"
                         style={{ width: `${Math.min(100, (blocksDataPoints / blocksMinPoints) * 100)}%` }}
@@ -550,11 +551,11 @@ export default function Insights() {
                   </div>
                 )}
               </div>
-              <Focus className="h-5 w-5 shrink-0 text-purple-200" />
+              <Focus className="h-5 w-5 shrink-0 text-accent" />
             </div>
 
             {/* Barra visual 24h — sempre visível */}
-            <div className="mb-2 flex h-8 w-full overflow-hidden rounded-2xl border border-white/10">
+            <div className="mb-2 flex h-8 w-full overflow-hidden rounded-2xl border border-soft">
               {focusBlocks.map((block) => (
                 <div
                   key={block.idx}
@@ -566,7 +567,7 @@ export default function Insights() {
             </div>
 
             {/* Labels de hora — sempre visível */}
-            <div className="mb-4 flex justify-between px-0.5 text-[0.6rem] text-white/30">
+            <div className="mb-4 flex justify-between px-0.5 text-[0.6rem] text-soft">
               <span>00h</span>
               <span>06h</span>
               <span>12h</span>
@@ -579,7 +580,7 @@ export default function Insights() {
               {LEVEL_ORDER.map(({ level, label }) => (
                 <span
                   key={level}
-                  className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/20 px-2.5 py-1 text-[0.65rem] font-medium text-white/55"
+                  className="flex items-center gap-1.5 rounded-full border border-soft bg-surface-muted px-2.5 py-1 text-[0.65rem] font-medium text-secondary"
                 >
                   <span
                     className="h-2 w-2 rounded-full"
@@ -597,7 +598,7 @@ export default function Insights() {
                 setBlocksListExpanded((v) => !v);
                 if (blocksListExpanded) setExpandedBlockIdx(null);
               }}
-              className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-black/14 px-4 py-2.5 text-xs font-semibold text-white/45 active:scale-[0.98]"
+              className="flex w-full items-center justify-between rounded-2xl border border-soft bg-surface-muted px-4 py-2.5 text-xs font-semibold text-muted transition active:scale-[0.98]"
             >
               <span>
                 {blocksListExpanded ? "Recolher blocos" : "Ver todos os blocos"}
@@ -624,15 +625,15 @@ export default function Insights() {
                         onClick={() => setExpandedBlockIdx(isExpanded ? null : block.idx)}
                         className={`flex w-full items-center gap-3 rounded-2xl border px-3 py-2.5 text-left transition active:scale-[0.98] ${
                           isCurrent
-                            ? "border-purple-300/30 bg-purple-500/12"
-                            : "border-white/8 bg-white/[0.03]"
+                            ? "border-accent-soft bg-accent-soft"
+                            : "border-[var(--border-soft)] bg-surface-muted"
                         }`}
                       >
                         <span
                           className="h-2.5 w-2.5 shrink-0 rounded-full"
                           style={{ backgroundColor: color.bar }}
                         />
-                        <span className="w-[4.5rem] shrink-0 text-xs font-semibold text-white/45">
+                        <span className="w-[4.5rem] shrink-0 text-xs font-semibold text-muted">
                           {block.start_time}
                         </span>
                         <span
@@ -641,22 +642,22 @@ export default function Insights() {
                         >
                           {block.label}
                           {isCurrent && (
-                            <span className="ml-2 text-[0.6rem] font-medium text-purple-300/70">
+                            <span className="ml-2 text-[0.6rem] font-medium text-accent">
                               agora
                             </span>
                           )}
                         </span>
-                        <span className="text-[0.6rem] text-white/25">
+                        <span className="text-[0.6rem] text-soft">
                           {isExpanded ? "▲" : "▼"}
                         </span>
                       </button>
 
                       {isExpanded && (
-                        <div className="mx-1 rounded-b-2xl border border-t-0 border-white/8 bg-white/[0.02] px-4 py-3">
-                          <p className="text-xs leading-5 text-white/55">
+                        <div className="mx-1 rounded-b-2xl border border-t-0 border-[var(--border-soft)] bg-surface-muted px-4 py-3">
+                          <p className="text-xs leading-5 text-muted">
                             {block.description}
                           </p>
-                          <div className="mt-2 flex gap-3 text-[0.65rem] text-white/35">
+                          <div className="mt-2 flex gap-3 text-[0.65rem] text-muted">
                             <span>Energia: {block.energy}%</span>
                             <span>Foco: {block.focus}%</span>
                           </div>
@@ -670,34 +671,36 @@ export default function Insights() {
           </section>
         )}
 
-        <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+        <section className="mb-5 rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
           <div className="mb-5 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">
+              <p className="text-sm font-semibold text-primary">
                 Tarefas concluídas
               </p>
-              <p className="mt-1 text-xs text-white/38">
+              <p className="mt-1 text-xs text-muted">
                 {taskPeriod === "week" ? "Últimos 7 dias" : "Últimos 30 dias"}
               </p>
             </div>
 
-            <div className="flex shrink-0 rounded-full border border-white/10 bg-black/20 p-1 text-xs">
+            <div className="flex shrink-0 rounded-full border border-soft bg-surface-muted p-1 text-xs">
               <button
+                type="button"
                 onClick={() => setTaskPeriod("week")}
                 className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
                   taskPeriod === "week"
-                    ? "bg-purple-500/30 text-purple-100"
-                    : "text-white/40"
+                    ? "bg-accent-soft text-accent"
+                    : "text-muted"
                 }`}
               >
                 Semana
               </button>
               <button
+                type="button"
                 onClick={() => setTaskPeriod("month")}
                 className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
                   taskPeriod === "month"
-                    ? "bg-purple-500/30 text-purple-100"
-                    : "text-white/40"
+                    ? "bg-accent-soft text-accent"
+                    : "text-muted"
                 }`}
               >
                 Mês
@@ -705,10 +708,10 @@ export default function Insights() {
             </div>
           </div>
 
-          <div className="flex h-44 items-end gap-1.5 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+          <div className="flex h-44 items-end gap-1.5 rounded-[1.5rem] border border-soft bg-surface-muted p-4">
             {loadingTasks ? (
               <div className="flex h-full w-full items-center justify-center">
-                <p className="text-xs text-white/35">Carregando...</p>
+                <p className="text-xs text-muted">Carregando...</p>
               </div>
             ) : (
               (taskInsights?.days ?? []).map((d, i) => {
@@ -724,7 +727,7 @@ export default function Insights() {
                     <div className="flex h-28 w-full items-end justify-center">
                       {/* Cápsula cinza = total; roxo preenche de baixo = concluídas */}
                       <div
-                        className="relative overflow-hidden rounded-full bg-white/[0.07]"
+                        className="relative overflow-hidden rounded-full bg-[var(--border-soft)]"
                         style={{
                           width: taskBarWidth,
                           height: `${totalH}%`,
@@ -739,7 +742,7 @@ export default function Insights() {
                       </div>
                     </div>
 
-                    <p className="text-[0.6rem] text-white/35">
+                    <p className="text-[0.6rem] text-muted">
                       {taskPeriod === "week" || i % 5 === 0 ? d.weekday : ""}
                     </p>
                   </div>
@@ -749,16 +752,16 @@ export default function Insights() {
           </div>
 
           {taskInsights && !loadingTasks && (
-            <div className="mt-4 rounded-[1.4rem] border border-purple-300/20 bg-purple-500/10 p-4">
-              <p className="text-sm leading-6 text-white/58">
+            <div className="mt-4 rounded-[1.4rem] border border-accent-soft bg-accent-soft p-4">
+              <p className="text-sm leading-6 text-muted">
                 {taskInsights.summary.best_weekday ? (
                   <>
                     Seu dia mais produtivo costuma ser{" "}
-                    <span className="font-semibold text-purple-100">
+                    <span className="font-semibold text-accent">
                       {taskInsights.summary.best_weekday}
                     </span>
                     . Você concluiu{" "}
-                    <span className="font-semibold text-purple-100">
+                    <span className="font-semibold text-accent">
                       {taskInsights.summary.best_weekday_completed}
                     </span>{" "}
                     tarefas nesse dia.
@@ -771,33 +774,33 @@ export default function Insights() {
           )}
         </section>
 
-        <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+        <section className="mb-5 rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
           <div className="mb-5 flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-white">Horas de sono</p>
-              <p className="mt-1 text-xs text-white/38">
+              <p className="text-sm font-semibold text-primary">Horas de sono</p>
+              <p className="mt-1 text-xs text-muted">
                 Últimos dias registrados
               </p>
             </div>
-            <Moon className="h-5 w-5 text-purple-200" />
+            <Moon className="h-5 w-5 text-accent" />
           </div>
 
           {loadingSleep ? (
-            <div className="h-44 rounded-[1.5rem] border border-white/10 bg-black/20" />
+            <div className="h-44 rounded-[1.5rem] border border-soft bg-surface-muted" />
           ) : sleepHistory.length === 0 ? (
-            <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-5 py-8 text-center">
-              <Moon className="mb-3 h-6 w-6 text-purple-200/70" />
-              <p className="text-sm font-semibold text-white">
+            <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-soft bg-surface-muted px-5 py-8 text-center">
+              <Moon className="mb-3 h-6 w-6 text-accent/70" />
+              <p className="text-sm font-semibold text-primary">
                 Sem dados de sono ainda
               </p>
-              <p className="mt-1 text-xs leading-5 text-white/42">
+              <p className="mt-1 text-xs leading-5 text-muted">
                 Preencha o registro diário por alguns dias para ver seu padrão de
                 sono aqui.
               </p>
             </div>
           ) : (
             <>
-              <div className="relative flex h-44 items-end gap-2 rounded-[1.5rem] border border-white/10 bg-black/20 p-4">
+              <div className="relative flex h-44 items-end gap-2 rounded-[1.5rem] border border-soft bg-surface-muted p-4">
                 <div
                   className="pointer-events-none absolute inset-x-4 border-t border-dashed border-fuchsia-300/60"
                   style={{
@@ -826,7 +829,7 @@ export default function Insights() {
                           title={`~${h}h`}
                         />
                       </div>
-                      <p className="text-[0.6rem] text-white/35">
+                      <p className="text-[0.6rem] text-muted">
                         {formatDayLabel(l.date)}
                       </p>
                     </div>
@@ -834,28 +837,28 @@ export default function Insights() {
                 })}
               </div>
 
-              <div className="mt-4 grid grid-cols-3 gap-2 rounded-[1.4rem] border border-purple-300/20 bg-purple-500/10 p-4 text-center">
+              <div className="mt-4 grid grid-cols-3 gap-2 rounded-[1.4rem] border border-accent-soft bg-accent-soft p-4 text-center">
                 <div>
-                  <p className="text-[0.65rem] uppercase tracking-wide text-white/40">
+                  <p className="text-[0.65rem] uppercase tracking-wide text-muted">
                     Média
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-purple-100">
+                  <p className="mt-1 text-sm font-semibold text-accent">
                     ~{avgSleep.toFixed(1)}h
                   </p>
                 </div>
                 <div>
-                  <p className="text-[0.65rem] uppercase tracking-wide text-white/40">
+                  <p className="text-[0.65rem] uppercase tracking-wide text-muted">
                     Meta
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-white">
+                  <p className="mt-1 text-sm font-semibold text-primary">
                     {sleepTarget}h
                   </p>
                 </div>
                 <div>
-                  <p className="text-[0.65rem] uppercase tracking-wide text-white/40">
+                  <p className="text-[0.65rem] uppercase tracking-wide text-muted">
                     Déficit
                   </p>
-                  <p className="mt-1 text-sm font-semibold text-amber-200">
+                  <p className="mt-1 text-sm font-semibold text-amber-700 dark:text-amber-200">
                     {deficit > 0 ? `~${deficit.toFixed(1)}h` : "—"}
                   </p>
                 </div>
@@ -864,32 +867,34 @@ export default function Insights() {
           )}
         </section>
 
-        <section className="mb-5 rounded-[2rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+        <section className="mb-5 rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
           <div className="mb-4 flex items-center justify-between gap-3">
             <div>
-              <p className="text-sm font-semibold text-white">
+              <p className="text-sm font-semibold text-primary">
                 Comparar métricas
               </p>
-              <p className="mt-1 text-xs text-white/38">Compare 2 indicadores</p>
+              <p className="mt-1 text-xs text-muted">Compare 2 indicadores</p>
             </div>
 
-            <div className="flex shrink-0 rounded-full border border-white/10 bg-black/20 p-1 text-xs">
+            <div className="flex shrink-0 rounded-full border border-soft bg-surface-muted p-1 text-xs">
               <button
+                type="button"
                 onClick={() => setComparePeriod("week")}
                 className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
                   comparePeriod === "week"
-                    ? "bg-purple-500/30 text-purple-100"
-                    : "text-white/40"
+                    ? "bg-accent-soft text-accent"
+                    : "text-muted"
                 }`}
               >
                 Semana
               </button>
               <button
+                type="button"
                 onClick={() => setComparePeriod("month")}
                 className={`rounded-full px-3 py-1 font-medium transition active:scale-[0.97] ${
                   comparePeriod === "month"
-                    ? "bg-purple-500/30 text-purple-100"
-                    : "text-white/40"
+                    ? "bg-accent-soft text-accent"
+                    : "text-muted"
                 }`}
               >
                 Mês
@@ -904,12 +909,13 @@ export default function Insights() {
               return (
                 <button
                   key={s.key}
+                  type="button"
                   onClick={() => toggleSeries(s.key)}
                   disabled={blocked}
                   className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium transition ${
                     on
-                      ? "border-white/20 bg-white/10 text-white"
-                      : "border-white/10 bg-black/20 text-white/40"
+                      ? "border-accent-soft bg-accent-soft text-accent"
+                      : "border-soft bg-surface-muted text-muted"
                   } ${blocked ? "opacity-30" : "active:scale-[0.97]"}`}
                 >
                   <span
@@ -923,11 +929,11 @@ export default function Insights() {
           </div>
 
           {chartData.length === 0 ? (
-            <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-white/12 bg-black/15 px-5 py-8 text-center">
-              <p className="text-sm font-semibold text-white">
+            <div className="flex flex-col items-center rounded-[1.6rem] border border-dashed border-soft bg-surface-muted px-5 py-8 text-center">
+              <p className="text-sm font-semibold text-primary">
                 Ainda sem dados para comparar
               </p>
-              <p className="mt-1 text-xs leading-5 text-white/42">
+              <p className="mt-1 text-xs leading-5 text-muted">
                 Use o registro diário e conclua tarefas por alguns dias para
                 liberar as comparações.
               </p>
@@ -941,25 +947,25 @@ export default function Insights() {
                 >
                   <CartesianGrid
                     strokeDasharray="3 3"
-                    stroke="rgba(255,255,255,0.06)"
+                    stroke="var(--border-soft)"
                   />
                   <XAxis
                     dataKey="date"
                     tickFormatter={(date: string) =>
                       chartData.find((d) => d.date === date)?.label ?? date
                     }
-                    tick={{ fill: "rgba(255,255,255,0.4)", fontSize: 11 }}
+                    tick={{ fill: "var(--text-muted)", fontSize: 11 }}
                   />
                   <YAxis
                     yAxisId="pct"
                     domain={[0, 100]}
-                    tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                    tick={{ fill: "var(--text-soft)", fontSize: 10 }}
                   />
                   <YAxis
                     yAxisId="hours"
                     orientation="right"
                     domain={[0, 12]}
-                    tick={{ fill: "rgba(255,255,255,0.3)", fontSize: 10 }}
+                    tick={{ fill: "var(--text-soft)", fontSize: 10 }}
                   />
                   <Tooltip content={<CustomTooltip />} />
 
@@ -1026,10 +1032,10 @@ export default function Insights() {
 
         <section className="mb-5">
           <div className="mb-4">
-            <p className="text-sm font-semibold text-white">
+            <p className="text-sm font-semibold text-primary">
               Padrões percebidos
             </p>
-            <p className="mt-1 text-xs text-white/38">
+            <p className="mt-1 text-xs text-muted">
               Leituras iniciais do seu comportamento
             </p>
           </div>
@@ -1087,24 +1093,24 @@ function PatternCard({
   icon: Icon,
 }: PatternCardProps) {
   return (
-    <div className="rounded-[1.7rem] border border-white/10 bg-white/[0.055] p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+    <div className="rounded-[1.7rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
             <Icon className="h-4 w-4" />
           </div>
 
           <div>
-            <p className="text-sm font-semibold text-white">{title}</p>
-            <p className="mt-1 text-xs leading-5 text-white/40">
+            <p className="text-sm font-semibold text-primary">{title}</p>
+            <p className="mt-1 text-xs leading-5 text-muted">
               {description}
             </p>
           </div>
         </div>
       </div>
 
-      <div className="mt-3 rounded-2xl border border-white/10 bg-black/20 px-3 py-2">
-        <p className="text-xs font-medium text-purple-100">{value}</p>
+      <div className="mt-3 rounded-2xl border border-soft bg-surface-muted px-3 py-2">
+        <p className="text-xs font-medium text-accent">{value}</p>
       </div>
     </div>
   );
@@ -1154,8 +1160,8 @@ function CustomTooltip({
   if (!active || !payload?.length) return null;
   const row = payload[0].payload;
   return (
-    <div className="rounded-xl border border-white/10 bg-[#15141f]/95 px-3 py-2 text-xs shadow-lg backdrop-blur-xl">
-      <p className="mb-1 font-semibold text-white/70">{row.tooltipLabel}</p>
+    <div className="rounded-xl border border-soft bg-surface-elevated px-3 py-2 text-xs text-primary shadow-card backdrop-blur-xl">
+      <p className="mb-1 font-semibold text-secondary">{row.tooltipLabel}</p>
       {row.tarefas != null && (
         <Row color="#c084fc" text={`Tarefas: ${row.tarefas}%`} />
       )}
@@ -1173,7 +1179,7 @@ function CustomTooltip({
 
 function Row({ color, text }: { color: string; text: string }) {
   return (
-    <p className="flex items-center gap-2 text-white/80">
+    <p className="flex items-center gap-2 text-primary">
       <span
         className="h-2 w-2 rounded-full"
         style={{ backgroundColor: color }}

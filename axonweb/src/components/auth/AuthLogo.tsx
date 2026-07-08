@@ -24,7 +24,7 @@ export default function AuthLogo({
       } ${className}`}
     >
       <div
-        className={`flex rotate-45 items-center justify-center rounded-2xl border border-white/20 bg-white/[0.045] backdrop-blur-2xl ${
+        className={`flex rotate-45 items-center justify-center rounded-2xl border border-soft bg-surface-muted backdrop-blur-2xl ${
           isHeader ? "h-11 w-11" : "h-16 w-16"
         }`}
       >

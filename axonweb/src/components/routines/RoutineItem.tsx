@@ -152,7 +152,7 @@ export function RoutineItemEditor({
   onRemove: () => void;
 }) {
   return (
-    <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4">
+    <div className="rounded-[1.5rem] border border-soft bg-surface-muted p-4">
       <RoutineItemHeader
         index={index}
         canRemove={canRemove}
@@ -203,7 +203,7 @@ function RoutineItemHeader({
 }) {
   return (
     <div className="mb-3 flex items-center justify-between">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-white/35">
+      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-soft">
         {index != null ? `Item ${index + 1}` : "Editar item"}
       </p>
 
@@ -211,7 +211,7 @@ function RoutineItemHeader({
         <button
           type="button"
           onClick={onRemove}
-          className="flex h-7 w-7 items-center justify-center rounded-xl border border-white/10 bg-white/[0.05] text-white/45 active:scale-[0.95]"
+          className="flex h-7 w-7 items-center justify-center rounded-xl border border-soft bg-surface-muted text-muted transition active:scale-[0.95]"
           aria-label="Remover item"
         >
           <Trash2 className="h-3.5 w-3.5" />
@@ -233,7 +233,7 @@ function RoutineTitleInput({
       value={title}
       onChange={(e) => onChange(e.target.value)}
       placeholder="Título do item (ex.: Correr 5km)"
-      className="w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-2.5 text-sm text-white outline-none placeholder:text-white/25 focus:border-purple-300/40"
+      className="w-full rounded-2xl border border-soft bg-surface-muted px-4 py-2.5 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
     />
   );
 }
@@ -247,7 +247,7 @@ function WeekdaySelector({
 }) {
   return (
     <>
-      <p className="mb-2 mt-4 text-xs font-medium text-white/45">
+      <p className="mb-2 mt-4 text-xs font-medium text-muted">
         Dias da semana
       </p>
 
@@ -262,8 +262,8 @@ function WeekdaySelector({
               onClick={() => onToggleDay(day.idx)}
               className={`h-9 w-10 rounded-xl border text-xs font-semibold transition active:scale-[0.95] ${
                 isSelected
-                  ? "border-purple-300/30 bg-purple-500/25 text-purple-100"
-                  : "border-white/10 bg-black/20 text-white/40"
+                  ? "border-accent-soft bg-accent-soft text-accent"
+                  : "border-soft bg-surface-muted text-muted"
               }`}
             >
               {day.label}
@@ -284,7 +284,7 @@ function RoutineModeSelector({
 }) {
   return (
     <>
-      <p className="mb-2 mt-4 text-xs font-medium text-white/45">Horário</p>
+      <p className="mb-2 mt-4 text-xs font-medium text-muted">Horário</p>
 
       <div className="mb-3 grid grid-cols-2 gap-2">
         <button
@@ -292,8 +292,8 @@ function RoutineModeSelector({
           onClick={() => onChange("fixed")}
           className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-[0.97] ${
             mode === "fixed"
-              ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
-              : "border-white/10 bg-black/20 text-white/40"
+              ? "border-accent-soft bg-accent-soft text-accent"
+              : "border-soft bg-surface-muted text-muted"
           }`}
         >
           <Clock className="h-3.5 w-3.5" />
@@ -305,8 +305,8 @@ function RoutineModeSelector({
           onClick={() => onChange("axon")}
           className={`flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-xs font-semibold transition active:scale-[0.97] ${
             mode === "axon"
-              ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
-              : "border-white/10 bg-black/20 text-white/40"
+              ? "border-accent-soft bg-accent-soft text-accent"
+              : "border-soft bg-surface-muted text-muted"
           }`}
         >
           <Sparkles className="h-3.5 w-3.5" />
@@ -331,24 +331,24 @@ function FixedTimeFields({
   return (
     <div className="grid grid-cols-2 gap-2">
       <div>
-        <label className="text-[0.68rem] text-white/40">Início</label>
+        <label className="text-[0.68rem] text-muted">Início</label>
 
         <input
           type="time"
           value={startTime}
           onChange={(e) => onStartTimeChange(e.target.value)}
-          className="mt-1 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none focus:border-purple-300/40 [color-scheme:dark]"
+          className="mt-1 w-full rounded-xl border border-soft bg-surface-muted px-3 py-2 text-sm text-primary outline-none focus:border-accent-soft"
         />
       </div>
 
       <div>
-        <label className="text-[0.68rem] text-white/40">Fim</label>
+        <label className="text-[0.68rem] text-muted">Fim</label>
 
         <input
           type="time"
           value={endTime}
           onChange={(e) => onEndTimeChange(e.target.value)}
-          className="mt-1 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none focus:border-purple-300/40 [color-scheme:dark]"
+          className="mt-1 w-full rounded-xl border border-soft bg-surface-muted px-3 py-2 text-sm text-primary outline-none focus:border-accent-soft"
         />
       </div>
     </div>
@@ -364,7 +364,7 @@ function FlexibleDurationField({
 }) {
   return (
     <div>
-      <label className="text-[0.68rem] text-white/40">
+      <label className="text-[0.68rem] text-muted">
         Duração (minutos)
       </label>
 
@@ -374,10 +374,10 @@ function FlexibleDurationField({
         value={duration}
         onChange={(e) => onChange(e.target.value)}
         placeholder="Ex.: 30"
-        className="mt-1 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-sm text-white outline-none placeholder:text-white/25 focus:border-purple-300/40"
+        className="mt-1 w-full rounded-xl border border-soft bg-surface-muted px-3 py-2 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
       />
 
-      <p className="mt-1.5 text-[0.68rem] leading-4 text-white/35">
+      <p className="mt-1.5 text-[0.68rem] leading-4 text-muted">
         O Axon escolhe o melhor horário com base no seu cronotipo.
       </p>
     </div>

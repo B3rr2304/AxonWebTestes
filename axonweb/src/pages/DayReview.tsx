@@ -193,27 +193,27 @@ export default function DayReview({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", stiffness: 260, damping: 30 }}
-            className="fixed inset-x-0 bottom-0 z-[110] max-h-[90vh] overflow-y-auto rounded-t-[2rem] border-t border-white/10 bg-[#15141f]/95 p-5 pb-10 backdrop-blur-2xl"
+            className="fixed inset-x-0 bottom-0 z-[110] max-h-[90vh] overflow-y-auto rounded-t-[2rem] border-t border-soft bg-surface-elevated p-5 pb-10 text-primary shadow-soft backdrop-blur-2xl"
           >
-            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-white/15" />
+            <div className="mx-auto mb-4 h-1.5 w-12 rounded-full bg-[var(--border-medium)]" />
 
             {/* Cabeçalho do registro: data e ação de fechar. */}
             <div className="mb-6 flex items-center justify-between">
               <div>
-                <h2 className="text-xl font-semibold tracking-tight text-white">
+                <h2 className="text-xl font-semibold tracking-tight text-primary">
                   Como foi o seu dia?
                 </h2>
-                <p className="mt-1 text-xs font-medium capitalize text-purple-200/70">
+                <p className="mt-1 text-xs font-medium capitalize text-accent">
                   {reviewDate}
                 </p>
-                <p className="mt-0.5 text-xs text-white/40">
+                <p className="mt-0.5 text-xs text-muted">
                   Leva menos de 1 minuto
                 </p>
               </div>
               <button
                 type="button"
                 onClick={onClose}
-                className="flex h-9 w-9 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.05] text-white/55 active:scale-[0.96]"
+                className="flex h-9 w-9 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -275,16 +275,16 @@ export default function DayReview({
                       disabled={atLimit}
                       className={`flex flex-col items-start rounded-2xl border px-3.5 py-2.5 text-left transition active:scale-[0.96] ${
                         isSelected
-                          ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
+                          ? "border-accent-soft bg-accent-soft text-accent"
                           : atLimit
-                          ? "cursor-not-allowed border-white/5 bg-white/[0.02] text-white/20"
-                          : "border-white/10 bg-white/[0.05] text-white/55"
+                          ? "cursor-not-allowed border-soft bg-surface-muted text-soft opacity-55"
+                          : "border-soft bg-surface-muted text-secondary"
                       }`}
                     >
                       <span className="text-xs font-semibold">{p.label}</span>
                       <span
                         className={`text-[0.62rem] ${
-                          isSelected ? "text-purple-200/60" : "text-white/30"
+                          isSelected ? "text-accent" : "text-soft"
                         }`}
                       >
                         {p.hours}
@@ -294,7 +294,7 @@ export default function DayReview({
                 })}
               </div>
               {peakPeriods.length >= 2 && (
-                <p className="mt-2 text-xs text-white/30">
+                <p className="mt-2 text-xs text-soft">
                   Máximo de 2 períodos selecionado
                 </p>
               )}
@@ -308,8 +308,8 @@ export default function DayReview({
                   onClick={() => setExercised(true)}
                   className={`flex-1 rounded-2xl border py-3 text-sm font-semibold transition active:scale-[0.98] ${
                     exercised
-                      ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
-                      : "border-white/10 bg-white/[0.05] text-white/50"
+                      ? "border-accent-soft bg-accent-soft text-accent"
+                      : "border-soft bg-surface-muted text-muted"
                   }`}
                 >
                   Sim
@@ -319,8 +319,8 @@ export default function DayReview({
                   onClick={() => setExercised(false)}
                   className={`flex-1 rounded-2xl border py-3 text-sm font-semibold transition active:scale-[0.98] ${
                     !exercised
-                      ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
-                      : "border-white/10 bg-white/[0.05] text-white/50"
+                      ? "border-accent-soft bg-accent-soft text-accent"
+                      : "border-soft bg-surface-muted text-muted"
                   }`}
                 >
                   Não
@@ -336,16 +336,16 @@ export default function DayReview({
                 maxLength={500}
                 rows={3}
                 placeholder="Ex: reunião pesada drenou minha energia..."
-                className="w-full resize-none rounded-2xl border border-white/10 bg-black/20 p-3.5 text-sm text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-purple-500/40"
+                className="w-full resize-none rounded-2xl border border-soft bg-surface-muted p-3.5 text-sm text-primary placeholder:text-soft focus:outline-none focus:ring-1 focus:ring-[var(--accent-soft)]"
               />
-              <p className="mt-1 text-right text-xs text-white/25">
+              <p className="mt-1 text-right text-xs text-soft">
                 {notes.length}/500
               </p>
             </Section>
 
             {error && (
-              <div className="mb-4 rounded-2xl border border-red-300/20 bg-red-500/10 p-3">
-                <p className="text-sm text-red-300">{error}</p>
+              <div className="mb-4 rounded-2xl border border-red-300/25 bg-red-500/10 p-3">
+                <p className="text-sm text-red-600 dark:text-red-300">{error}</p>
               </div>
             )}
 
@@ -353,7 +353,7 @@ export default function DayReview({
               type="button"
               onClick={handleSave}
               disabled={!canSave}
-              className="min-h-12 w-full rounded-2xl bg-gradient-to-r from-purple-500 to-fuchsia-500 px-5 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
+              className="min-h-12 w-full rounded-2xl bg-[var(--accent-strong)] px-5 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-40"
             >
               {saving
                 ? "Salvando..."
@@ -397,12 +397,12 @@ function Section({
   children: ReactNode;
 }) {
   return (
-    <div className="mb-4 rounded-[1.6rem] border border-white/8 bg-white/[0.03] p-4">
+    <div className="mb-4 rounded-[1.6rem] border border-soft bg-surface-muted p-4">
       <div className="mb-3 flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+        <div className="flex h-7 w-7 items-center justify-center rounded-xl border border-accent-soft bg-accent-soft text-accent">
           <Icon className="h-3.5 w-3.5" />
         </div>
-        <p className="text-sm font-semibold text-white">{title}</p>
+        <p className="text-sm font-semibold text-primary">{title}</p>
       </div>
       {children}
     </div>
@@ -430,15 +430,15 @@ function RatingDots({
             onClick={() => onChange(n)}
             className={`h-11 flex-1 rounded-2xl border text-sm font-semibold transition active:scale-[0.96] ${
               value !== null && n <= value
-                ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
-                : "border-white/10 bg-white/[0.05] text-white/40"
+                ? "border-accent-soft bg-accent-soft text-accent"
+                : "border-soft bg-surface-muted text-muted"
             }`}
           >
             {n}
           </button>
         ))}
       </div>
-      <p className="mt-2 h-4 text-center text-xs text-white/40">
+      <p className="mt-2 h-4 text-center text-xs text-muted">
         {value !== null ? RATING_LABELS[value - 1] : ""}
       </p>
     </div>
@@ -471,10 +471,10 @@ function TagRow({
               disabled={isDisabled}
               className={`rounded-full border px-3.5 py-1.5 text-xs font-medium transition active:scale-[0.96] ${
                 isSelected
-                  ? "border-purple-300/30 bg-purple-500/20 text-purple-100"
+                  ? "border-accent-soft bg-accent-soft text-accent"
                   : isDisabled
-                  ? "cursor-not-allowed border-white/5 bg-white/[0.02] text-white/20"
-                  : "border-white/10 bg-white/[0.05] text-white/55"
+                  ? "cursor-not-allowed border-soft bg-surface-muted text-soft opacity-55"
+                  : "border-soft bg-surface-muted text-secondary"
               }`}
             >
               {tag.label}
@@ -483,7 +483,7 @@ function TagRow({
         })}
       </div>
       {atLimit && (
-        <p className="mt-2 text-xs text-white/30">
+        <p className="mt-2 text-xs text-soft">
           Máximo de 3 tags selecionado
         </p>
       )}
@@ -503,14 +503,14 @@ function TimeSelect({
 }) {
   return (
     <div>
-      <p className="mb-1.5 text-xs text-white/40">{label}</p>
+      <p className="mb-1.5 text-xs text-muted">{label}</p>
       <select
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full appearance-none rounded-2xl border border-white/10 bg-black/20 px-3 py-2.5 text-center text-sm text-white focus:outline-none focus:ring-1 focus:ring-purple-500/40"
+        className="w-full appearance-none rounded-2xl border border-soft bg-surface-muted px-3 py-2.5 text-center text-sm text-primary focus:outline-none focus:ring-1 focus:ring-[var(--accent-soft)]"
       >
         {TIME_OPTIONS.map((t) => (
-          <option key={t} value={t} className="bg-[#15141f]">
+          <option key={t} value={t} className="bg-surface-elevated">
             {t}
           </option>
         ))}

@@ -19,7 +19,7 @@ export default function AppLoading() {
   }, [navigate]);
 
   return (
-    <main className="relative h-[100dvh] w-full overflow-hidden bg-[#0f1018] text-white">
+    <main className="relative h-[100dvh] w-full overflow-hidden bg-app text-primary">
       <OnboardingBackground />
 
       {/* Vinheta central da marca exibida entre login e dashboard. */}
@@ -36,7 +36,7 @@ export default function AppLoading() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="absolute h-56 w-56 rounded-full bg-purple-500/10 blur-2xl"
+            className="absolute h-56 w-56 rounded-full bg-accent-soft blur-2xl"
           />
 
           {/* Anel orbital que dá sensação de processamento sem adicionar textos. */}
@@ -55,7 +55,7 @@ export default function AppLoading() {
               cy="130"
               r="104"
               fill="none"
-              stroke="rgba(216,180,254,0.10)"
+              stroke="var(--accent-border)"
               strokeWidth="1"
             />
 
@@ -64,7 +64,7 @@ export default function AppLoading() {
               cy="130"
               r="104"
               fill="none"
-              stroke="rgba(216,180,254,0.72)"
+              stroke="var(--accent)"
               strokeWidth="1.6"
               strokeLinecap="round"
               strokeDasharray="100 560"
@@ -81,9 +81,9 @@ export default function AppLoading() {
               repeat: Infinity,
               ease: "easeInOut",
             }}
-            className="relative flex h-32 w-32 rotate-45 items-center justify-center rounded-[2.15rem] border border-purple-300/25 bg-white/[0.045] shadow-[0_0_110px_rgba(168,85,247,0.48)] backdrop-blur-2xl"
+            className="relative flex h-32 w-32 rotate-45 items-center justify-center rounded-[2.15rem] border border-accent-soft bg-surface-elevated shadow-soft backdrop-blur-2xl"
           >
-            <div className="absolute inset-0 rounded-[2.15rem] bg-gradient-to-br from-white/[0.08] to-transparent" />
+            <div className="absolute inset-0 rounded-[2.15rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.18),transparent_52%)] opacity-60 dark:opacity-30" />
 
             <img
               src="/axon-logo.svg"

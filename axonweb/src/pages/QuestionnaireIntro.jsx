@@ -76,8 +76,8 @@ export default function QuestionnaireIntro() {
   }
 
   return (
-    <main className="relative flex min-h-screen overflow-hidden bg-[#05050b] px-4 py-5 text-white">
-      <Background />
+    <main className="relative flex min-h-screen overflow-hidden bg-app px-4 py-5 text-primary">
+      <OnboardingBackground />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col">
         <Header onSkip={() => navigate("/questionnaire")} />
@@ -111,19 +111,20 @@ function Header({ onSkip }) {
   return (
     <header className="flex items-center justify-between">
       <Link to="/" className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
+        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
           <Brain className="h-5 w-5" />
         </div>
 
         <div>
-          <p className="text-sm font-semibold text-white">Axon</p>
-          <p className="text-xs text-white/40">Configuração inicial</p>
+          <p className="text-sm font-semibold text-primary">Axon</p>
+          <p className="text-xs text-muted">Configuração inicial</p>
         </div>
       </Link>
 
       <button
+        type="button"
         onClick={onSkip}
-        className="rounded-2xl px-4 py-2 text-sm font-medium text-white/45 transition hover:bg-white/10 hover:text-white"
+        className="rounded-2xl px-4 py-2 text-sm font-medium text-muted transition hover:bg-surface-muted hover:text-primary"
       >
         Pular
       </button>
@@ -131,17 +132,22 @@ function Header({ onSkip }) {
   );
 }
 
-function SlideDots({ total, currentSlide, onSelect }) {
+function SlideDots({
+  total,
+  currentSlide,
+  onSelect,
+}) {
   return (
     <div className="mb-8 flex justify-center gap-2">
       {Array.from({ length: total }).map((_, index) => (
         <button
           key={index}
+          type="button"
           onClick={() => onSelect(index)}
           className={`h-2 rounded-full transition-all duration-300 ${
             index === currentSlide
-              ? "w-8 bg-purple-300 shadow-[0_0_16px_rgba(216,180,254,0.65)]"
-              : "w-2 bg-white/18"
+              ? "w-8 bg-[var(--accent)] shadow-[0_0_16px_var(--accent-soft)]"
+              : "w-2 bg-[var(--border-medium)]"
           }`}
           aria-label={`Ir para slide ${index + 1}`}
         />
@@ -150,12 +156,15 @@ function SlideDots({ total, currentSlide, onSelect }) {
   );
 }
 
-function SlideCard({ slide, currentSlide }) {
+function SlideCard({
+  slide,
+  currentSlide,
+}) {
   const Icon = slide.icon;
 
   return (
-    <div className="relative min-h-[430px] overflow-hidden rounded-[2.2rem] border border-white/10 bg-white/[0.055] p-5 shadow-2xl shadow-black/35 backdrop-blur-2xl">
-      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/12 via-transparent to-fuchsia-400/8" />
+    <div className="relative min-h-[430px] overflow-hidden rounded-[2.2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_52%)]" />
 
       <AnimatePresence mode="wait">
         <motion.div
@@ -167,28 +176,28 @@ function SlideCard({ slide, currentSlide }) {
           className="relative flex min-h-[390px] flex-col"
         >
           {/* Ícone grande do slide atual. */}
-          <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-[1.7rem] border border-purple-300/20 bg-purple-500/15 text-purple-100 shadow-[0_0_60px_rgba(168,85,247,0.25)]">
+          <div className="mb-8 flex h-20 w-20 items-center justify-center rounded-[1.7rem] border border-accent-soft bg-accent-soft text-accent shadow-card">
             <Icon className="h-9 w-9" />
           </div>
 
-          <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+          <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
             <Sparkles className="h-3.5 w-3.5" />
             {slide.eyebrow}
           </div>
 
-          <h1 className="text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.055em] text-white">
+          <h1 className="text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.055em] text-primary">
             {slide.title}
           </h1>
 
-          <p className="mt-5 text-sm leading-7 text-white/52">
+          <p className="mt-5 text-sm leading-7 text-muted">
             {slide.description}
           </p>
 
           {/* Reforço de tempo para reduzir atrito antes do questionário. */}
-          <div className="mt-auto rounded-3xl border border-white/10 bg-black/20 p-4">
-            <p className="text-xs leading-5 text-white/42">
+          <div className="mt-auto rounded-3xl border border-soft bg-surface-muted p-4">
+            <p className="text-xs leading-5 text-muted">
               Tempo estimado:{" "}
-              <span className="text-white/70">3 a 5 minutos</span>
+              <span className="text-secondary">3 a 5 minutos</span>
             </p>
           </div>
         </motion.div>
@@ -197,12 +206,18 @@ function SlideCard({ slide, currentSlide }) {
   );
 }
 
-function FooterActions({ currentSlide, isLastSlide, onNext, onBack }) {
+function FooterActions({
+  currentSlide,
+  isLastSlide,
+  onNext,
+  onBack,
+}) {
   return (
     <footer className="space-y-3 pb-2">
       <button
+        type="button"
         onClick={onNext}
-        className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-purple-500 px-6 text-sm font-semibold text-white shadow-xl shadow-purple-950/40 transition hover:bg-purple-400 active:scale-[0.98]"
+        className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition hover:brightness-105 active:scale-[0.98]"
       >
         {isLastSlide ? "Começar configuração" : "Continuar"}
         <ArrowRight className="ml-2 h-4 w-4" />
@@ -210,8 +225,9 @@ function FooterActions({ currentSlide, isLastSlide, onNext, onBack }) {
 
       {currentSlide > 0 && (
         <button
+          type="button"
           onClick={onBack}
-          className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-6 text-sm font-semibold text-white/60 backdrop-blur-2xl transition hover:bg-white/[0.08] hover:text-white active:scale-[0.98]"
+          className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition hover:text-primary active:scale-[0.98]"
         >
           Voltar
         </button>

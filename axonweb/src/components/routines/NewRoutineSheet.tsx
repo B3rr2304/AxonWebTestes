@@ -229,7 +229,7 @@ function StepProgress({ step }: { step: number }) {
         <div
           key={currentStep}
           className={`h-1 flex-1 rounded-full ${
-            currentStep <= step ? "bg-purple-400" : "bg-white/10"
+            currentStep <= step ? "bg-[var(--accent)]" : "bg-[var(--border-soft)]"
           }`}
         />
       ))}
@@ -250,7 +250,7 @@ function RoutineNameStep({
 }) {
   return (
     <div className="py-2">
-      <label className="text-sm font-medium text-white/70">
+      <label className="text-sm font-medium text-secondary">
         Como você quer chamar essa rotina?
       </label>
 
@@ -259,7 +259,7 @@ function RoutineNameStep({
         value={name}
         onChange={(e) => onNameChange(e.target.value)}
         placeholder="Ex.: Treino, Estudos, Skincare..."
-        className="mt-3 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none placeholder:text-white/25 focus:border-purple-300/40"
+        className="mt-3 w-full rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
       />
     </div>
   );
@@ -293,8 +293,9 @@ function RoutineItemsStep({
       ))}
 
       <button
+        type="button"
         onClick={onAddItem}
-        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-white/15 bg-white/[0.02] py-3 text-sm font-medium text-white/55 active:scale-[0.98]"
+        className="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-soft bg-surface-muted py-3 text-sm font-medium text-secondary transition active:scale-[0.98]"
       >
         <Plus className="h-4 w-4" />
         Adicionar item
@@ -317,7 +318,7 @@ function RoutinePeriodStep({
   return (
     <div className="space-y-4 py-2">
       <div>
-        <label className="text-sm font-medium text-white/70">
+        <label className="text-sm font-medium text-secondary">
           Data de início
         </label>
 
@@ -326,13 +327,13 @@ function RoutinePeriodStep({
           value={startDate}
           min={todayISO()}
           onChange={(e) => onStartDateChange(e.target.value)}
-          className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none focus:border-purple-300/40 [color-scheme:dark]"
+          className="mt-2 w-full rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm text-primary outline-none focus:border-accent-soft"
         />
       </div>
 
       <div>
-        <label className="text-sm font-medium text-white/70">
-          Data de término <span className="text-white/35">(opcional)</span>
+        <label className="text-sm font-medium text-secondary">
+          Data de término <span className="text-muted">(opcional)</span>
         </label>
 
         <input
@@ -340,11 +341,11 @@ function RoutinePeriodStep({
           value={endDate}
           min={startDate || todayISO()}
           onChange={(e) => onEndDateChange(e.target.value)}
-          className="mt-2 w-full rounded-2xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none focus:border-purple-300/40 [color-scheme:dark]"
+          className="mt-2 w-full rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm text-primary outline-none focus:border-accent-soft"
         />
 
         {!endDate && (
-          <p className="mt-2 text-xs leading-5 text-white/40">
+          <p className="mt-2 text-xs leading-5 text-muted">
             Sem data de término, o Axon continua gerando tarefas
             indefinidamente.
           </p>
@@ -379,9 +380,10 @@ function SheetFooter({
     <div className="flex items-center gap-3">
       {step > 1 && (
         <button
+          type="button"
           onClick={onBack}
           disabled={submitting}
-          className="rounded-full border border-white/10 bg-white/[0.05] px-5 py-3 text-sm font-semibold text-white/60 active:scale-[0.97] disabled:opacity-40"
+          className="rounded-full border border-soft bg-surface-muted px-5 py-3 text-sm font-semibold text-secondary transition active:scale-[0.97] disabled:opacity-40"
         >
           Voltar
         </button>
@@ -389,17 +391,19 @@ function SheetFooter({
 
       {step < 3 ? (
         <button
+          type="button"
           onClick={onNext}
           disabled={step === 1 ? !nameValid : !itemsValid}
-          className="flex-1 rounded-full bg-purple-500/90 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98] disabled:opacity-35"
+          className="flex-1 rounded-full bg-[var(--accent-strong)] px-5 py-3 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-35"
         >
           Próximo
         </button>
       ) : (
         <button
+          type="button"
           onClick={onCreate}
           disabled={submitting}
-          className="flex-1 rounded-full bg-purple-500/90 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-purple-950/30 active:scale-[0.98] disabled:opacity-60"
+          className="flex-1 rounded-full bg-[var(--accent-strong)] px-5 py-3 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-60"
         >
           {submitting ? "Criando rotina..." : "Criar rotina"}
         </button>
@@ -410,7 +414,7 @@ function SheetFooter({
 
 function ErrorMessage({ message }: { message: string }) {
   return (
-    <div className="mt-2 rounded-2xl border border-red-300/20 bg-red-500/10 p-3 text-sm leading-6 text-red-100/80">
+    <div className="mt-2 rounded-2xl border border-red-300/25 bg-red-500/10 p-3 text-sm leading-6 text-red-600 dark:text-red-100/80">
       {message}
     </div>
   );
@@ -418,14 +422,14 @@ function ErrorMessage({ message }: { message: string }) {
 
 function SubmittingOverlay() {
   return (
-    <div className="fixed inset-0 z-[140] flex flex-col items-center justify-center gap-3 bg-[#11101a]/85 backdrop-blur-sm">
-      <div className="h-9 w-9 animate-spin rounded-full border-2 border-white/15 border-t-purple-300" />
+    <div className="fixed inset-0 z-[140] flex flex-col items-center justify-center gap-3 bg-[var(--app-vignette)] backdrop-blur-sm">
+      <div className="h-9 w-9 animate-spin rounded-full border-2 border-[var(--border-soft)] border-t-[var(--accent)]" />
 
-      <p className="text-sm font-medium text-white/70">
+      <p className="text-sm font-medium text-secondary">
         O Axon está montando sua rotina...
       </p>
 
-      <p className="text-xs text-white/40">
+      <p className="text-xs text-muted">
         Encaixando os itens nos seus melhores horários.
       </p>
     </div>
