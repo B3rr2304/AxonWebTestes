@@ -23,7 +23,7 @@ import DayReview from "./DayReview";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
 import type { DashboardData, FocusBlock, BlockTask, Task, Subtask } from "../lib/api";
-import AppBackground from "../components/layout/AppBackground";
+import { AppBackground } from "../components/layout/AppBackground";
 import PageHeader from "../components/layout/PageHeader";
 import EmptyState from "../components/ui/EmptyState";
 import { ScrollArea } from "../components/ui/ScrollArea";
@@ -271,7 +271,7 @@ export default function Dashboard() {
       : "Sua próxima janela produtiva está chegando.";
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#11111a] text-white">
+    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
       <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
@@ -283,58 +283,59 @@ export default function Dashboard() {
           onMenuClick={() => setIsSidebarOpen(true)}
           rightSlot={
             <button
-              onClick={() => setIsNotificationsOpen(true)}
-              className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/65 backdrop-blur-2xl active:scale-[0.96]"
-              aria-label="Abrir notificações"
-            >
-              <Bell className="h-5 w-5" />
+            type="button"
+            onClick={() => setIsNotificationsOpen(true)}
+            className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
+            aria-label="Abrir notificações"
+          >
+            <Bell className="h-5 w-5" />
 
-              {Number(unreadCount) > 0 && (
-                <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[#11111a] bg-purple-300" />
-              )}
-            </button>
+            {Number(unreadCount) > 0 && (
+              <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[var(--app-bg)] bg-purple-400" />
+            )}
+          </button>
           }
         />
 
         {/* Bloco “Agora”: resume a janela de foco atual e o próximo bloco do dia. */}
         <section className="mb-4">
-          <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#1b1b27]/80 p-5 shadow-2xl shadow-black/30 backdrop-blur-2xl">
+          <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 shadow-card backdrop-blur-2xl">
             <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.055),transparent_42%)]" />
 
             <div className="relative">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <Sparkles className="h-3.5 w-3.5" />
                 Ajustado ao seu ritmo
               </div>
 
-              <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.06em] text-white">
+              <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.06em] text-primary">
                 {greeting}. Vamos focar no que move seu dia.
               </h1>
 
-              <p className="mt-3 text-sm leading-6 text-white/50">
+              <p className="mt-3 text-sm leading-6 text-muted">
                 {mainAction}
               </p>
 
-              <div className="mt-5 rounded-[1.55rem] border border-purple-300/15 bg-black/18 p-3.5 shadow-inner shadow-black/20">
+              <div className="mt-5 rounded-[1.55rem] border border-accent-soft bg-surface-muted p-3.5 shadow-inner">
                 <div className="mb-3 flex items-center justify-between gap-3">
                   <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/12 text-purple-200">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
                       <Focus className="h-4 w-4" />
                     </div>
 
                     <div>
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-purple-100/70">
+                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-accent">
                         Agora
                       </p>
-                      <p className="mt-0.5 text-xs text-white/38">
+                      <p className="mt-0.5 text-xs text-muted">
                         Ritmo atual do seu dia
                       </p>
                     </div>
                   </div>
 
                   {currentBlock && (
-                    <p className="shrink-0 text-xs font-medium text-white/38">
+                    <p className="shrink-0 text-xs font-medium text-muted">
                       {currentBlock.start} – {currentBlock.end}
                     </p>
                   )}
@@ -352,7 +353,7 @@ export default function Dashboard() {
 
                 <button
                   onClick={() => navigate("/chat")}
-                  className="mt-3 inline-flex items-center gap-2 rounded-full px-1 text-xs font-semibold text-purple-200/80 active:scale-[0.98]"
+                  className="mt-3 inline-flex items-center gap-2 rounded-full px-1 text-xs font-semibold text-accent active:scale-[0.98]"
                 >
                   Ajustar com o Axon
                   <MessageCircle className="h-3.5 w-3.5" />
@@ -384,11 +385,11 @@ export default function Dashboard() {
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-white/38">
+                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-soft">
                     Tarefa chave de hoje
                   </p>
                   <p className={`mt-0.5 truncate text-sm font-semibold ${
-                    keyTask.status === "done" ? "text-emerald-100 line-through opacity-60" : "text-white"
+                    keyTask.status === "done" ? "text-emerald-600 line-through opacity-70" : "text-primary"
                   }`}>
                     {keyTask.title}
                   </p>
@@ -396,7 +397,7 @@ export default function Dashboard() {
 
                 <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
                   keyTask.status === "done"
-                    ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
+                    ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-600 dark:text-emerald-100"
                     : "border-amber-300/20 bg-amber-400/10 text-amber-100"
                 }`}>
                   {keyTask.status === "done" ? "Concluída" : "Pendente"}
@@ -412,19 +413,19 @@ export default function Dashboard() {
             <button
               type="button"
               onClick={() => setReviewOpen(true)}
-              className="group w-full overflow-hidden rounded-[2rem] border border-purple-300/20 bg-purple-500/10 p-4 text-left shadow-xl shadow-purple-950/20 backdrop-blur-2xl active:scale-[0.98]"
+              className="group w-full overflow-hidden rounded-[2rem] border border-accent-soft bg-accent-soft p-4 text-left shadow-card backdrop-blur-2xl active:scale-[0.98]"
             >
               <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-purple-300/20 bg-purple-500/15 text-purple-200">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
                   <Moon className="h-5 w-5" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-white">Como foi o seu dia?</p>
-                  <p className="mt-0.5 text-xs text-white/45">
+                  <p className="text-sm font-semibold text-primary">Como foi o seu dia?</p>
+                  <p className="mt-0.5 text-xs text-muted">
                     Leva menos de 1 minuto · Alimenta seus Insights
                   </p>
                 </div>
-                <span className="shrink-0 rounded-full border border-purple-300/20 bg-purple-500/20 px-3 py-1.5 text-xs font-semibold text-purple-100">
+                <span className="shrink-0 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent">
                   Registrar
                 </span>
               </div>
@@ -464,16 +465,16 @@ export default function Dashboard() {
         </section>
 
         {/* Plano enxuto: mostra até cinco itens dos blocos do dia, com subtarefas. */}
-        <section className="rounded-[2rem] border border-white/10 bg-[#1b1b27]/75 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+        <section className="rounded-[2rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl">
           <div className="mb-4 flex items-center justify-between">
             <div>
-              <p className="text-sm font-semibold text-white">Hoje</p>
-              <p className="mt-1 text-xs text-white/38">
+              <p className="text-sm font-semibold text-primary">Hoje</p>
+              <p className="mt-1 text-xs text-muted">
                 Plano enxuto do dia
               </p>
             </div>
 
-            <CalendarDays className="h-5 w-5 text-purple-200" />
+            <CalendarDays className="h-5 w-5 text-accent" />
           </div>
 
           {(() => {
@@ -514,7 +515,7 @@ export default function Dashboard() {
                           ? "border-amber-300/25 bg-amber-400/[0.07]"
                           : isActive
                           ? "border-purple-300/25 bg-purple-500/10"
-                          : "border-white/10 bg-black/20"
+                          : "border-soft bg-surface-muted"
                       }`}
                     >
                       <div
@@ -522,8 +523,8 @@ export default function Dashboard() {
                           isKey
                             ? "border-amber-300/25 bg-amber-400/15 text-amber-200"
                             : isActive
-                            ? "border-purple-300/25 bg-purple-500/20 text-purple-100"
-                            : "border-white/10 bg-white/[0.05] text-white/45"
+                            ? "border-accent-soft bg-accent-soft text-accent"
+                            : "border-soft bg-surface-muted text-muted"
                         }`}
                       >
                         {task.start_time ?? "—"}
@@ -532,13 +533,13 @@ export default function Dashboard() {
                       <div className="min-w-0 flex-1">
                         <p
                           className={`truncate text-sm font-semibold ${
-                            isKey ? "text-amber-100" : "text-white"
+                            isKey ? "text-amber-700 dark:text-amber-100" : "text-primary"
                           }`}
                         >
                           {task.title}
                         </p>
 
-                        <p className="mt-0.5 text-xs text-white/38">
+                        <p className="mt-0.5 text-xs text-muted">
                           {task.objective_title ? (
                             <span className="inline-flex items-center gap-1">
                               <Star className="h-3 w-3 text-purple-300/60" />
@@ -550,7 +551,7 @@ export default function Dashboard() {
                         </p>
 
                         {hasSubtasks && (
-                          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-purple-300/15 bg-purple-500/10 px-2.5 py-1 text-[0.65rem] font-semibold text-purple-100/70">
+                          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-accent-soft bg-accent-soft px-2.5 py-1 text-[0.65rem] font-semibold text-accent">
                             <CheckCircle2 className="h-3 w-3" />
                             {completedSubtasks}/{subtasks.length} subtarefas
                           </div>
@@ -562,7 +563,7 @@ export default function Dashboard() {
                       )}
 
                       {!isKey && isActive && (
-                        <CheckCircle2 className="h-5 w-5 shrink-0 text-purple-200" />
+                        <CheckCircle2 className="h-5 w-5 shrink-0 text-accent" />
                       )}
                     </div>
                   );
@@ -573,7 +574,7 @@ export default function Dashboard() {
 
           <button
             onClick={() => navigate("/planning")}
-            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] px-5 text-sm font-semibold text-white/62 backdrop-blur-2xl active:scale-[0.98]"
+            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary backdrop-blur-2xl active:scale-[0.98]"
           >
             Ver planejamento
             <CalendarDays className="ml-2 h-4 w-4" />
@@ -613,18 +614,18 @@ export default function Dashboard() {
 // Card compacto usado na grade de métricas rápidas do topo.
 function MetricCard({ icon: Icon, label, value, helper }: MetricCardProps) {
   return (
-    <div className="rounded-[1.55rem] border border-white/10 bg-[#1b1b27]/75 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-purple-300/15 bg-purple-500/10 text-purple-200">
+    <div className="rounded-[1.55rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl">
+      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
         <Icon className="h-4 w-4" />
       </div>
 
-      <p className="text-xs text-white/38">{label}</p>
+      <p className="text-xs text-muted">{label}</p>
 
-      <p className="mt-1 text-xl font-semibold tracking-tight text-white">
+      <p className="mt-1 text-xl font-semibold tracking-tight text-primary">
         {value}
       </p>
 
-      <p className="mt-1 text-xs leading-5 text-white/35">{helper}</p>
+      <p className="mt-1 text-xs leading-5 text-soft">{helper}</p>
     </div>
   );
 }
@@ -651,32 +652,32 @@ function CurrentFocusBlockCard({
     const fallbackProgressSafe = clampPercent(fallbackProgress);
 
     return (
-      <div className="rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-3.5">
+      <div className="rounded-[1.25rem] border border-soft bg-surface-muted p-3.5">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div className="flex min-w-0 items-center gap-2">
-            <Target className="h-4 w-4 shrink-0 text-purple-200" />
+            <Target className="h-4 w-4 shrink-0 text-accent" />
 
-            <p className="truncate text-sm font-semibold text-white">
+            <p className="truncate text-sm font-semibold text-primary">
               Bloco de foco
             </p>
           </div>
 
-          <p className="shrink-0 text-xs text-white/40">
+          <p className="shrink-0 text-xs text-muted">
             {fallbackStart ?? "10:40"}
           </p>
         </div>
 
-        <p className="text-sm leading-5 text-white/55">
+        <p className="text-sm leading-5 text-secondary">
           {fallbackLabel ?? "Comece pela tarefa que mais impacta seu dia."}
         </p>
 
         <div className="mt-3">
-          <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/32">
+          <div className="mb-2 flex items-center justify-between text-[0.68rem] text-soft">
             <span>Progresso</span>
             <span>{fallbackProgressSafe}%</span>
           </div>
 
-          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+          <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted">
             <div
               className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_16px_rgba(192,132,252,0.45)]"
               style={{
@@ -692,20 +693,20 @@ function CurrentFocusBlockCard({
   const progress = getCurrentBlockProgress(currentBlock);
 
   return (
-    <div className="overflow-hidden rounded-[1.25rem] border border-white/10 bg-white/[0.035] p-3.5">
+    <div className="overflow-hidden rounded-[1.25rem] border border-soft bg-surface-muted p-3.5">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-purple-100">
+          <p className="truncate text-sm font-semibold text-accent">
             {currentBlock.level_label}
           </p>
         </div>
 
-        <div className="shrink-0 rounded-full border border-purple-300/15 bg-purple-500/10 px-2.5 py-1 text-xs font-semibold text-purple-100/80">
+        <div className="shrink-0 rounded-full border border-accent-soft bg-accent-soft px-2.5 py-1 text-xs font-semibold text-accent">
           {progress}%
         </div>
       </div>
 
-      <p className="mt-3 text-sm leading-5 text-white/54">
+      <p className="mt-3 text-sm leading-5 text-secondary">
         {currentBlock.description}
       </p>
 
@@ -718,12 +719,12 @@ function CurrentFocusBlockCard({
       )}
 
       <div className="mt-3">
-        <div className="mb-2 flex items-center justify-between text-[0.68rem] text-white/32">
+        <div className="mb-2 flex items-center justify-between text-[0.68rem] text-soft">
           <span>Progresso</span>
           <span>{progress}%</span>
         </div>
 
-        <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+        <div className="h-1.5 overflow-hidden rounded-full bg-surface-muted">
           <div
             className="h-full rounded-full bg-gradient-to-r from-purple-400 to-fuchsia-300 shadow-[0_0_16px_rgba(192,132,252,0.42)]"
             style={{ width: `${progress}%` }}
@@ -736,13 +737,13 @@ function CurrentFocusBlockCard({
           <button
             type="button"
             onClick={onToggleNext}
-            className="flex min-h-10 w-full items-center rounded-2xl border border-white/10 bg-black/14 px-3.5 text-xs font-semibold text-white/48 active:scale-[0.98]"
+            className="flex min-h-10 w-full items-center rounded-2xl border border-soft bg-surface-muted px-3.5 text-xs font-semibold text-muted active:scale-[0.98]"
           >
             <span>
               {showNextBlock ? "Ocultar próximo" : "Próximo bloco"}
             </span>
 
-            <span className="ml-auto mr-2 text-[0.68rem] font-medium text-white/28">
+            <span className="ml-auto mr-2 text-[0.68rem] font-medium text-soft">
               {nextBlock.start} – {nextBlock.end}
             </span>
 
@@ -754,18 +755,18 @@ function CurrentFocusBlockCard({
           </button>
 
           {showNextBlock && (
-            <div className="mt-2.5 rounded-[1.15rem] border border-white/10 bg-black/16 p-3">
+            <div className="mt-2.5 rounded-[1.15rem] border border-soft bg-surface-muted p-3">
               <div className="mb-2 flex items-center justify-between gap-3">
-                <p className="truncate text-xs font-semibold text-white/60">
+                <p className="truncate text-xs font-semibold text-secondary">
                   {nextBlock.level_label}
                 </p>
 
-                <p className="shrink-0 text-[0.68rem] font-medium text-white/30">
+                <p className="shrink-0 text-[0.68rem] font-medium text-soft">
                   {nextBlock.start} – {nextBlock.end}
                 </p>
               </div>
 
-              <p className="text-xs leading-5 text-white/42">
+              <p className="text-xs leading-5 text-muted">
                 {nextBlock.description}
               </p>
 
@@ -794,18 +795,18 @@ function BlockTaskRow({ task, compact = false }: { task: BlockTask; compact?: bo
         <Star className="h-3.5 w-3.5 shrink-0 fill-amber-300 text-amber-300" />
       ) : (
         <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-          isProgress ? "bg-purple-300" : "bg-white/25"
+          isProgress ? "bg-purple-300" : "bg-[var(--text-soft)]"
         }`} />
       )}
 
       <p className={`min-w-0 flex-1 truncate text-xs font-semibold ${
-        task.is_key_task ? "text-amber-100" : "text-white/80"
+        task.is_key_task ? "text-amber-700 dark:text-amber-100" : "text-secondary"
       }`}>
         {task.title}
       </p>
 
       {task.start_time && (
-        <p className="shrink-0 text-[0.65rem] text-white/30">
+        <p className="shrink-0 text-[0.65rem] text-soft">
           {task.start_time}{task.end_time ? `–${task.end_time}` : ""}
         </p>
       )}
@@ -909,11 +910,11 @@ function NotificationItem({
       className={`rounded-[1.55rem] border p-4 text-left transition active:scale-[0.99] ${
         isImprovement
           ? isHandled
-            ? "border-white/10 bg-white/[0.035] opacity-55"
+            ? "border-soft bg-surface-muted opacity-60"
             : "border-purple-300/24 bg-purple-500/12"
           : isUnread
           ? "border-purple-300/18 bg-purple-500/8"
-          : "border-white/10 bg-white/[0.035] opacity-50"
+          : "border-soft bg-surface-muted opacity-55"
       }`}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
@@ -921,10 +922,10 @@ function NotificationItem({
           <div
             className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border ${
               isImprovement
-                ? "border-purple-300/25 bg-purple-500/16 text-purple-100"
+                ? "border-accent-soft bg-accent-soft text-accent"
                 : isChange
-                ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-100"
-                : "border-white/10 bg-white/[0.055] text-white/50"
+                ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-600 dark:text-emerald-100"
+                : "border-soft bg-surface-muted text-muted"
             }`}
           >
             {isImprovement ? (
@@ -939,10 +940,10 @@ function NotificationItem({
               <span
                 className={`rounded-full border px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] ${
                   isImprovement
-                    ? "border-purple-300/20 bg-purple-500/12 text-purple-100"
+                    ? "border-accent-soft bg-accent-soft text-accent"
                     : isChange
-                    ? "border-emerald-300/15 bg-emerald-400/10 text-emerald-100/75"
-                    : "border-white/10 bg-white/[0.045] text-white/38"
+                    ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-600 dark:text-emerald-100"
+                    : "border-soft bg-surface-muted text-muted"
                 }`}
               >
                 {isImprovement
@@ -957,29 +958,29 @@ function NotificationItem({
               )}
             </div>
 
-            <p className="text-sm font-semibold leading-5 text-white">
+            <p className="text-sm font-semibold leading-5 text-primary">
               {notification.title}
             </p>
 
-            <p className="mt-1 text-xs leading-5 text-white/44">
+            <p className="mt-1 text-xs leading-5 text-muted">
               {notification.body}
             </p>
           </div>
         </div>
 
-        <span className="shrink-0 text-[0.65rem] font-medium text-white/28">
+        <span className="shrink-0 text-[0.65rem] font-medium text-soft">
           {formatNotificationTime(notification.created_at)}
         </span>
       </div>
 
       {isImprovement && action && !isHandled && (
-        <div className="mb-3 rounded-[1.15rem] border border-white/10 bg-black/18 p-3">
-          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-white/28">
+        <div className="mb-3 rounded-[1.15rem] border border-soft bg-surface-muted p-3">
+          <p className="text-[0.65rem] font-semibold uppercase tracking-[0.14em] text-soft">
             Ajuste sugerido
           </p>
 
           {(action.new_date || action.new_start_time || action.new_end_time) && (
-            <p className="mt-2 text-xs font-semibold text-white/70">
+            <p className="mt-2 text-xs font-semibold text-secondary">
               {action.new_date && <>Data: {action.new_date}</>}
               {action.new_start_time && (
                 <>
@@ -992,7 +993,7 @@ function NotificationItem({
           )}
 
           {action.reason && (
-            <p className="mt-1 text-xs leading-5 text-white/38">
+            <p className="mt-1 text-xs leading-5 text-muted">
               {action.reason}
             </p>
           )}
@@ -1018,7 +1019,7 @@ function NotificationItem({
               event.stopPropagation();
               onReject(notification.id);
             }}
-            className="inline-flex min-h-10 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.055] px-4 text-xs font-semibold text-white/55 active:scale-[0.98]"
+            className="inline-flex min-h-10 items-center justify-center rounded-2xl border border-soft bg-surface-muted px-4 text-xs font-semibold text-muted active:scale-[0.98]"
           >
             Recusar
           </button>
@@ -1032,20 +1033,20 @@ function NotificationItem({
             event.stopPropagation();
             onRead(notification.id);
           }}
-          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-white/10 bg-white/[0.045] px-3 text-[0.68rem] font-semibold text-white/45 active:scale-[0.98]"
+          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-soft bg-surface-muted px-3 text-[0.68rem] font-semibold text-muted active:scale-[0.98]"
         >
           Marcar como lida
         </button>
       )}
 
       {isAccepted && (
-        <p className="mt-3 text-[0.68rem] font-semibold text-purple-200/70">
+        <p className="mt-3 text-[0.68rem] font-semibold text-accent">
           Sugestão aceita
         </p>
       )}
 
       {isRejected && (
-        <p className="mt-3 text-[0.68rem] font-semibold text-white/30">
+        <p className="mt-3 text-[0.68rem] font-semibold text-soft">
           Sugestão recusada
         </p>
       )}
@@ -1252,23 +1253,23 @@ function NotificationsSheet({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm">
-      <div className="relative flex max-h-[82vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-white/10 bg-[#171720]/95 shadow-2xl shadow-black/50 backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/45 px-4 backdrop-blur-sm">
+      <div className="relative flex h-[82dvh] max-h-[720px] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated shadow-soft backdrop-blur-2xl">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
 
-        <div className="relative border-b border-white/10 px-5 pb-4 pt-5">
+        <div className="relative border-b border-soft px-5 pb-4 pt-5">
           <div className="mb-4 flex items-start justify-between gap-4">
             <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-purple-300/20 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-100">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
                 <Bell className="h-3.5 w-3.5" />
                 Central do Axon
               </div>
 
-              <h2 className="text-[1.65rem] font-semibold leading-[1.05] tracking-[-0.055em] text-white">
+              <h2 className="text-[1.65rem] font-semibold leading-[1.05] tracking-[-0.055em] text-primary">
                 Notificações
               </h2>
 
-              <p className="mt-2 text-xs leading-5 text-white/45">
+              <p className="mt-2 text-xs leading-5 text-muted">
                 Avisos importantes, lembretes inteligentes e sugestões para
                 melhorar seu planejamento.
               </p>
@@ -1276,21 +1277,21 @@ function NotificationsSheet({
 
             <button
               onClick={onClose}
-              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.06] text-white/45 active:scale-[0.96]"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted active:scale-[0.96]"
               aria-label="Fechar notificações"
             >
               <X className="h-5 w-5" />
             </button>
           </div>
 
-          <div className="flex rounded-2xl border border-white/10 bg-white/[0.045] p-1">
+          <div className="flex rounded-2xl border border-soft bg-surface-muted p-1">
             <button
               type="button"
               onClick={() => setNotificationView("unread")}
               className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
                 notificationView === "unread"
                   ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
+                  : "text-muted"
               }`}
             >
               Não lidas
@@ -1307,7 +1308,7 @@ function NotificationsSheet({
               className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
                 notificationView === "read"
                   ? "bg-purple-500 text-white shadow-lg shadow-purple-950/25"
-                  : "text-white/42"
+                  : "text-muted"
               }`}
             >
               Lidas
@@ -1320,9 +1321,12 @@ function NotificationsSheet({
           </div>
         </div>
 
-        <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
+        <ScrollArea
+          className="min-h-0 flex-1 overflow-hidden"
+          contentClassName="relative px-5 py-4"
+        >
           {loading && notifications.length === 0 ? (
-            <div className="py-8 text-center text-sm text-white/35">
+            <div className="py-8 text-center text-sm text-muted">
               Carregando...
             </div>
           ) : filteredNotifications.length === 0 ? (
@@ -1355,7 +1359,7 @@ function NotificationsSheet({
                 <button
                   type="button"
                   onClick={loadMore}
-                  className="mt-1 inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-white/10 bg-white/[0.045] px-4 text-xs font-semibold text-white/50 active:scale-[0.98]"
+                  className="mt-1 inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-4 text-xs font-semibold text-muted active:scale-[0.98]"
                 >
                   Ver mais
                 </button>
