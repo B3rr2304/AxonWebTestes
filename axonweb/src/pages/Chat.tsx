@@ -803,11 +803,11 @@ function AxonDirectConversationCard({
     <button
       type="button"
       onClick={onClick}
-      className="relative flex w-full items-center gap-3 overflow-hidden rounded-[1.8rem] border border-accent-soft bg-accent-soft p-4 text-left text-primary shadow-card backdrop-blur-2xl transition active:scale-[0.99]"
+      className="group relative flex w-full items-center gap-3 overflow-hidden rounded-[1.8rem] border border-accent-soft bg-surface-elevated p-4 text-left text-primary shadow-card backdrop-blur-2xl transition active:scale-[0.99]"
     >
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_52%)]" />
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_left,var(--accent-soft),transparent_58%)]" />
 
-      <div className="relative flex h-13 w-13 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated">
+      <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-[var(--accent-strong)] shadow-card">
         <img
           src="/axon-logo.svg"
           alt="Axon"
@@ -827,23 +827,23 @@ function AxonDirectConversationCard({
             </span>
           </div>
 
-          <p className="shrink-0 text-[0.68rem] text-soft">
+          <p className="shrink-0 text-[0.68rem] text-muted">
             {formattedDate}
           </p>
         </div>
 
-        <p className="mb-2 truncate text-xs text-accent">
+        <p className="mb-2 truncate text-xs font-semibold text-accent">
           Conversa principal
         </p>
 
         {conversation.last_message && (
-          <p className="line-clamp-1 text-xs leading-5 text-muted">
+          <p className="line-clamp-1 text-xs leading-5 text-secondary">
             {conversation.last_message}
           </p>
         )}
       </div>
 
-      <ChevronRight className="relative h-5 w-5 shrink-0 text-soft" />
+      <ChevronRight className="relative h-5 w-5 shrink-0 text-muted transition group-active:translate-x-0.5" />
     </button>
   );
 }

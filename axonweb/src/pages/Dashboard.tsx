@@ -910,22 +910,20 @@ function NotificationItem({
       className={`rounded-[1.55rem] border p-4 text-left transition active:scale-[0.99] ${
         isImprovement
           ? isHandled
-            ? "border-soft bg-surface-muted opacity-60"
-            : "border-purple-300/24 bg-purple-500/12"
+            ? "border-soft bg-surface-muted"
+            : "border-accent-soft bg-surface-elevated shadow-card"
           : isUnread
-          ? "border-purple-300/18 bg-purple-500/8"
-          : "border-soft bg-surface-muted opacity-55"
+          ? "border-accent-soft bg-surface-elevated shadow-card"
+          : "border-soft bg-surface-muted"
       }`}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div className="flex min-w-0 items-start gap-3">
           <div
             className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border ${
-              isImprovement
+              isImprovement || isChange || isUnread
                 ? "border-accent-soft bg-accent-soft text-accent"
-                : isChange
-                ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-600 dark:text-emerald-100"
-                : "border-soft bg-surface-muted text-muted"
+                : "border-soft bg-surface-muted text-secondary"
             }`}
           >
             {isImprovement ? (
@@ -939,11 +937,9 @@ function NotificationItem({
             <div className="mb-2 flex flex-wrap items-center gap-2">
               <span
                 className={`rounded-full border px-2.5 py-1 text-[0.62rem] font-semibold uppercase tracking-[0.12em] ${
-                  isImprovement
+                  isImprovement || isChange || isUnread
                     ? "border-accent-soft bg-accent-soft text-accent"
-                    : isChange
-                    ? "border-emerald-300/20 bg-emerald-400/10 text-emerald-600 dark:text-emerald-100"
-                    : "border-soft bg-surface-muted text-muted"
+                    : "border-soft bg-surface-muted text-secondary"
                 }`}
               >
                 {isImprovement
@@ -954,7 +950,7 @@ function NotificationItem({
               </span>
 
               {isUnread && (
-                <span className="h-1.5 w-1.5 rounded-full bg-purple-300" />
+                <span className="h-1.5 w-1.5 rounded-full bg-[var(--accent)]" />
               )}
             </div>
 
@@ -968,7 +964,11 @@ function NotificationItem({
           </div>
         </div>
 
-        <span className="shrink-0 text-[0.65rem] font-medium text-soft">
+        <span
+          className={`shrink-0 text-[0.65rem] font-medium ${
+            isUnread ? "text-accent" : "text-soft"
+          }`}
+        >
           {formatNotificationTime(notification.created_at)}
         </span>
       </div>
@@ -1033,7 +1033,7 @@ function NotificationItem({
             event.stopPropagation();
             onRead(notification.id);
           }}
-          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-soft bg-surface-muted px-3 text-[0.68rem] font-semibold text-muted active:scale-[0.98]"
+          className="mt-3 inline-flex min-h-8 items-center justify-center rounded-xl border border-accent-soft bg-accent-soft px-3 text-[0.68rem] font-semibold text-accent transition active:scale-[0.98]"
         >
           Marcar como lida
         </button>
