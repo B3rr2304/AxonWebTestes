@@ -1,411 +1,42 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
 import { Link, useNavigate } from "react-router-dom";
-import AuthLogo from "../components/auth/AuthLogo";
+import { ArrowRight, Star } from "lucide-react";
+
 import { refreshSession, saveSession } from "../lib/api";
-import {
-  ArrowRight,
-  BarChart3,
-  Brain,
-  CalendarDays,
-  CheckCircle2,
-  Clock3,
-  Focus,
-  MessageCircle,
-  Sparkles,
-  Target,
-  Zap,
-} from "lucide-react";
+import LandingPurpleBackground from "../components/landing/LandingPurpleBackground";
+
+import axonHappy from "../assets/axon/axon-happy.png";
+import brainDecoration from "../assets/decorations/brain.svg";
+import starDecoration from "../assets/decorations/star.svg";
 
 // ===========================================================================
-// CONTEÚDO ESTÁTICO DA LANDING
+// LANDING PAGE — REDESIGN
 // ===========================================================================
-// Blocos de texto usados nas seções comerciais da página.
-const pains = [
-  "Você começa o dia sem saber o que priorizar.",
-  "Sua rotina muda, mas suas ferramentas continuam rígidas.",
-  "Você acumula tarefas, lembretes e ideias em lugares diferentes.",
-  "Você tenta se organizar, mas depende demais de força de vontade.",
-];
+// Hero mobile-first inspirado no novo Figma, já preparado para reaproveitar
+// o fundo roxo e padrões visuais nas próximas seções.
 
-// Passos que explicam a proposta do Axon como sistema de organização pessoal.
-const solutionSteps = [
-  {
-    icon: Brain,
-    title: "Entende seu ritmo",
-    description:
-      "O Axon identifica seus horários de energia, foco e queda de disposição.",
-  },
-  {
-    icon: Target,
-    title: "Define prioridades",
-    description:
-      "Ele ajuda você a separar o que importa agora do que pode esperar.",
-  },
-  {
-    icon: CalendarDays,
-    title: "Monta um plano",
-    description:
-      "Sua rotina vira blocos claros de execução, foco, pausa e revisão.",
-  },
-  {
-    icon: BarChart3,
-    title: "Aprende com padrões",
-    description:
-      "Com o uso, o Axon mostra insights sobre foco, energia e produtividade.",
-  },
-];
-
-// Recursos principais apresentados antes do usuário criar a conta.
-const features = [
-  {
-    icon: Brain,
-    title: "Dashboard inteligente",
-    description:
-      "Veja energia, foco, próximas tarefas e sugestões em uma visão simples.",
-  },
-  {
-    icon: MessageCircle,
-    title: "Chat com contexto",
-    description:
-      "Converse com o Axon para reorganizar seu dia e clarear decisões.",
-  },
-  {
-    icon: CalendarDays,
-    title: "Planejamento adaptativo",
-    description:
-      "Monte sua rotina considerando energia, foco e prioridades reais.",
-  },
-  {
-    icon: Focus,
-    title: "Modo Focus",
-    description:
-      "Execute uma tarefa principal em um ambiente limpo e sem distrações.",
-  },
-];
-
-// Sequência inicial que conecta cadastro, questionário e Dashboard.
-const onboardingSteps = [
-  {
-    number: "01",
-    title: "Mapeie seu ritmo",
-    description:
-      "Responda perguntas rápidas sobre sono, energia, foco e rotina.",
-  },
-  {
-    number: "02",
-    title: "Receba seu perfil",
-    description:
-      "O Axon identifica seu ritmo inicial e seus melhores horários.",
-  },
-  {
-    number: "03",
-    title: "Entre no Dashboard",
-    description:
-      "Seu painel começa com sugestões alinhadas ao seu funcionamento.",
-  },
-];
-
-// ===========================================================================
-// COMPONENTES BASE DA LANDING
-// ===========================================================================
-// Botão principal usado nos CTAs de cadastro.
-function PrimaryButton({ children, className = "", to, href }) {
-  const cls = `inline-flex min-h-14 items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition duration-300 hover:brightness-105 active:scale-[0.98] ${className}`;
-
-  if (to) {
-    return (
-      <Link to={to} className={cls}>
-        {children}
-      </Link>
-    );
-  }
-
-  if (href) {
-    return (
-      <a href={href} className={cls}>
-        {children}
-      </a>
-    );
-  }
-
-  return <button className={cls}>{children}</button>;
-}
-
-// Botão secundário usado para navegação interna ou login.
-function SecondaryButton({ children, className = "", to, href }) {
-  const cls = `inline-flex min-h-14 items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition duration-300 hover:text-primary active:scale-[0.98] ${className}`;
-
-  if (to) {
-    return (
-      <Link to={to} className={cls}>
-        {children}
-      </Link>
-    );
-  }
-
-  if (href) {
-    return (
-      <a href={href} className={cls}>
-        {children}
-      </a>
-    );
-  }
-
-  return <button className={cls}>{children}</button>;
-}
-
-// Background global da página, mantendo o visual dark premium/glassmorphism.
-function Background() {
-  return (
-    <div className="pointer-events-none absolute inset-0 overflow-hidden bg-app">
-      <div className="absolute left-1/2 top-[-18rem] h-[34rem] w-[34rem] -translate-x-1/2 rounded-full bg-[var(--app-glow-primary)] blur-[120px]" />
-      <div className="absolute left-1/2 top-[24rem] h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-[var(--app-glow-secondary)] blur-[120px]" />
-      <div className="absolute right-[-14rem] top-[48rem] h-[28rem] w-[28rem] rounded-full bg-[var(--app-glow-secondary)] blur-[120px]" />
-      <div className="absolute bottom-[16rem] left-[-14rem] h-[28rem] w-[28rem] rounded-full bg-[var(--app-glow-tertiary)] blur-[120px]" />
-
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--app-grid-color)_1px,transparent_1px)] [background-size:28px_28px] opacity-70" />
-
-      <div className="absolute inset-0 bg-[linear-gradient(to_bottom,transparent,var(--app-bg)_76%)]" />
-    </div>
-  );
-}
-
-// Container reutilizável para cards com borda, blur e transparência.
-function GlassPanel({ children, className = "" }) {
-  return (
-    <div
-      className={`rounded-[2rem] border border-soft bg-surface-elevated shadow-card backdrop-blur-2xl ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-// Wrapper padrão das seções principais da landing.
-function SectionShell({ children, className = "", id }) {
-  return (
-    <section
-      id={id}
-      className={`px-4 py-20 sm:px-8 sm:py-24 ${className}`}
-    >
-      <div className="mx-auto max-w-7xl">{children}</div>
-    </section>
-  );
-}
-
-// Cabeçalho reutilizável para manter hierarquia visual entre seções.
-function SectionHeader({ eyebrow, title, description, centered = false }) {
-  return (
-    <div
-      className={`mb-9 sm:mb-12 ${
-        centered ? "mx-auto max-w-3xl text-center" : "max-w-3xl"
-      }`}
-    >
-      <p className="mb-3 text-sm font-medium text-accent">{eyebrow}</p>
-
-      <h2 className="text-[2.15rem] font-semibold leading-[1.02] tracking-[-0.055em] text-primary sm:text-5xl">
-        {title}
-      </h2>
-
-      {description && (
-        <p
-          className={`mt-4 text-sm leading-7 text-muted sm:text-base ${
-            centered ? "mx-auto max-w-2xl" : "max-w-2xl"
-          }`}
-        >
-          {description}
-        </p>
-      )}
-    </div>
-  );
-}
-
-// Cards flutuantes usados na ilustração central do produto.
-function FloatingCard({
-  icon: Icon,
-  title,
-  children,
-  className = "",
-  delay = 0,
-}) {
-  return (
-    <motion.div
-      animate={{ y: [-5, 5, -5] }}
-      transition={{
-        duration: 5,
-        repeat: Infinity,
-        ease: "easeInOut",
-        delay,
-      }}
-      className={`absolute rounded-[1.25rem] border border-soft bg-surface-elevated p-3 text-primary shadow-card backdrop-blur-2xl ${className}`}
-    >
-      <div className="mb-2 flex items-center gap-2">
-        <div className="flex h-7 w-7 items-center justify-center rounded-xl border border-accent-soft bg-accent-soft text-accent">
-          <Icon className="h-3.5 w-3.5" />
-        </div>
-
-        <p className="text-[0.68rem] font-semibold text-primary">{title}</p>
-      </div>
-
-      {children}
-    </motion.div>
-  );
-}
-
-// Ilustração hero: representa contexto, energia, foco e prioridades orbitando o Axon.
-function ProductOrbit() {
-  return (
-    <div className="relative mx-auto mt-12 h-[460px] w-full max-w-[380px] overflow-visible sm:mt-16 sm:h-[570px] sm:max-w-5xl">
-      <div className="absolute left-1/2 top-[48%] h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-accent-soft blur-[90px] sm:h-96 sm:w-96" />
-
-      <svg
-        className="absolute left-1/2 top-[48%] h-[345px] w-[345px] -translate-x-1/2 -translate-y-1/2 opacity-75 sm:h-[520px] sm:w-[520px]"
-        viewBox="0 0 520 520"
-        fill="none"
-      >
-        <path
-          d="M82 162C150 94 222 132 260 260C298 388 384 420 440 328"
-          stroke="url(#line-1)"
-          strokeWidth="1.2"
-        />
-
-        <path
-          d="M78 356C154 294 214 374 260 260C306 146 380 164 444 210"
-          stroke="url(#line-2)"
-          strokeWidth="1.2"
-        />
-
-        <path
-          d="M160 102C228 172 304 140 260 260C216 380 296 418 360 448"
-          stroke="url(#line-3)"
-          strokeWidth="1.2"
-        />
-
-        <circle cx="82" cy="162" r="4" fill="#c084fc" />
-        <circle cx="440" cy="328" r="4" fill="#e879f9" />
-        <circle cx="78" cy="356" r="4" fill="#a855f7" />
-        <circle cx="444" cy="210" r="4" fill="#c084fc" />
-        <circle cx="160" cy="102" r="4" fill="#e879f9" />
-        <circle cx="360" cy="448" r="4" fill="#a855f7" />
-
-        <defs>
-          <linearGradient id="line-1" x1="82" y1="162" x2="440" y2="328">
-            <stop stopColor="#7c3aed" stopOpacity="0" />
-            <stop offset="0.5" stopColor="#c084fc" />
-            <stop offset="1" stopColor="#ec4899" stopOpacity="0" />
-          </linearGradient>
-
-          <linearGradient id="line-2" x1="78" y1="356" x2="444" y2="210">
-            <stop stopColor="#7c3aed" stopOpacity="0" />
-            <stop offset="0.5" stopColor="#e879f9" />
-            <stop offset="1" stopColor="#a855f7" stopOpacity="0" />
-          </linearGradient>
-
-          <linearGradient id="line-3" x1="160" y1="102" x2="360" y2="448">
-            <stop stopColor="#ec4899" stopOpacity="0" />
-            <stop offset="0.5" stopColor="#c084fc" />
-            <stop offset="1" stopColor="#7c3aed" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-      </svg>
-
-      <div className="absolute left-1/2 top-[48%] flex h-48 w-48 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border border-accent-soft bg-accent-muted sm:h-64 sm:w-64">
-        <motion.div
-          animate={{ rotate: 360 }}
-          transition={{ duration: 28, repeat: Infinity, ease: "linear" }}
-          className="absolute h-full w-full rounded-full border border-accent-soft"
-        />
-
-        <motion.div
-          animate={{ rotate: -360 }}
-          transition={{ duration: 36, repeat: Infinity, ease: "linear" }}
-          className="absolute h-[78%] w-[78%] rounded-full border border-fuchsia-300/10"
-        />
-
-        <motion.div
-          animate={{ scale: [1, 1.05, 1], opacity: [0.86, 1, 0.86] }}
-          transition={{ duration: 3.8, repeat: Infinity, ease: "easeInOut" }}
-          className="relative flex h-28 w-28 items-center justify-center rounded-full border border-accent-soft bg-accent-soft shadow-soft backdrop-blur-2xl sm:h-36 sm:w-36"
-        >
-          <div className="absolute inset-3 rounded-full border border-soft bg-surface-elevated" />
-          <Brain className="relative h-12 w-12 text-accent sm:h-16 sm:w-16" />
-        </motion.div>
-      </div>
-
-      <FloatingCard
-        icon={CheckCircle2}
-        title="Prioridades"
-        delay={0.1}
-        className="left-0 top-4 w-[150px] sm:left-16 sm:top-20 sm:w-[220px]"
-      >
-        <div className="space-y-2">
-          <div className="h-2 w-24 rounded-full bg-[var(--border-soft)]" />
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-purple-300" />
-            <div className="h-2 w-20 rounded-full bg-[var(--border-soft)]" />
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-2 w-2 rounded-full bg-fuchsia-300" />
-            <div className="h-2 w-16 rounded-full bg-[var(--border-soft)]" />
-          </div>
-        </div>
-      </FloatingCard>
-
-      <FloatingCard
-        icon={BarChart3}
-        title="Energia"
-        delay={0.35}
-        className="right-0 top-8 w-[150px] sm:right-16 sm:top-24 sm:w-[220px]"
-      >
-        <div className="flex h-14 items-end gap-1.5">
-          {[34, 56, 42, 72, 60].map((height, index) => (
-            <div
-              key={index}
-              className="flex-1 rounded-t-lg bg-gradient-to-t from-purple-500/45 to-fuchsia-300"
-              style={{ height: `${height}%` }}
-            />
-          ))}
-        </div>
-      </FloatingCard>
-
-      <FloatingCard
-        icon={Sparkles}
-        title="Sugestão"
-        delay={0.65}
-        className="bottom-16 left-1 w-[162px] sm:bottom-24 sm:left-20 sm:w-[240px]"
-      >
-        <p className="text-[0.68rem] leading-4 text-muted sm:text-xs sm:leading-5">
-          Proteja 90 min para a tarefa que mais importa.
-        </p>
-      </FloatingCard>
-
-      <FloatingCard
-        icon={Focus}
-        title="Focus"
-        delay={0.9}
-        className="bottom-8 right-1 w-[162px] sm:bottom-28 sm:right-20 sm:w-[240px]"
-      >
-        <div className="flex items-center justify-between">
-          <p className="text-lg font-semibold text-primary">10:40</p>
-          <div className="rounded-full border border-accent-soft bg-accent-soft px-2 py-1 text-[0.62rem] text-accent">
-            ideal
-          </div>
-        </div>
-      </FloatingCard>
-    </div>
-  );
-}
-
-// ===========================================================================
-// SESSÃO E REDIRECIONAMENTO
-// ===========================================================================
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+const heroMetrics = [
+  {
+    value: "15 minutos",
+    label: "para configurar",
+  },
+  {
+    value: "100%",
+    label: "personalizado para você",
+  },
+  {
+    value: "24 horas",
+    label: "com você",
+  },
+];
 
 export default function LandingPage() {
   const navigate = useNavigate();
 
-  // Tenta restaurar sessão recente para evitar mostrar a landing a usuário logado.
+  // Mantém o comportamento atual: usuários logados não ficam presos na landing.
   useEffect(() => {
     const refreshToken = localStorage.getItem("axon_refresh_token");
     const lastActive = Number(localStorage.getItem("axon_last_active") ?? "0");
@@ -431,340 +62,328 @@ export default function LandingPage() {
         localStorage.removeItem("axon_user");
         localStorage.removeItem("axon_last_active");
       });
-  }, []);
+  }, [navigate]);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-app pb-28 text-primary sm:pb-0">
-      <Background />
-
-      <div className="relative z-10">
-        {/* Header: marca centralizada e acesso rápido ao login no desktop. */}
-        <header className="relative mx-auto flex max-w-7xl items-center justify-center px-4 py-5 sm:px-8 sm:py-6">
-          <Link
-            to="/"
-            className="flex flex-col items-center justify-center text-center"
-          >
-            <AuthLogo
-              variant="header"
-              className="mb-2 [transform:scale(1.15)]"
-            />
-
-            <p className="text-base font-semibold tracking-tight text-primary sm:text-lg">
-              Axon
-            </p>
-
-            <p className="mt-0.5 hidden text-xs text-muted sm:block">
-              Personal operating system
-            </p>
-          </Link>
-
-          <Link
-            to="/login"
-            className="absolute right-8 hidden min-h-11 items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary backdrop-blur-2xl transition hover:text-primary active:scale-[0.98] sm:inline-flex"
-          >
-            Entrar
-          </Link>
-        </header>
-
-
-        {/* Hero: promessa principal, CTAs e ilustração de produto. */}
-        <section className="px-4 pb-12 pt-8 sm:px-8 sm:pb-24 sm:pt-20">
-          <div className="mx-auto max-w-5xl text-center">
-            <motion.div
-              initial={{ opacity: 0, y: 14 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              className="mb-5 inline-flex max-w-full items-center gap-2 rounded-full border border-soft bg-surface-muted px-4 py-2 text-xs text-secondary backdrop-blur-xl sm:text-sm"
-            >
-              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-purple-300 shadow-[0_0_18px_rgba(216,180,254,0.9)]" />
-              <span className="truncate">
-                Produtividade guiada pelo seu ritmo
-              </span>
-            </motion.div>
-
-            <motion.h1
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.08 }}
-              className="mx-auto max-w-[23rem] text-[2.85rem] font-semibold leading-[0.9] tracking-[-0.075em] text-primary sm:max-w-4xl sm:text-6xl lg:text-7xl"
-            >
-              Sua rotina organizada pelo seu próprio ritmo.
-            </motion.h1>
-
-            <motion.p
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.16 }}
-              className="mx-auto mt-5 max-w-2xl text-[0.95rem] leading-7 text-muted sm:mt-6 sm:text-lg"
-            >
-              O Axon entende seus horários de energia, organiza suas prioridades
-              e transforma tarefas soltas em um plano claro para o seu dia.
-            </motion.p>
-
-            <motion.div
-              initial={{ opacity: 0, y: 18 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.55, delay: 0.24 }}
-              className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center"
-            >
-              <PrimaryButton to="/signup" className="w-full sm:w-auto">
-                Criar minha conta
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </PrimaryButton>
-
-              <SecondaryButton
-                href="#como-funciona"
-                className="w-full sm:w-auto"
-              >
-                Ver como funciona
-                <Sparkles className="ml-2 h-4 w-4" />
-              </SecondaryButton>
-            </motion.div>
-          </div>
-
-          <ProductOrbit />
-
-          {/* Métricas rápidas para reforçar simplicidade e uso diário. */}
-          <div className="mx-auto mt-2 grid max-w-4xl grid-cols-3 gap-2 px-1 sm:mt-8 sm:gap-4">
-            <div className="rounded-2xl border border-soft bg-surface-elevated p-3 text-center backdrop-blur-2xl sm:p-4">
-              <p className="text-lg font-semibold text-primary sm:text-2xl">
-                3min
-              </p>
-              <p className="mt-1 text-[0.68rem] leading-4 text-muted sm:text-xs">
-                para configurar
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-soft bg-surface-elevated p-3 text-center backdrop-blur-2xl sm:p-4">
-              <p className="text-lg font-semibold text-primary sm:text-2xl">1</p>
-              <p className="mt-1 text-[0.68rem] leading-4 text-muted sm:text-xs">
-                plano diário
-              </p>
-            </div>
-
-            <div className="rounded-2xl border border-soft bg-surface-elevated p-3 text-center backdrop-blur-2xl sm:p-4">
-              <p className="text-lg font-semibold text-primary sm:text-2xl">
-                24h
-              </p>
-              <p className="mt-1 text-[0.68rem] leading-4 text-muted sm:text-xs">
-                de contexto
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Problema: conecta a dor do usuário antes de apresentar a solução. */}
-        <SectionShell id="problema">
-          <SectionHeader
-            eyebrow="O problema"
-            title="Você sabe o que precisa fazer. O difícil é saber por onde começar."
-            description="A rotina moderna não falha por falta de ferramentas. Ela falha porque tarefas, energia, foco e prioridades ficam desconectados."
-          />
-
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            {pains.map((pain, index) => (
-              <motion.div
-                key={pain}
-                initial={{ opacity: 0, y: 18 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.25 }}
-                transition={{ duration: 0.4, delay: index * 0.05 }}
-                className="rounded-[1.5rem] border border-soft bg-surface-elevated p-4 backdrop-blur-2xl"
-              >
-                <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-                  <CheckCircle2 className="h-4 w-4" />
-                </div>
-
-                <p className="text-sm leading-6 text-muted">{pain}</p>
-              </motion.div>
-            ))}
-          </div>
-        </SectionShell>
-
-        {/* Solução: explica como o Axon transforma ritmo em plano de ação. */}
-        <section id="solucao" className="px-4 py-20 sm:px-8 sm:py-24">
-          <div className="mx-auto grid max-w-7xl gap-8 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-            <div>
-              <SectionHeader
-                eyebrow="A solução"
-                title="O Axon não guarda tarefas. Ele ajuda você a organizar a mente."
-                description="A proposta é simples: entender seu ritmo, reduzir ruído e transformar o seu dia em uma sequência clara de decisões e ações."
-              />
-
-              <PrimaryButton to="/signup" className="hidden w-fit sm:inline-flex">
-                Começar agora
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </PrimaryButton>
-            </div>
-
-            <GlassPanel className="p-4 sm:p-6">
-              <div className="space-y-3">
-                {solutionSteps.map((step, index) => {
-                  const Icon = step.icon;
-
-                  return (
-                    <div
-                      key={step.title}
-                      className="flex gap-4 rounded-[1.5rem] border border-soft bg-surface-muted p-4"
-                    >
-                      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-                        <Icon className="h-5 w-5" />
-                      </div>
-
-                      <div>
-                        <div className="mb-1 flex items-center gap-2">
-                          <span className="text-xs font-semibold text-accent">
-                            0{index + 1}
-                          </span>
-                          <h3 className="text-sm font-semibold text-primary">
-                            {step.title}
-                          </h3>
-                        </div>
-
-                        <p className="text-xs leading-5 text-muted">
-                          {step.description}
-                        </p>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </GlassPanel>
-          </div>
-        </section>
-
-        {/* Recursos: mostra os módulos centrais do produto. */}
-        <SectionShell id="recursos">
-          <SectionHeader
-            centered
-            eyebrow="Dentro do Axon"
-            title="Um ambiente único para clarear, planejar, executar e melhorar."
-            description="Cada parte do app foi pensada para ajudar você a sair da confusão e entrar em um fluxo mais claro de produtividade."
-          />
-
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {features.map((feature, index) => {
-              const Icon = feature.icon;
-
-              return (
-                <motion.div
-                  key={feature.title}
-                  initial={{ opacity: 0, y: 18 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true, amount: 0.2 }}
-                  transition={{ duration: 0.45, delay: index * 0.05 }}
-                >
-                  <GlassPanel className="h-full p-5">
-                    <div className="mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-                      <Icon className="h-5 w-5" />
-                    </div>
-
-                    <h3 className="text-lg font-semibold tracking-tight text-primary">
-                      {feature.title}
-                    </h3>
-
-                    <p className="mt-3 text-sm leading-6 text-muted">
-                      {feature.description}
-                    </p>
-                  </GlassPanel>
-                </motion.div>
-              );
-            })}
-          </div>
-        </SectionShell>
-
-        {/* Como funciona: resume a jornada até o primeiro Dashboard. */}
-        <SectionShell id="como-funciona">
-          <SectionHeader
-            centered
-            eyebrow="Como funciona"
-            title="Personalizado antes mesmo do primeiro Dashboard."
-            description="O Axon começa entendendo você. Só depois ele libera uma experiência alinhada ao seu ritmo."
-          />
-
-          <div className="mx-auto grid max-w-5xl gap-4 lg:grid-cols-3">
-            {onboardingSteps.map((step, index) => (
-              <motion.div
-                key={step.title}
-                initial={{ opacity: 0, y: 18 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, amount: 0.25 }}
-                transition={{ duration: 0.45, delay: index * 0.08 }}
-              >
-                <GlassPanel className="h-full p-5">
-                  <div className="mb-7 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-sm font-semibold text-accent">
-                    {step.number}
-                  </div>
-
-                  <h3 className="text-xl font-semibold tracking-tight text-primary">
-                    {step.title}
-                  </h3>
-
-                  <p className="mt-4 text-sm leading-6 text-muted">
-                    {step.description}
-                  </p>
-                </GlassPanel>
-              </motion.div>
-            ))}
-          </div>
-        </SectionShell>
-
-        {/* CTA final: última chamada antes do rodapé. */}
-        <section className="px-4 py-20 sm:px-8 sm:py-24">
-          <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] border border-accent-soft bg-accent-soft p-6 text-center shadow-card backdrop-blur-2xl sm:rounded-[2.5rem] sm:p-12">
-            <div className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated text-accent">
-              <Sparkles className="h-6 w-6" />
-            </div>
-
-            <h2 className="mx-auto max-w-3xl text-[2.1rem] font-semibold leading-[1.03] tracking-[-0.055em] text-primary sm:text-5xl">
-              Comece com clareza. Depois deixe o Axon organizar o resto.
-            </h2>
-
-            <p className="mx-auto mt-5 max-w-2xl text-sm leading-7 text-muted sm:text-base">
-              Crie sua conta, responda o mapeamento inicial e entre em um
-              ambiente pensado para transformar rotina em execução.
-            </p>
-
-            <div className="mt-8 flex flex-col items-stretch justify-center gap-3 sm:flex-row sm:items-center">
-              <PrimaryButton to="/signup" className="w-full sm:w-auto">
-                Criar minha conta
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </PrimaryButton>
-
-              <SecondaryButton to="/login" className="w-full sm:w-auto">
-                Já tenho conta
-              </SecondaryButton>
-            </div>
-          </div>
-        </section>
-
-        {/* Rodapé institucional. */}
-        <footer className="border-t border-soft px-4 py-8 sm:px-8">
-          <div className="mx-auto flex max-w-7xl flex-col justify-between gap-4 text-sm text-muted sm:flex-row sm:items-center">
-            <p>© 2026 Axon. Todos os direitos reservados.</p>
-
-            <div className="flex flex-wrap gap-5">
-              <a href="#" className="transition hover:text-primary">
-                Privacidade
-              </a>
-              <a href="#" className="transition hover:text-primary">
-                Termos
-              </a>
-              <a href="#" className="transition hover:text-primary">
-                Contato
-              </a>
-            </div>
-          </div>
-        </footer>
-      </div>
-
-      {/* CTA fixo mobile: mantém a ação principal sempre acessível no celular. */}
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-soft bg-surface-elevated/90 p-4 backdrop-blur-2xl sm:hidden">
-        <PrimaryButton to="/login" className="w-full">
-          Entrar
-          <ArrowRight className="ml-2 h-4 w-4" />
-        </PrimaryButton>
-      </div>
+    <main className="min-h-screen overflow-hidden bg-[#2d0850] text-white">
+      <LandingHero />
     </main>
+  );
+}
+
+// ===========================================================================
+// HERO
+// ===========================================================================
+
+function LandingHero() {
+  return (
+    <section className="relative isolate min-h-[100svh] overflow-hidden rounded-b-[1.7rem] border-b border-white/10 bg-[#2d0850] px-4 pb-0 pt-7 shadow-[0_14px_0_rgba(255,255,255,0.16)] sm:px-6 lg:flex lg:min-h-screen lg:items-center lg:rounded-b-[2.2rem] lg:px-10 lg:py-8 xl:px-14">
+      <LandingPurpleBackground intensity="strong" />
+
+      <div className="relative z-10 mx-auto flex w-full max-w-[1180px] flex-col lg:grid lg:grid-cols-[minmax(0,0.82fr)_minmax(420px,0.82fr)] lg:items-center lg:gap-10">
+        <HeroTopBar />
+
+        <HeroContent />
+
+        <HeroRobotStage />
+      </div>
+    </section>
+  );
+}
+
+function HeroTopBar() {
+  return (
+    <header className="relative z-30 mb-7 flex items-center justify-center lg:absolute lg:left-0 lg:top-0 lg:mb-0 lg:w-full lg:justify-between">
+      <HeroLogo />
+
+      <nav className="hidden items-center gap-2 lg:flex">
+        <HeroTopButton to="/signup" variant="outline">
+          Criar
+        </HeroTopButton>
+
+        <HeroTopButton to="/login" variant="filled">
+          Entrar
+        </HeroTopButton>
+      </nav>
+    </header>
+  );
+}
+
+function HeroContent() {
+  return (<div className="relative z-20 mx-auto flex w-full max-w-[23rem] flex-col items-center text-center sm:max-w-[30rem] lg:mx-0 lg:max-w-[34rem] lg:items-start lg:text-left">
+      <HeroStars />
+
+      <motion.h1
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.48, delay: 0.04 }}
+        className="mt-3 max-w-[20rem] text-[2.05rem] font-black leading-[0.9] tracking-[-0.055em] text-white sm:max-w-[30rem] sm:text-[3.25rem] lg:mt-4 lg:max-w-[31rem] lg:text-[3.65rem] xl:text-[4.25rem]"
+      >
+        Seu assistente inteligente de produtividade
+      </motion.h1>
+
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.48, delay: 0.1 }}
+        className="mt-4 max-w-[20.5rem] sm:max-w-[29rem] lg:max-w-[33rem] lg:border-l lg:border-white/35 lg:pl-4"
+      >
+        <p className="text-[0.73rem] font-medium leading-5 text-white/72 sm:text-[0.95rem] sm:leading-7 lg:text-base">
+          O AXON aprende sua rotina, entende seus padrões de produtividade e
+          ajuda você a organizar tarefas, hábitos e compromissos de forma
+          personalizada, para que você tenha mais foco, clareza e equilíbrio
+          todos os dias.
+        </p>
+      </motion.div>
+
+      <HeroMobileActions />
+
+      <HeroInfoStack />
+    </div>
+  );
+}
+
+function HeroLogo() {
+  return (
+    <Link
+      to="/"
+      className="inline-flex items-center justify-center gap-2 text-white"
+      aria-label="Axon"
+    >
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#2d0850] shadow-[0_0_24px_rgba(255,255,255,0.24)] sm:h-8 sm:w-8 lg:h-9 lg:w-9">
+        <img
+          src="/axon-logo.svg"
+          alt=""
+          className="h-5 w-5 object-contain sm:h-6 sm:w-6 lg:h-7 lg:w-7"
+        />
+      </span>
+
+      <span className="text-[0.78rem] font-black uppercase tracking-[0.16em] text-white sm:text-sm lg:text-base">
+        Axon
+      </span>
+    </Link>
+  );
+}
+
+function HeroStars() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 12 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.42, delay: 0.03 }}
+      className="flex items-center justify-center gap-1 lg:justify-start"
+      aria-label="Avaliação cinco estrelas"
+    >
+      {Array.from({ length: 5 }).map((_, index) => (
+        <Star
+          key={index}
+          className="h-3.5 w-3.5 fill-[#f7d84a] text-[#f7d84a] drop-shadow-[0_0_8px_rgba(247,216,74,0.38)] sm:h-4 sm:w-4"
+        />
+      ))}
+    </motion.div>
+  );
+}
+
+function HeroMobileActions() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.48, delay: 0.16 }}
+      className="mt-5 grid w-full max-w-[12.4rem] gap-2.5 sm:mt-6 sm:max-w-[20rem] sm:grid-cols-2 lg:hidden"
+    >
+      <HeroButton to="/login" variant="primary">
+        Entrar
+        <ArrowRight className="h-4 w-4" />
+      </HeroButton>
+
+      <HeroButton to="/signup" variant="secondary">
+        Criar conta
+      </HeroButton>
+    </motion.div>
+  );
+}
+
+function HeroInfoStack() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.48, delay: 0.22 }}
+      className="mt-7 flex w-full max-w-[20rem] flex-col items-center sm:max-w-[26rem] lg:max-w-[25rem] lg:items-start"
+    >
+      <div className="order-1 lg:order-2">
+        <HeroMetrics />
+      </div>
+
+      <div className="order-2 mt-5 lg:order-1 lg:mb-5 lg:mt-0">
+        <PlayStoreSoon />
+      </div>
+    </motion.div>
+  );
+}
+
+function HeroMetrics() {
+  return (
+    <div className="grid w-full grid-cols-3 divide-x divide-white/35">
+      {heroMetrics.map((metric) => (
+        <div key={metric.label} className="px-2 text-center first:pl-0 last:pr-0 lg:text-left">
+          <p className="text-[0.72rem] font-black leading-none text-white sm:text-base">
+            {metric.value}
+          </p>
+
+          <p className="mx-auto mt-1 max-w-[5.4rem] text-[0.56rem] font-medium leading-3 text-white/62 sm:text-[0.68rem] sm:leading-4 lg:mx-0">
+            {metric.label}
+          </p>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PlayStoreSoon() {
+  return (
+    <div className="w-full max-w-[13.2rem] sm:max-w-[16rem] lg:max-w-[12.5rem]">
+      <p className="mb-2 text-center text-[0.64rem] font-black text-white sm:text-xs lg:text-left">
+        Em breve na
+      </p>
+
+      <div className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 text-[#2d0850] shadow-card">
+        <PlayStoreIcon />
+        <span className="text-[0.7rem] font-black sm:text-xs">
+          Google Play
+        </span>
+      </div>
+    </div>
+  );
+}
+
+function HeroRobotStage() {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96, y: 20 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: 0.65, delay: 0.22, ease: "easeOut" }}
+      className="pointer-events-none relative mx-auto mt-8 h-[315px] w-full max-w-[23rem] sm:h-[440px] sm:max-w-[30rem] lg:mt-0 lg:h-[640px] lg:max-w-none"
+    >
+      {/* Glow principal atrás do robô */}
+      <div className="absolute left-1/2 top-[61%] h-[15rem] w-[15rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7b2cbf]/60 blur-[80px] sm:h-[24rem] sm:w-[24rem] lg:top-[52%] lg:h-[30rem] lg:w-[30rem] lg:blur-[110px] xl:h-[33rem] xl:w-[33rem]" />
+
+      {/* Círculo roxo */}
+      <div className="absolute left-1/2 top-[64%] h-[13.5rem] w-[13.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7b2cbf]/55 sm:h-[22rem] sm:w-[22rem] lg:top-[55%] lg:h-[25rem] lg:w-[25rem] xl:h-[28rem] xl:w-[28rem]" />
+
+      {/* Borda sutil do círculo */}
+      <div className="absolute left-1/2 top-[64%] h-[13.5rem] w-[13.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 sm:h-[22rem] sm:w-[22rem] lg:top-[55%] lg:h-[25rem] lg:w-[25rem] xl:h-[28rem] xl:w-[28rem]" />
+
+      {/* Pontos decorativos */}
+      <span className="absolute left-1/2 top-[18%] h-3 w-3 -translate-x-1/2 rounded-full bg-white sm:top-[13%] sm:h-4 sm:w-4 lg:top-[18%]" />
+
+      <span className="absolute bottom-[16%] right-[20%] h-3 w-3 rounded-full bg-white sm:h-4 sm:w-4 lg:bottom-[21%] lg:right-[18%]" />
+
+      {/* Decorations próximas ao robô */}
+      <img
+        src={brainDecoration}
+        alt=""
+        aria-hidden="true"
+        className="absolute left-[17%] top-[25%] h-7 w-7 -rotate-12 opacity-80 sm:left-[15%] sm:top-[22%] sm:h-10 sm:w-10 lg:left-[13%] lg:top-[30%] lg:h-11 lg:w-11 xl:left-[14%]"
+      />
+
+      <img
+        src={starDecoration}
+        alt=""
+        aria-hidden="true"
+        className="absolute right-[16%] top-[24%] h-8 w-8 rotate-12 opacity-90 sm:right-[15%] sm:top-[20%] sm:h-12 sm:w-12 lg:right-[14%] lg:top-[28%] lg:h-13 lg:w-13 xl:right-[15%]"
+      />
+
+      <img
+        src={starDecoration}
+        alt=""
+        aria-hidden="true"
+        className="absolute bottom-[25%] left-[12%] h-7 w-7 -rotate-12 opacity-75 sm:bottom-[24%] sm:left-[12%] sm:h-10 sm:w-10 lg:bottom-[24%] lg:left-[10%] lg:h-11 lg:w-11"
+      />
+
+      <img
+        src={brainDecoration}
+        alt=""
+        aria-hidden="true"
+        className="absolute bottom-[30%] right-[7%] h-6 w-6 rotate-12 opacity-40 sm:right-[8%] sm:h-9 sm:w-9 lg:bottom-[30%] lg:right-[8%] lg:h-9 lg:w-9"
+      />
+
+      {/* Mascote */}
+      <div className="relative z-10 top-14 mx-auto mb-[-1.6rem] w-fit sm:top-14 lg:top-2">
+        <motion.img
+          src={axonHappy}
+          alt="Mascote Axon feliz"
+          animate={{ y: [-5, 5, -5] }}
+          transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
+          className="block h-[260px] w-auto object-contain drop-shadow-[0_34px_70px_rgba(0,0,0,0.38)] sm:h-[410px] lg:h-[500px] xl:h-[560px]"
+        />
+      </div>
+    </motion.div>
+  );
+}
+
+// ===========================================================================
+// COMPONENTES MENORES
+// ===========================================================================
+
+function HeroButton({ children, to, variant = "primary" }) {
+  const isPrimary = variant === "primary";
+
+  return (
+    <Link
+      to={to}
+      className={`relative z-30 inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl px-5 text-[0.72rem] font-black transition active:scale-[0.98] sm:min-h-11 sm:text-sm ${
+        isPrimary
+          ? "bg-[#8d31dd] text-white shadow-[0_14px_30px_rgba(0,0,0,0.2)] hover:bg-[#9b3bee]"
+          : "border border-white/80 bg-transparent text-white hover:bg-white/10"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function HeroTopButton({ children, to, variant = "outline" }) {
+  const isFilled = variant === "filled";
+
+  return (
+    <Link
+      to={to}
+      className={`relative z-30 inline-flex min-h-9 items-center justify-center rounded-2xl px-5 text-sm font-black transition active:scale-[0.98] ${
+        isFilled
+          ? "bg-[#8d31dd] text-white shadow-[0_14px_30px_rgba(0,0,0,0.2)] hover:bg-[#9b3bee]"
+          : "border border-white/80 bg-transparent text-white hover:bg-white/10"
+      }`}
+    >
+      {children}
+    </Link>
+  );
+}
+
+function PlayStoreIcon() {
+  return (
+    <svg
+      className="h-4 w-4 shrink-0 sm:h-5 sm:w-5"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        fill="#34A853"
+        d="M4.4 3.2c-.2.3-.4.7-.4 1.2v15.2c0 .5.1.9.4 1.2l8.4-8.8-8.4-8.8Z"
+      />
+      <path
+        fill="#4285F4"
+        d="m13.7 11.1 2.7-2.8L6.2 2.5c-.7-.4-1.3-.3-1.8.1l9.3 8.5Z"
+      />
+      <path
+        fill="#FBBC04"
+        d="m13.7 12.9-9.3 8.5c.5.4 1.1.5 1.8.1l10.2-5.8-2.7-2.8Z"
+      />
+      <path
+        fill="#EA4335"
+        d="m20.2 10.6-3.8-2.2-2.9 3 2.9 3 3.8-2.2c.9-.5.9-1.1 0-1.6Z"
+      />
+    </svg>
   );
 }
