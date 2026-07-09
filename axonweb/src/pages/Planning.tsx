@@ -1492,7 +1492,7 @@ function TimelineItem({
       </div>
 
       <div
-        className={`rounded-[1.55rem] border p-4 shadow-xl shadow-card ${
+        className={`min-w-0 rounded-[1.55rem] border p-4 shadow-xl shadow-card ${
           isKey ? "ring-1 ring-amber-300/45 " : ""
         }${
           isKey
@@ -1603,7 +1603,7 @@ function TimelineItem({
         </div>
 
         {/* Conteúdo principal do card. */}
-        <div className="mb-4 flex items-center gap-3">
+        <div className="mb-4 flex items-start gap-3">
           <div
             className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
               isDisplayDone
@@ -1626,8 +1626,8 @@ function TimelineItem({
             )}
           </div>
 
-          <div className="min-w-0">
-            <p className="truncate text-base font-semibold text-primary">
+          <div className="min-w-0 flex-1">
+            <p className="break-words text-base font-semibold text-primary">
               {task.title}
             </p>
             <p className="mt-1 truncate text-xs text-muted">{subtitle}</p>

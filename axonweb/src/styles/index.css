@@ -93,6 +93,15 @@
    THEME UTILITY CLASSES
    ========================================================================== */
 
+/*
+  Em @layer utilities para participar da mesma camada de cascata dos
+  utilitários gerados pelo Tailwind. Fora de uma layer, estas classes
+  sempre venceriam variantes como peer-checked:/hover:/focus:, já que
+  CSS não-layered tem prioridade sobre CSS layered independente de
+  especificidade (ex.: checkbox "Li e concordo" nunca mudava de cor).
+*/
+@layer utilities {
+
 .bg-app {
   background: var(--app-bg);
 }
@@ -159,6 +168,8 @@
 
 .shadow-card {
   box-shadow: var(--shadow-card);
+}
+
 }
 
 /* ==========================================================================

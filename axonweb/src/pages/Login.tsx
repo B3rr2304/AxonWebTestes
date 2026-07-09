@@ -153,7 +153,7 @@ export default function Login() {
 
     try {
       const res = await api.login(email, password);
-      api.saveSession(res);
+      api.saveSession(res, rememberMe);
 
       if (res.has_chronotype) {
         navigate("/app-loading");
