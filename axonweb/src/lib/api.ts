@@ -5,12 +5,27 @@ const BASE_URL = import.meta.env.VITE_API_URL ?? "http://localhost:8000";
  * Centraliza URL, headers, sessão e tratamento padrão de erros.
  * ========================================================================== */
 
+const SESSION_KEYS = ["axon_token", "axon_refresh_token", "axon_user", "axon_last_active"] as const;
+
+// "Manter-me conectado" decide o storage: localStorage sobrevive ao fechar o
+// navegador, sessionStorage é apagado junto com a aba/janela.
+function isRemembered(): boolean {
+  return !!localStorage.getItem("axon_token");
+}
+
+function clearSessionItems() {
+  for (const key of SESSION_KEYS) {
+    localStorage.removeItem(key);
+    sessionStorage.removeItem(key);
+  }
+}
+
 /**
  * Wrapper direto de fetch mantido para compatibilidade com imports existentes.
  * Use `request` abaixo quando precisar do tratamento padrão de erro/sessão.
  */
 async function apiFetch(path: string, options?: RequestInit): Promise<Response> {
-  const token = localStorage.getItem("axon_token");
+  const token = getToken();
 
   return fetch(`${BASE_URL}${path}`, {
     ...options,
@@ -26,7 +41,11 @@ async function apiFetch(path: string, options?: RequestInit): Promise<Response> 
 export default apiFetch;
 
 function getToken(): string | null {
-  return localStorage.getItem("axon_token");
+  return sessionStorage.getItem("axon_token") ?? localStorage.getItem("axon_token");
+}
+
+function getRefreshToken(): string | null {
+  return sessionStorage.getItem("axon_refresh_token") ?? localStorage.getItem("axon_refresh_token");
 }
 
 function authHeaders(): Record<string, string> {
@@ -36,11 +55,14 @@ function authHeaders(): Record<string, string> {
 
 /**
  * Helper principal das chamadas autenticadas.
- * Também renova o marcador de atividade e redireciona sessões expiradas.
+ * Antes de desconectar por 401, tenta renovar a sessão com o refresh token
+ * (é isso que faz "manter-me conectado" durar além da validade do access
+ * token). Também renova o marcador de atividade.
  */
 async function request<T>(
   path: string,
-  options: RequestInit = {}
+  options: RequestInit = {},
+  isRetry = false
 ): Promise<T> {
   let res: Response;
 
@@ -62,10 +84,20 @@ async function request<T>(
 
   if (!res.ok) {
     if (res.status === 401) {
-      localStorage.removeItem("axon_token");
-      localStorage.removeItem("axon_refresh_token");
-      localStorage.removeItem("axon_user");
-      localStorage.removeItem("axon_last_active");
+      const refreshToken = getRefreshToken();
+
+      // path check evita recursão infinita se o próprio /auth/refresh cair em 401
+      if (!isRetry && path !== "/auth/refresh" && refreshToken) {
+        try {
+          const renewed = await refreshSession(refreshToken);
+          saveSession(renewed, isRemembered());
+          return request<T>(path, options, true);
+        } catch {
+          // Refresh token também expirado/revogado: cai no logout abaixo.
+        }
+      }
+
+      clearSessionItems();
       window.location.href = "/login";
       throw new Error("Sessão expirada");
     }
@@ -74,8 +106,8 @@ async function request<T>(
     throw new Error(error.detail ?? "Erro na requisição");
   }
 
-  if (localStorage.getItem("axon_token")) {
-    localStorage.setItem("axon_last_active", String(Date.now()));
+  if (getToken()) {
+    (isRemembered() ? localStorage : sessionStorage).setItem("axon_last_active", String(Date.now()));
   }
 
   if (res.status === 204) return undefined as T;
@@ -128,11 +160,18 @@ export function refreshSession(refreshToken: string) {
 }
 
 // Mantém os dados mínimos da sessão usados pelas rotas privadas e headers.
-export function saveSession(res: AuthResponse) {
-  localStorage.setItem("axon_token", res.access_token);
-  localStorage.setItem("axon_refresh_token", res.refresh_token);
-  localStorage.setItem("axon_user", JSON.stringify({ id: res.user_id, email: res.email, name: res.name }));
-  localStorage.setItem("axon_last_active", String(Date.now()));
+// `remember=true` (padrão) grava em localStorage e sobrevive ao fechar o
+// navegador; `remember=false` grava em sessionStorage e some com a aba.
+export function saveSession(res: AuthResponse, remember: boolean = true) {
+  const target = remember ? localStorage : sessionStorage;
+  const other = remember ? sessionStorage : localStorage;
+
+  target.setItem("axon_token", res.access_token);
+  target.setItem("axon_refresh_token", res.refresh_token);
+  target.setItem("axon_user", JSON.stringify({ id: res.user_id, email: res.email, name: res.name }));
+  target.setItem("axon_last_active", String(Date.now()));
+
+  for (const key of SESSION_KEYS) other.removeItem(key);
 }
 
 export function isLoggedIn(): boolean {
@@ -140,10 +179,7 @@ export function isLoggedIn(): boolean {
 }
 
 export function logout() {
-  localStorage.removeItem("axon_token");
-  localStorage.removeItem("axon_refresh_token");
-  localStorage.removeItem("axon_user");
-  localStorage.removeItem("axon_last_active");
+  clearSessionItems();
 }
 
 /* ============================================================================

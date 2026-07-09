@@ -1,8 +1,33 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { X } from "lucide-react";
 
 import { ScrollArea } from "../ui/ScrollArea";
+
+// ===========================================================================
+// TRAVA DE SCROLL DO BODY
+// ===========================================================================
+// O painel é fixed mas continua no mesmo fluxo do DOM da página; sem travar
+// o scroll do body, um touch iniciado fora da área rolável do painel (ex.:
+// bordas, header) borbulha até o body e rola o fundo inteiro no mobile.
+// Contador em módulo evita destravar cedo quando dois sheets se sobrepõem.
+let scrollLockCount = 0;
+
+function lockBodyScroll() {
+  scrollLockCount += 1;
+  if (scrollLockCount === 1) {
+    document.body.style.overflow = "hidden";
+    document.body.style.overscrollBehavior = "none";
+  }
+}
+
+function unlockBodyScroll() {
+  scrollLockCount = Math.max(0, scrollLockCount - 1);
+  if (scrollLockCount === 0) {
+    document.body.style.overflow = "";
+    document.body.style.overscrollBehavior = "";
+  }
+}
 
 // ===========================================================================
 // TIPOS DO COMPONENTE
@@ -61,6 +86,13 @@ export default function BottomSheet({
   ariaLabel = "Painel inferior",
 }: BottomSheetProps) {
   const hasHeader = title || subtitle || showCloseButton || showHandle;
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    lockBodyScroll();
+    return unlockBodyScroll;
+  }, [isOpen]);
 
   function handleClose() {
     if (dismissDisabled) return;
