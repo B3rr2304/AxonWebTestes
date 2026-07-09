@@ -1117,6 +1117,25 @@ export function deleteRoutineItem(routineId: string, itemId: string) {
 }
 
 /* ============================================================================
+ * MEMÓRIAS DO AXON
+ * O que o agente aprendeu sobre o usuário ao longo das conversas.
+ * ========================================================================== */
+
+export interface UserMemory {
+  id: string;
+  content: string;
+  created_at: string;
+}
+
+export function getMemories() {
+  return request<UserMemory[]>("/profile/memories");
+}
+
+export function deleteMemory(id: string) {
+  return request<void>(`/profile/memories/${id}`, { method: "DELETE" });
+}
+
+/* ============================================================================
  * OBJECTIVES
  * Objetivos de longo prazo que podem agrupar tarefas/subtarefas.
  * ========================================================================== */

@@ -4,6 +4,7 @@ from models.schemas import ProfileResponse, ProfileUpdate, TagItem, TagPreferenc
 from auth_helper import get_current_user
 from database import supabase
 from services import chronotype as chronotype_service
+from services import memory_service
 
 router = APIRouter(prefix="/profile", tags=["profile"])
 
@@ -246,3 +247,23 @@ def update_tags(body: TagPreferences, current_user: dict = Depends(get_current_u
     }
     supabase.table("profiles").update({"custom_tags": payload}).eq("id", user_id).execute()
     return body
+
+
+# ---------------------------------------------------------------------------
+# Memórias do Axon — o que o agente aprendeu sobre o usuário.
+# ---------------------------------------------------------------------------
+
+
+@router.get("/memories")
+def list_memories(current_user: dict = Depends(get_current_user)):
+    """Lista as memórias do usuário (id, content, created_at), mais antigas primeiro."""
+    return memory_service.list_memories_with_ids(current_user["id"])
+
+
+@router.delete("/memories/{memory_id}", status_code=204)
+def delete_memory(memory_id: str, current_user: dict = Depends(get_current_user)):
+    """Remove uma memória específica do usuário."""
+    try:
+        memory_service.delete_memory(current_user["id"], memory_id)
+    except ValueError as e:
+        raise HTTPException(status_code=404, detail=str(e))

@@ -5,6 +5,7 @@ import {
   Brain,
   Camera,
   Check,
+  ChevronDown,
   ChevronRight,
   Edit3,
   Loader2,
@@ -231,6 +232,9 @@ export default function Profile() {
           </div>
         </section>
 
+        {/* O que o Axon aprendeu sobre o usuário. */}
+        <AxonMemories />
+
         {/* Ações de conta relacionadas ao perfil. */}
         <section className="space-y-3">
           <button
@@ -271,6 +275,148 @@ export default function Profile() {
         }}
       />
     </main>
+  );
+}
+
+// ===========================================================================
+// MEMÓRIAS DO AXON
+// ===========================================================================
+
+function AxonMemories() {
+  const [memories, setMemories] = useState<api.UserMemory[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [confirmingId, setConfirmingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState(false);
+
+  const visibleMemories = expanded ? memories : memories.slice(0, 3);
+  const hiddenCount = memories.length - visibleMemories.length;
+  const canExpand = memories.length > 3;
+
+  useEffect(() => {
+    api.getMemories()
+      .then(setMemories)
+      .catch(() => setMemories([]))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleDelete(id: string) {
+    setDeletingId(id);
+    try {
+      await api.deleteMemory(id);
+      setMemories((prev) => prev.filter((m) => m.id !== id));
+      setConfirmingId(null);
+    } catch {
+      // Mantém a memória na lista em caso de erro.
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
+  return (
+    <section className="mb-4 rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
+      <div className="mb-4 flex items-center gap-2">
+        <Brain className="h-4 w-4 text-purple-200" />
+        <p className="text-sm font-semibold text-white">
+          O que o Axon sabe sobre você
+        </p>
+      </div>
+
+      {/* Aviso fixo: como adicionar/corrigir memórias. */}
+      <div className="mb-4 flex items-start gap-2.5 rounded-[1.4rem] border border-purple-300/20 bg-purple-500/10 px-4 py-3">
+        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-purple-200" />
+        <p className="text-xs leading-5 text-purple-100/80">
+          Quer adicionar ou corrigir uma informação? Converse diretamente com o
+          Axon no chat e conte o que quer mudar — ele aprende com o que você
+          compartilha.
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center gap-2 py-3 text-xs text-white/35">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando…
+        </div>
+      ) : memories.length === 0 ? (
+        <p className="rounded-[1.4rem] border border-dashed border-white/12 bg-black/15 px-4 py-5 text-center text-xs leading-5 text-white/42">
+          O Axon ainda não anotou nada sobre você. Converse com ele para que ele
+          possa te conhecer melhor.
+        </p>
+      ) : (
+        <div className="space-y-2">
+          {visibleMemories.map((memory) => (
+            <div
+              key={memory.id}
+              className="rounded-[1.4rem] border border-white/10 bg-black/20 px-4 py-3"
+            >
+              <div className="flex items-start gap-3">
+                <p className="min-w-0 flex-1 break-words text-xs leading-5 text-white/70">
+                  {memory.content}
+                </p>
+
+                {confirmingId !== memory.id && (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmingId(memory.id)}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/35 active:scale-[0.94]"
+                    aria-label="Remover memória"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {confirmingId === memory.id && (
+                <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/8 pt-3">
+                  <p className="text-[0.7rem] leading-4 text-white/50">
+                    Tem certeza? Esta memória será removida permanentemente.
+                  </p>
+
+                  <div className="flex shrink-0 items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setConfirmingId(null)}
+                      disabled={deletingId === memory.id}
+                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94] disabled:opacity-50"
+                      aria-label="Cancelar"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDelete(memory.id)}
+                      disabled={deletingId === memory.id}
+                      className="flex h-8 items-center gap-1.5 rounded-xl bg-rose-500/90 px-3 text-xs font-semibold text-white active:scale-[0.96] disabled:opacity-60"
+                    >
+                      {deletingId === memory.id ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Trash2 className="h-3.5 w-3.5" />
+                      )}
+                      Remover
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+
+          {canExpand && (
+            <button
+              type="button"
+              onClick={() => setExpanded((v) => !v)}
+              className="flex w-full items-center justify-center gap-1.5 rounded-[1.4rem] border border-white/10 bg-white/[0.03] py-2.5 text-xs font-semibold text-purple-100/70 active:scale-[0.98]"
+            >
+              <ChevronDown
+                className={`h-3.5 w-3.5 transition-transform ${
+                  expanded ? "rotate-180" : ""
+                }`}
+              />
+              {expanded ? "Ver menos" : `Ver mais (${hiddenCount})`}
+            </button>
+          )}
+        </div>
+      )}
+    </section>
   );
 }
 

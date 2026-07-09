@@ -357,10 +357,11 @@ def _materialize(
             if weekday not in (it.get("days_of_week") or []):
                 continue
 
+            # Rotina sempre materializa como "task" no calendário — seja o
+            # item de horário fixo ou flexível (o Axon só decide o slot).
             if it.get("start_time"):
                 start_s = str(it["start_time"])[:5]
                 end_s = str(it["end_time"])[:5]
-                task_type = "event"
             else:
                 nb = it.get("not_before")
                 na = it.get("not_after")
@@ -374,7 +375,7 @@ def _materialize(
                 if slot is None:
                     continue  # dia sem janela livre para esse item — pula
                 start_s, end_s = slot
-                task_type = "task"
+            task_type = "task"
 
             busy_by_date[dstr].append((_to_min(start_s), _to_min(end_s)))
             new_tasks.append({
