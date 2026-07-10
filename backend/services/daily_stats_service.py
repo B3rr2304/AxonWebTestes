@@ -188,6 +188,21 @@ def _mark_reconcile_started(user_id: str) -> None:
         pass  # não bloqueia o fluxo principal de reconcile
 
 
+def live_day_stats(user_id: str, day: date, tz_name: str) -> dict:
+    """
+    Estatística de UM dia calculada na hora, sem persistir em
+    daily_task_stats — para quando o dia ainda não terminou (ex.:
+    report_service gera o relatório às 20h do próprio último dia do
+    período, antes do congelamento de virada às 00:10).
+
+    Mesma lógica de _day_stats, com `ref_now` = agora (não fim do dia), para
+    que eventos futuros dentro do próprio dia não contem como concluídos.
+    """
+    tz = user_tz_service.zone(tz_name)
+    tasks, subs_by_task = _fetch(user_id)
+    return _day_stats(day, tasks, subs_by_task, datetime.now(tz), tz)
+
+
 def snapshot_days(user_id: str, days: list[date], tz_name: str) -> None:
     """Congela cada dia da lista. Dias sem tarefas não geram linha."""
     if not days:

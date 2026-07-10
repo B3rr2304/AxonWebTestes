@@ -136,6 +136,75 @@ def _compute_streak(user_id: str, items: list[dict], today: date) -> int:
     return streak
 
 
+# --- Consistência de rotinas (Dashboard / relatórios) ---------------------
+
+def consistency_for_range(user_id: str, start: date, end: date) -> list[dict]:
+    """
+    Para cada rotina ativa, a consistência no intervalo [start, end]
+    (inclusive): quantos dias tiveram tarefas geradas e quantos desses dias
+    foram totalmente concluídos.
+
+    Mesma fonte que o streak — tasks materializadas por routine_item_id, não
+    os days_of_week dos items — para refletir o que de fato foi gerado (dias
+    pausados não geram tasks e ficam de fora naturalmente).
+
+    Rotinas sem nenhuma task gerada no intervalo são omitidas do retorno.
+    """
+    routines = (
+        supabase.table("routines")
+        .select("id, name")
+        .eq("user_id", user_id)
+        .eq("status", "active")
+        .execute()
+    ).data or []
+
+    if not routines:
+        return []
+
+    out = []
+    for r in routines:
+        items = _get_items(r["id"])
+        if not items:
+            continue
+
+        item_ids = [it["id"] for it in items]
+        res = (
+            supabase.table("tasks")
+            .select("scheduled_date, status")
+            .eq("user_id", user_id)
+            .in_("routine_item_id", item_ids)
+            .gte("scheduled_date", str(start))
+            .lte("scheduled_date", str(end))
+            .execute()
+        )
+
+        by_date: dict[str, list[str]] = defaultdict(list)
+        for t in res.data or []:
+            by_date[str(t["scheduled_date"])].append(t["status"])
+
+        if not by_date:
+            continue  # nenhuma task gerada no intervalo: omite a rotina
+
+        days_total = len(by_date)
+        days_done = sum(1 for statuses in by_date.values() if all(s == "done" for s in statuses))
+
+        out.append({
+            "routine_id": r["id"],
+            "name": r["name"],
+            "days_done": days_done,
+            "days_total": days_total,
+            "percent": round(days_done / days_total * 100),
+        })
+
+    return out
+
+
+def weekly_consistency(user_id: str, today: date) -> list[dict]:
+    """Consistência da semana atual (segunda a `today`, limitado aos dias já decorridos)."""
+    week_start = today - timedelta(days=today.weekday())  # segunda-feira
+    return consistency_for_range(user_id, week_start, today)
+
+
 # --- Exclusão de tarefas futuras geradas ---------------------------------
 
 def _delete_future_tasks(user_id: str, item_ids: list[str], today: date) -> None:

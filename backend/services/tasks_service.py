@@ -329,6 +329,7 @@ def carry_forward_tasks(user_id: str, today=None) -> list[dict]:
         .eq("task_type", "task")
         .lt("scheduled_date", today)
         .in_("status", ["todo", "progress"])
+        .is_("routine_item_id", "null")
         .execute()
     )
 

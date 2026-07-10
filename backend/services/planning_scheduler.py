@@ -2,7 +2,10 @@
 Scheduler de lembretes de planejamento.
 
 Roda a cada minuto via APScheduler e cria notificações de planejamento
-para usuários cujo horário configurado foi atingido.
+para usuários cujo horário configurado foi atingido. Também dispara, no
+fuso local de cada usuário: o snapshot/carry-forward de fim de dia (00:10) e
+os relatórios narrativos semanal (todo domingo 20h) e mensal (todo último
+dia do mês 20h) — ver report_service.
 
 Fluxo:
   1. Busca todos os usuários com cronótipo definido (onboarding completo)
@@ -11,18 +14,26 @@ Fluxo:
   4. Cooldowns impedem duplicatas no mesmo dia / semana
 """
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from zoneinfo import ZoneInfo
 
 from database import supabase
 from services import notification_service
 from services import daily_stats_service
+from services import report_service
 from services import user_tz as user_tz_service
 
 # Horário local (após a meia-noite) em que congelamos o snapshot do dia que
 # acabou e carregamos as pendentes. Uma folga de alguns minutos evita a borda
 # exata da virada.
 _SNAPSHOT_FIRE_TIME = "00:10"
+
+# Horário local de disparo dos relatórios narrativos (semanal e mensal).
+# O período gerado inclui o próprio dia do disparo (ver report_service).
+_REPORT_FIRE_TIME = "20:00"
+
+# weekday() de domingo (0 = segunda ... 6 = domingo).
+_SUNDAY = 6
 
 # Horários de disparo por cronótipo quando planning_use_chronotype = true
 _CHRONOTYPE_TIME = {
@@ -88,6 +99,10 @@ def _bool(val, default: bool) -> bool:
     return val if val is not None else default
 
 
+def _is_last_day_of_month(d) -> bool:
+    return (d + timedelta(days=1)).day == 1
+
+
 def run() -> None:
     """Job chamado pelo APScheduler a cada minuto."""
     now_utc = datetime.now(timezone.utc)
@@ -131,6 +146,24 @@ def _process_user(user: dict, now_utc: datetime) -> None:
             daily_stats_service.reconcile(user_id, tz_name, now_local.date())
         except Exception as e:
             print(f"[planning_scheduler] reconcile falhou user={user_id}: {e}", flush=True)
+
+    # Relatórios narrativos: todo domingo 20h local (semana que está
+    # terminando hoje) e todo último dia do mês 20h local (mês que está
+    # terminando hoje). O próprio dia do disparo entra no período.
+    if current_hhmm == _REPORT_FIRE_TIME:
+        if current_weekday == _SUNDAY:
+            try:
+                report_service.generate_weekly_report(user_id, tz_name)
+                print(f"[planning_scheduler] weekly_report → user={user_id}", flush=True)
+            except Exception as e:
+                print(f"[planning_scheduler] weekly_report falhou user={user_id}: {e}", flush=True)
+
+        if _is_last_day_of_month(now_local.date()):
+            try:
+                report_service.generate_monthly_report(user_id, tz_name)
+                print(f"[planning_scheduler] monthly_report → user={user_id}", flush=True)
+            except Exception as e:
+                print(f"[planning_scheduler] monthly_report falhou user={user_id}: {e}", flush=True)
 
     daily_enabled  = _bool(user.get("daily_planning_enabled"),  True)
     weekly_enabled = _bool(user.get("weekly_planning_enabled"), True)
