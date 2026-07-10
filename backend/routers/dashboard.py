@@ -1,10 +1,11 @@
 from datetime import datetime, date
 from zoneinfo import ZoneInfo
 
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Header
 from auth_helper import get_current_user
 from database import supabase
-from services import chronotype as chronotype_service, calibration_service
+from services import chronotype as chronotype_service, calibration_service, routines_service
+from services import report_service, user_tz as user_tz_service
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -96,6 +97,48 @@ def get_dashboard(current_user: dict = Depends(get_current_user)):
         "current_block": _get_block(curve_key, hour, offset=0, tasks=todays_tasks),
         "next_block": _get_block(curve_key, hour, offset=1, tasks=todays_tasks),
         "day_blocks": _today_blocks(curve_key, todays_tasks),
+        "routine_consistency": routines_service.weekly_consistency(user_id, now.date()),
+    }
+
+
+def _latest_report(user_id: str, period_type: str, tz_name: str) -> dict | None:
+    res = (
+        supabase.table("weekly_reports")
+        .select("period_type, period_start, period_end, data, narrative, created_at")
+        .eq("user_id", user_id)
+        .eq("period_type", period_type)
+        .order("period_start", desc=True)
+        .limit(1)
+        .execute()
+    )
+    rows = res.data or []
+    if not rows:
+        return None
+
+    row = rows[0]
+    period_end = date.fromisoformat(str(row["period_end"]))
+    if not report_service.is_within_visibility_window(period_end, tz_name):
+        return None
+    return row
+
+
+@router.get("/reports")
+def get_dashboard_reports(
+    current_user: dict = Depends(get_current_user),
+    x_timezone: str | None = Header(None, alias="X-Timezone"),
+):
+    """
+    Relatório semanal e mensal mais recentes do usuário (gerados pelo
+    planning_scheduler), só enquanto estiverem dentro da janela de
+    visibilidade (20h do último dia do período até meio-dia do dia
+    seguinte). Fora da janela ou sem relatório gerado ainda, cada campo
+    vem `null` — o frontend só exibe o card quando presente.
+    """
+    user_id = current_user["id"]
+    tz_name = user_tz_service.resolve(user_id, x_timezone)
+    return {
+        "weekly": _latest_report(user_id, "weekly", tz_name),
+        "monthly": _latest_report(user_id, "monthly", tz_name),
     }
 
 

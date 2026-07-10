@@ -148,6 +148,7 @@ export default function Insights() {
   const [blocksMinPoints, setBlocksMinPoints] = useState(14);
   const [expandedBlockIdx, setExpandedBlockIdx] = useState<number | null>(null);
   const [blocksListExpanded, setBlocksListExpanded] = useState(false);
+  const [routineConsistency, setRoutineConsistency] = useState<api.RoutineConsistency[]>([]);
 
   // Carrega o registro diário atual para abrir/atualizar o DayReview.
   useEffect(() => {
@@ -155,6 +156,13 @@ export default function Insights() {
       .getDailyLogToday()
       .then(setTodayLog)
       .catch(() => setTodayLog(null));
+  }, []);
+
+  // Consistência de rotinas ativas na semana atual (card "Rotinas desta semana").
+  useEffect(() => {
+    api.getDashboard()
+      .then((d) => setRoutineConsistency(d.routine_consistency ?? []))
+      .catch(() => setRoutineConsistency([]));
   }, []);
 
   // Busca os blocos de foco personalizados.
@@ -866,6 +874,58 @@ export default function Insights() {
             </>
           )}
         </section>
+
+        {routineConsistency.length > 0 && (
+          <section className="mb-5 rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-primary">Rotinas desta semana</p>
+                <p className="mt-1 text-xs text-muted">
+                  Consistência nos últimos 7 dias
+                </p>
+              </div>
+              <RefreshCw className="h-5 w-5 text-accent" />
+            </div>
+
+            <div className="space-y-3">
+              {[...routineConsistency]
+                .sort((a, b) => b.percent - a.percent)
+                .map((routine) => {
+                  const fillColor =
+                    routine.percent >= 80
+                      ? "bg-gradient-to-r from-emerald-500 to-emerald-400"
+                      : routine.percent >= 50
+                      ? "bg-gradient-to-r from-amber-500 to-amber-400"
+                      : "bg-gradient-to-r from-rose-500 to-rose-400";
+
+                  return (
+                    <div key={routine.routine_id}>
+                      <div className="mb-1.5 flex items-center justify-between gap-3">
+                        <p className="min-w-0 flex-1 truncate text-sm font-semibold text-primary">
+                          {routine.name}
+                        </p>
+                        <p className="shrink-0 text-xs text-muted">
+                          {routine.days_done} de {routine.days_total} dias
+                        </p>
+                      </div>
+
+                      <div className="flex items-center gap-3">
+                        <div className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--border-soft)]">
+                          <div
+                            className={`h-full rounded-full ${fillColor}`}
+                            style={{ width: `${routine.percent}%` }}
+                          />
+                        </div>
+                        <span className="shrink-0 text-xs font-semibold text-primary">
+                          {routine.percent}%
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </section>
+        )}
 
         <section className="mb-5 rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
           <div className="mb-4 flex items-center justify-between gap-3">

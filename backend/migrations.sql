@@ -456,3 +456,31 @@ alter table public.profiles
 
 alter table public.profiles
   add column if not exists daily_stats_reconcile_started_at timestamp with time zone;
+
+-- =============================================
+-- Migration 19: relatórios narrativos semanal/mensal (weekly_reports)
+-- ---------------------------------------------
+-- Nova feature: services/report_service.py monta um resumo do período
+-- ENCERRADO (semana anterior / mês anterior) a partir de dados já
+-- calculados (daily_task_stats, consistência de rotinas, tarefas chave) e
+-- pede ao Claude só a narrativa em texto — mesma filosofia do
+-- correlations_service (backend calcula, Claude escreve).
+-- Disparado pelo planning_scheduler: toda segunda 08h local (semanal) e
+-- todo dia 1º do mês 08h local (mensal). Índice único garante no máximo um
+-- relatório por usuário/tipo/período — upsert idempotente se o job rodar
+-- de novo no mesmo minuto/janela.
+-- =============================================
+
+create table if not exists public.weekly_reports (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users(id) on delete cascade not null,
+  period_type text check (period_type in ('weekly', 'monthly')) not null,
+  period_start date not null,
+  period_end date not null,
+  data jsonb not null,
+  narrative text not null,
+  created_at timestamptz default now()
+);
+
+create unique index if not exists weekly_reports_user_period_idx
+  on public.weekly_reports(user_id, period_type, period_start);

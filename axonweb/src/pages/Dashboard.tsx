@@ -7,6 +7,7 @@ import {
   ChevronDown,
   ChevronUp,
   Clock3,
+  FileText,
   Focus,
   MessageCircle,
   Moon,
@@ -55,6 +56,7 @@ export default function Dashboard() {
   // --------------------------------------------------------------------------
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [data, setData] = useState<DashboardData | null>(null);
+  const [reports, setReports] = useState<api.DashboardReports | null>(null);
   const [loading, setLoading] = useState(true);
   const [keyTask, setKeyTask] = useState<Task | null>(null);
   const [subtasksMap, setSubtasksMap] = useState<Record<string, Subtask[]>>({});
@@ -163,6 +165,15 @@ export default function Dashboard() {
         .catch(() => setTodayLog(null));
     };
 
+    // Relatórios narrativos mudam no máximo uma vez por semana/mês — carrega
+    // só na entrada, sem entrar no intervalo de 30min nem no refresh de aba.
+    const loadReports = () => {
+      api
+        .getDashboardReports()
+        .then(setReports)
+        .catch(() => setReports(null));
+    };
+
     const analyzeNotificationsAndRefresh = () => {
       api
         .analyzeNotifications()
@@ -174,6 +185,7 @@ export default function Dashboard() {
 
     loadDashboard();
     loadDailyLog();
+    loadReports();
     loadKeyTask();
     loadSubtasks();
     refreshUnreadCount();
@@ -580,6 +592,14 @@ export default function Dashboard() {
             <CalendarDays className="ml-2 h-4 w-4" />
           </button>
         </section>
+
+        {/* Relatórios narrativos: gerados pelo scheduler (semanal toda segunda, mensal todo dia 1º). */}
+        {reports?.weekly && (
+          <PeriodReportCard title="Relatório da semana" report={reports.weekly} />
+        )}
+        {reports?.monthly && (
+          <PeriodReportCard title="Relatório do mês" report={reports.monthly} />
+        )}
       </div>
 
       {/* Overlays globais: sidebar, revisão diária e central de notificações. */}
@@ -627,6 +647,62 @@ function MetricCard({ icon: Icon, label, value, helper }: MetricCardProps) {
 
       <p className="mt-1 text-xs leading-5 text-soft">{helper}</p>
     </div>
+  );
+}
+
+// Narrativa gerada pelo scheduler (relatório semanal ou mensal), com os
+// principais números do período em chips abaixo do texto.
+function PeriodReportCard({
+  title,
+  report,
+}: {
+  title: string;
+  report: api.PeriodReport;
+}) {
+  const { data, narrative } = report;
+  const topRoutine = [...data.routine_consistency].sort(
+    (a, b) => b.percent - a.percent
+  )[0];
+
+  return (
+    <section className="rounded-[2rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <FileText className="h-5 w-5 text-accent" />
+          <p className="text-sm font-semibold text-primary">{title}</p>
+        </div>
+
+        <span className="shrink-0 text-xs text-muted">
+          {formatPeriodRange(report.period_start, report.period_end)}
+        </span>
+      </div>
+
+      <p className="text-sm leading-6 text-secondary">{narrative}</p>
+
+      <div className="mt-4 flex flex-wrap gap-2">
+        <div className="rounded-full border border-accent-soft bg-accent-soft px-3 py-1 text-[0.7rem] font-semibold text-accent">
+          {data.avg_completion_rate}% de conclusão média
+        </div>
+
+        {data.most_productive_day && (
+          <div className="rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-[0.7rem] font-semibold text-emerald-700 dark:text-emerald-100">
+            Melhor dia: {formatShortDate(data.most_productive_day.date)} ({data.most_productive_day.completion_rate}%)
+          </div>
+        )}
+
+        {data.key_tasks.defined > 0 && (
+          <div className="rounded-full border border-amber-300/25 bg-amber-400/10 px-3 py-1 text-[0.7rem] font-semibold text-amber-700 dark:text-amber-100">
+            {data.key_tasks.done}/{data.key_tasks.defined} tarefas-chave
+          </div>
+        )}
+
+        {topRoutine && (
+          <div className="rounded-full border border-soft bg-surface-muted px-3 py-1 text-[0.7rem] font-semibold text-muted">
+            {topRoutine.name}: {topRoutine.percent}%
+          </div>
+        )}
+      </div>
+    </section>
   );
 }
 
@@ -848,6 +924,19 @@ function getCurrentBlockProgress(block: FocusBlock) {
 
 function clampPercent(value: number) {
   return Math.min(Math.max(value, 0), 100);
+}
+
+// "2026-06-29" -> "29/06"
+function formatShortDate(iso: string) {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+// "2026-06-29" + "2026-07-05" -> "29/06 – 05/07"
+function formatPeriodRange(start: string, end: string) {
+  return `${formatShortDate(start)} – ${formatShortDate(end)}`;
 }
 
 // ============================================================================

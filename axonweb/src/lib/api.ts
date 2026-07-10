@@ -374,6 +374,14 @@ export interface FocusBlock {
   tasks: BlockTask[];
 }
 
+export interface RoutineConsistency {
+  routine_id: string;
+  name: string;
+  days_done: number;
+  days_total: number;
+  percent: number;
+}
+
 export interface DashboardData {
   greeting: string;
   chronotype_label: string;
@@ -388,11 +396,40 @@ export interface DashboardData {
   current_block: FocusBlock;
   next_block: FocusBlock;
   day_blocks: DayBlock[];
+  routine_consistency: RoutineConsistency[];
 }
 
 // Usado no Dashboard para carregar blocos atuais, próximos e tarefas do dia.
 export function getDashboard() {
   return request<DashboardData>("/dashboard/");
+}
+
+export interface PeriodReportData {
+  period_start: string;
+  period_end: string;
+  avg_completion_rate: number;
+  most_productive_day: { date: string; completion_rate: number } | null;
+  routine_consistency: RoutineConsistency[];
+  key_tasks: { defined: number; done: number };
+}
+
+export interface PeriodReport {
+  period_type: "weekly" | "monthly";
+  period_start: string;
+  period_end: string;
+  data: PeriodReportData;
+  narrative: string;
+  created_at: string;
+}
+
+export interface DashboardReports {
+  weekly: PeriodReport | null;
+  monthly: PeriodReport | null;
+}
+
+// Relatórios narrativos gerados pelo scheduler (semanal toda segunda, mensal todo dia 1º).
+export function getDashboardReports() {
+  return request<DashboardReports>("/dashboard/reports");
 }
 
 /* ============================================================================
