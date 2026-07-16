@@ -5,6 +5,11 @@ import { ArrowRight, Star } from "lucide-react";
 
 import { refreshSession, saveSession } from "../lib/api";
 import LandingPurpleBackground from "../components/landing/LandingPurpleBackground";
+import LandingProductivityProblem from "../components/landing/LandingProductivityProblem";
+import LandingAxonCapabilities from "../components/landing/LandingAxonCapabilities";
+import LandingAxonEvolution from "../components/landing/LandingAxonEvolution";
+import LandingPersonalExperience from "../components/landing/LandingPersonalExperience";
+import LandingFinalCTA from "../components/landing/LandingFinalCTA";
 
 import axonHappy from "../assets/axon/axon-happy.png";
 import brainDecoration from "../assets/decorations/brain.svg";
@@ -13,8 +18,9 @@ import starDecoration from "../assets/decorations/star.svg";
 // ===========================================================================
 // LANDING PAGE — REDESIGN
 // ===========================================================================
-// Hero mobile-first inspirado no novo Figma, já preparado para reaproveitar
-// o fundo roxo e padrões visuais nas próximas seções.
+// Hero mobile-first com suporte real a light/dark mode.
+// No light mode, a landing fica clara/lavanda.
+// No dark mode, mantém o visual roxo escuro original.
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -65,8 +71,13 @@ export default function LandingPage() {
   }, [navigate]);
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#2d0850] text-white">
+    <main className="min-h-screen overflow-hidden bg-[#fbf8ff] text-[#2d0850] dark:bg-[#2d0850] dark:text-white">
       <LandingHero />
+      <LandingProductivityProblem />
+      <LandingAxonCapabilities />
+      <LandingAxonEvolution />
+      <LandingPersonalExperience />
+      <LandingFinalCTA />
     </main>
   );
 }
@@ -77,17 +88,57 @@ export default function LandingPage() {
 
 function LandingHero() {
   return (
-    <section className="relative isolate min-h-[100svh] overflow-hidden rounded-b-[1.7rem] border-b border-white/10 bg-[#2d0850] px-4 pb-0 pt-7 shadow-[0_14px_0_rgba(255,255,255,0.16)] sm:px-6 lg:flex lg:min-h-screen lg:items-center lg:rounded-b-[2.2rem] lg:px-10 lg:py-8 xl:px-14">
+    <section className="relative isolate min-h-[100svh] overflow-hidden rounded-b-[1.75rem] bg-[#fbf8ff] px-4 pb-20 pt-7 text-[#2d0850] sm:px-6 lg:flex lg:min-h-screen lg:items-start lg:rounded-b-[2.4rem] lg:px-10 lg:pb-24 lg:pt-8 xl:px-14 dark:bg-[#2d0850] dark:text-white">
       <LandingPurpleBackground intensity="strong" />
 
-      <div className="relative z-10 mx-auto flex w-full max-w-[1180px] flex-col lg:grid lg:grid-cols-[minmax(0,0.82fr)_minmax(420px,0.82fr)] lg:items-center lg:gap-10">
+      {/* Acabamento inferior do hero: camadas internas para evitar faixa clara estranha. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-0 h-10 rounded-b-[1.75rem] bg-[#7b2cbf]/10 lg:h-12 lg:rounded-b-[2.4rem] dark:bg-[#160028]/45"
+      />
+
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-[1] h-3 rounded-b-[1.75rem] bg-[#7b2cbf]/35 lg:h-3.5 lg:rounded-b-[2.4rem] dark:bg-[#7b2cbf]/60"
+      />
+
+      <div className="relative z-10 mx-auto flex w-full max-w-[1180px] flex-col lg:grid lg:grid-cols-[minmax(0,0.82fr)_minmax(420px,0.82fr)] lg:items-center lg:gap-10 lg:pt-10">
         <HeroTopBar />
 
         <HeroContent />
 
         <HeroRobotStage />
+
+        <HeroIntroBlock />
       </div>
     </section>
+  );
+}
+
+function HeroIntroBlock() {
+  return (
+    <div className="mx-auto mt-10 w-full max-w-[42rem] text-center lg:col-span-2 lg:-mt-16 lg:max-w-[1180px] lg:text-left">
+      <div className="w-full border-t border-[#2d0850]/12 pt-8 dark:border-white/12">
+        <div className="lg:grid lg:grid-cols-[0.82fr_1.18fr] lg:items-start lg:gap-10">
+          <h2 className="mx-auto max-w-[42rem] text-[1.85rem] font-black leading-[0.92] tracking-[-0.055em] text-[#2d0850] sm:text-[2.6rem] lg:mx-0 lg:max-w-[31rem] lg:text-[3rem] dark:text-white">
+            Nem sempre um dia cheio é um dia produtivo
+          </h2>
+
+          <div className="mx-auto mt-4 max-w-[35rem] lg:mx-0 lg:mt-0 lg:max-w-[36rem]">
+            <p className="text-sm font-medium leading-6 text-[#2d0850]/72 sm:text-base sm:leading-7 dark:text-white/72">
+              Você já terminou um dia inteiro ocupado, mas ainda sentiu que não
+              avançou no que realmente importava?
+            </p>
+
+            <p className="mt-3 text-sm leading-6 text-[#2d0850]/62 sm:text-base sm:leading-7 dark:text-white/58">
+              Essa sensação não nasce da falta de disciplina. Ela aparece quando
+              sua rotina tenta seguir um modelo genérico, sem considerar seu
+              ritmo, sua energia e a forma como você realmente funciona.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -110,14 +161,15 @@ function HeroTopBar() {
 }
 
 function HeroContent() {
-  return (<div className="relative z-20 mx-auto flex w-full max-w-[23rem] flex-col items-center text-center sm:max-w-[30rem] lg:mx-0 lg:max-w-[34rem] lg:items-start lg:text-left">
+  return (
+    <div className="relative z-20 mx-auto flex w-full max-w-[23rem] flex-col items-center text-center sm:max-w-[30rem] lg:mx-0 lg:max-w-[34rem] lg:items-start lg:text-left">
       <HeroStars />
 
       <motion.h1
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.48, delay: 0.04 }}
-        className="mt-3 max-w-[20rem] text-[2.05rem] font-black leading-[0.9] tracking-[-0.055em] text-white sm:max-w-[30rem] sm:text-[3.25rem] lg:mt-4 lg:max-w-[31rem] lg:text-[3.65rem] xl:text-[4.25rem]"
+        className="mt-3 max-w-[20rem] text-[2.05rem] font-black leading-[0.9] tracking-[-0.055em] text-[#2d0850] sm:max-w-[30rem] sm:text-[3.25rem] lg:mt-4 lg:max-w-[31rem] lg:text-[3.65rem] xl:text-[4.25rem] dark:text-white"
       >
         Seu assistente inteligente de produtividade
       </motion.h1>
@@ -126,9 +178,9 @@ function HeroContent() {
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.48, delay: 0.1 }}
-        className="mt-4 max-w-[20.5rem] sm:max-w-[29rem] lg:max-w-[33rem] lg:border-l lg:border-white/35 lg:pl-4"
+        className="mt-4 max-w-[20.5rem] sm:max-w-[29rem] lg:max-w-[33rem] lg:border-l lg:border-[#2d0850]/25 lg:pl-4 dark:lg:border-white/35"
       >
-        <p className="text-[0.73rem] font-medium leading-5 text-white/72 sm:text-[0.95rem] sm:leading-7 lg:text-base">
+        <p className="text-[0.73rem] font-medium leading-5 text-[#2d0850]/72 sm:text-[0.95rem] sm:leading-7 lg:text-base dark:text-white/72">
           O AXON aprende sua rotina, entende seus padrões de produtividade e
           ajuda você a organizar tarefas, hábitos e compromissos de forma
           personalizada, para que você tenha mais foco, clareza e equilíbrio
@@ -147,18 +199,23 @@ function HeroLogo() {
   return (
     <Link
       to="/"
-      className="inline-flex items-center justify-center gap-2 text-white"
+      className="inline-flex items-center justify-center gap-2 text-[#2d0850] dark:text-white"
       aria-label="Axon"
     >
-      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-white text-[#2d0850] shadow-[0_0_24px_rgba(255,255,255,0.24)] sm:h-8 sm:w-8 lg:h-9 lg:w-9">
+      <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#8118ee] text-white shadow-[0_0_24px_rgba(123,44,191,0.18)] sm:h-8 sm:w-8 lg:h-9 lg:w-9 dark:bg-white dark:text-[#2d0850] dark:shadow-[0_0_24px_rgba(255,255,255,0.24)]">
+        <img
+          src="/axon-logo-inverted.svg"
+          alt=""
+          className="h-5 w-5 object-contain sm:h-6 sm:w-6 lg:h-7 lg:w-7 dark:hidden"
+        />
         <img
           src="/axon-logo.svg"
           alt=""
-          className="h-5 w-5 object-contain sm:h-6 sm:w-6 lg:h-7 lg:w-7"
+          className="hidden h-5 w-5 object-contain sm:h-6 sm:w-6 lg:h-7 lg:w-7 dark:block"
         />
       </span>
 
-      <span className="text-[0.78rem] font-black uppercase tracking-[0.16em] text-white sm:text-sm lg:text-base">
+      <span className="text-[0.78rem] font-black uppercase tracking-[0.16em] sm:text-sm lg:text-base">
         Axon
       </span>
     </Link>
@@ -190,7 +247,7 @@ function HeroMobileActions() {
       initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.48, delay: 0.16 }}
-      className="mt-5 grid w-full max-w-[12.4rem] gap-2.5 sm:mt-6 sm:max-w-[20rem] sm:grid-cols-2 lg:hidden"
+      className="relative z-30 mt-5 grid w-full max-w-[12.4rem] gap-2.5 sm:mt-6 sm:max-w-[20rem] sm:grid-cols-2 lg:hidden"
     >
       <HeroButton to="/login" variant="primary">
         Entrar
@@ -225,14 +282,17 @@ function HeroInfoStack() {
 
 function HeroMetrics() {
   return (
-    <div className="grid w-full grid-cols-3 divide-x divide-white/35">
+    <div className="grid w-full grid-cols-3 divide-x divide-[#2d0850]/25 dark:divide-white/35">
       {heroMetrics.map((metric) => (
-        <div key={metric.label} className="px-2 text-center first:pl-0 last:pr-0 lg:text-left">
-          <p className="text-[0.72rem] font-black leading-none text-white sm:text-base">
+        <div
+          key={metric.label}
+          className="px-2 text-center first:pl-0 last:pr-0 lg:text-left"
+        >
+          <p className="text-[0.72rem] font-black leading-none text-[#2d0850] sm:text-base dark:text-white">
             {metric.value}
           </p>
 
-          <p className="mx-auto mt-1 max-w-[5.4rem] text-[0.56rem] font-medium leading-3 text-white/62 sm:text-[0.68rem] sm:leading-4 lg:mx-0">
+          <p className="mx-auto mt-1 max-w-[5.4rem] text-[0.56rem] font-medium leading-3 text-[#2d0850]/62 sm:text-[0.68rem] sm:leading-4 lg:mx-0 dark:text-white/62">
             {metric.label}
           </p>
         </div>
@@ -244,11 +304,11 @@ function HeroMetrics() {
 function PlayStoreSoon() {
   return (
     <div className="w-full max-w-[13.2rem] sm:max-w-[16rem] lg:max-w-[12.5rem]">
-      <p className="mb-2 text-center text-[0.64rem] font-black text-white sm:text-xs lg:text-left">
+      <p className="mb-2 text-center text-[0.64rem] font-black text-[#2d0850] sm:text-xs lg:text-left dark:text-white">
         Em breve na
       </p>
 
-      <div className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 text-[#2d0850] shadow-card">
+      <div className="inline-flex min-h-10 w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 text-[#2d0850] shadow-[0_16px_34px_rgba(45,8,80,0.14)] dark:shadow-[0_16px_34px_rgba(0,0,0,0.20)]">
         <PlayStoreIcon />
         <span className="text-[0.7rem] font-black sm:text-xs">
           Google Play
@@ -266,57 +326,50 @@ function HeroRobotStage() {
       transition={{ duration: 0.65, delay: 0.22, ease: "easeOut" }}
       className="pointer-events-none relative mx-auto mt-8 h-[315px] w-full max-w-[23rem] sm:h-[440px] sm:max-w-[30rem] lg:mt-0 lg:h-[640px] lg:max-w-none"
     >
-      {/* Glow principal atrás do robô */}
-      <div className="absolute left-1/2 top-[61%] h-[15rem] w-[15rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7b2cbf]/60 blur-[80px] sm:h-[24rem] sm:w-[24rem] lg:top-[52%] lg:h-[30rem] lg:w-[30rem] lg:blur-[110px] xl:h-[33rem] xl:w-[33rem]" />
+      <div className="absolute left-1/2 top-[58%] h-[15rem] w-[15rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7b2cbf]/28 blur-[80px] sm:h-[24rem] sm:w-[24rem] lg:top-[53%] lg:h-[32rem] lg:w-[32rem] lg:blur-[110px] dark:bg-[#7b2cbf]/60" />
 
-      {/* Círculo roxo */}
-      <div className="absolute left-1/2 top-[64%] h-[13.5rem] w-[13.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7b2cbf]/55 sm:h-[22rem] sm:w-[22rem] lg:top-[55%] lg:h-[25rem] lg:w-[25rem] xl:h-[28rem] xl:w-[28rem]" />
+      <div className="absolute left-1/2 top-[61%] h-[13.5rem] w-[13.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[#7b2cbf]/18 sm:h-[22rem] sm:w-[22rem] lg:top-[55%] lg:h-[27rem] lg:w-[27rem] dark:bg-[#7b2cbf]/55" />
 
-      {/* Borda sutil do círculo */}
-      <div className="absolute left-1/2 top-[64%] h-[13.5rem] w-[13.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-white/10 sm:h-[22rem] sm:w-[22rem] lg:top-[55%] lg:h-[25rem] lg:w-[25rem] xl:h-[28rem] xl:w-[28rem]" />
+      <div className="absolute left-1/2 top-[61%] h-[13.5rem] w-[13.5rem] -translate-x-1/2 -translate-y-1/2 rounded-full border border-[#2d0850]/10 sm:h-[22rem] sm:w-[22rem] lg:top-[55%] lg:h-[27rem] lg:w-[27rem] dark:border-white/10" />
 
-      {/* Pontos decorativos */}
-      <span className="absolute left-1/2 top-[18%] h-3 w-3 -translate-x-1/2 rounded-full bg-white sm:top-[13%] sm:h-4 sm:w-4 lg:top-[18%]" />
+      <span className="absolute left-1/2 top-[16%] h-3 w-3 -translate-x-1/2 rounded-full bg-[#7b2cbf] sm:top-[13%] sm:h-4 sm:w-4 lg:top-[16%] dark:bg-white" />
+      <span className="absolute bottom-[17%] right-[21%] h-3 w-3 rounded-full bg-[#7b2cbf] sm:h-4 sm:w-4 lg:bottom-[23%] lg:right-[20%] dark:bg-white" />
 
-      <span className="absolute bottom-[16%] right-[20%] h-3 w-3 rounded-full bg-white sm:h-4 sm:w-4 lg:bottom-[21%] lg:right-[18%]" />
-
-      {/* Decorations próximas ao robô */}
       <img
         src={brainDecoration}
         alt=""
         aria-hidden="true"
-        className="absolute left-[17%] top-[25%] h-7 w-7 -rotate-12 opacity-80 sm:left-[15%] sm:top-[22%] sm:h-10 sm:w-10 lg:left-[13%] lg:top-[30%] lg:h-11 lg:w-11 xl:left-[14%]"
+        className="absolute left-[17%] top-[23%] h-7 w-7 -rotate-12 opacity-70 invert sm:left-[15%] sm:top-[22%] sm:h-10 sm:w-10 lg:left-[14%] lg:top-[28%] lg:h-12 lg:w-12 dark:invert-0 dark:opacity-80"
       />
 
       <img
         src={starDecoration}
         alt=""
         aria-hidden="true"
-        className="absolute right-[16%] top-[24%] h-8 w-8 rotate-12 opacity-90 sm:right-[15%] sm:top-[20%] sm:h-12 sm:w-12 lg:right-[14%] lg:top-[28%] lg:h-13 lg:w-13 xl:right-[15%]"
+        className="absolute right-[16%] top-[22%] h-8 w-8 rotate-12 opacity-80 invert sm:right-[15%] sm:top-[20%] sm:h-12 sm:w-12 lg:right-[15%] lg:top-[25%] lg:h-14 lg:w-14 dark:invert-0 dark:opacity-90"
       />
 
       <img
         src={starDecoration}
         alt=""
         aria-hidden="true"
-        className="absolute bottom-[25%] left-[12%] h-7 w-7 -rotate-12 opacity-75 sm:bottom-[24%] sm:left-[12%] sm:h-10 sm:w-10 lg:bottom-[24%] lg:left-[10%] lg:h-11 lg:w-11"
+        className="absolute bottom-[26%] left-[12%] h-7 w-7 -rotate-12 opacity-65 invert sm:bottom-[24%] sm:left-[12%] sm:h-10 sm:w-10 lg:bottom-[27%] lg:left-[10%] lg:h-12 lg:w-12 dark:invert-0 dark:opacity-75"
       />
 
       <img
         src={brainDecoration}
         alt=""
         aria-hidden="true"
-        className="absolute bottom-[30%] right-[7%] h-6 w-6 rotate-12 opacity-40 sm:right-[8%] sm:h-9 sm:w-9 lg:bottom-[30%] lg:right-[8%] lg:h-9 lg:w-9"
+        className="absolute bottom-[31%] right-[7%] h-6 w-6 rotate-12 opacity-35 invert sm:right-[8%] sm:h-9 sm:w-9 lg:bottom-[32%] lg:right-[9%] lg:h-10 lg:w-10 dark:invert-0 dark:opacity-40"
       />
 
-      {/* Mascote */}
-      <div className="relative z-10 top-14 mx-auto mb-[-1.6rem] w-fit sm:top-14 lg:top-2">
+      <div className="relative z-10 top-12 mx-auto mb-[-1.6rem] w-fit sm:top-14 lg:top-2">
         <motion.img
           src={axonHappy}
           alt="Mascote Axon feliz"
           animate={{ y: [-5, 5, -5] }}
           transition={{ duration: 5.5, repeat: Infinity, ease: "easeInOut" }}
-          className="block h-[260px] w-auto object-contain drop-shadow-[0_34px_70px_rgba(0,0,0,0.38)] sm:h-[410px] lg:h-[500px] xl:h-[560px]"
+          className="block h-[280px] w-auto object-contain drop-shadow-[0_34px_70px_rgba(0,0,0,0.38)] sm:h-[410px] lg:h-[560px] xl:h-[610px]"
         />
       </div>
     </motion.div>
@@ -336,7 +389,7 @@ function HeroButton({ children, to, variant = "primary" }) {
       className={`relative z-30 inline-flex min-h-10 items-center justify-center gap-2 rounded-2xl px-5 text-[0.72rem] font-black transition active:scale-[0.98] sm:min-h-11 sm:text-sm ${
         isPrimary
           ? "bg-[#8d31dd] text-white shadow-[0_14px_30px_rgba(0,0,0,0.2)] hover:bg-[#9b3bee]"
-          : "border border-white/80 bg-transparent text-white hover:bg-white/10"
+          : "border border-[#2d0850]/45 bg-transparent text-[#2d0850] hover:bg-[#2d0850]/5 dark:border-white/80 dark:text-white dark:hover:bg-white/10"
       }`}
     >
       {children}
@@ -353,7 +406,7 @@ function HeroTopButton({ children, to, variant = "outline" }) {
       className={`relative z-30 inline-flex min-h-9 items-center justify-center rounded-2xl px-5 text-sm font-black transition active:scale-[0.98] ${
         isFilled
           ? "bg-[#8d31dd] text-white shadow-[0_14px_30px_rgba(0,0,0,0.2)] hover:bg-[#9b3bee]"
-          : "border border-white/80 bg-transparent text-white hover:bg-white/10"
+          : "border border-[#2d0850]/45 bg-transparent text-[#2d0850] hover:bg-[#2d0850]/5 dark:border-white/80 dark:text-white dark:hover:bg-white/10"
       }`}
     >
       {children}
