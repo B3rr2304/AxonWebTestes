@@ -4,19 +4,15 @@ import { motion } from "framer-motion";
 import {
   AlertCircle,
   ArrowRight,
-  CheckCircle2,
   Eye,
   EyeOff,
   Lock,
   Mail,
-  Sparkles,
   User,
 } from "lucide-react";
 
-import AuthLogo from "../components/auth/AuthLogo";
 import GoogleAuthButton from "../components/auth/GoogleAuthButton";
 import * as api from "../lib/api";
-import AuthBackground from "../components/layout/AuthBackground";
 
 // ===========================================================================
 // CAMPOS DO FORMULÁRIO
@@ -31,7 +27,6 @@ type InputFieldProps = {
   onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
-// Campo genérico usado para nome e e-mail.
 function InputField({
   icon: Icon,
   label,
@@ -42,12 +37,12 @@ function InputField({
 }: InputFieldProps) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-muted">
+      <span className="mb-1.5 block text-[0.62rem] font-black text-[#5b21b6] dark:text-white/78">
         {label}
       </span>
 
-      <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-soft bg-surface-muted px-4 backdrop-blur-2xl transition focus-within:border-accent-soft focus-within:bg-accent-muted">
-        <Icon className="h-5 w-5 text-accent" />
+      <div className="flex min-h-10 items-center gap-3 rounded-2xl border border-[#7b2cbf]/20 bg-[#fbf8ff] px-3.5 dark:border-white/10 dark:bg-[#191722] text-[#5b21b6] dark:text-white/78 transition focus-within:border-[#7b2cbf]/45 focus-within:bg-white dark:focus-within:border-[#a855f7]/45 dark:focus-within:bg-[#211c2d]">
+        <Icon className="h-4 w-4 shrink-0 text-[#7b2cbf] dark:text-[#d8b4fe]/85" />
 
         <input
           type={type}
@@ -55,7 +50,7 @@ function InputField({
           value={value}
           onChange={onChange}
           required
-          className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-soft"
+          className="auth-input w-full bg-transparent text-[0.72rem] font-medium text-[#4c1d95] outline-none placeholder:text-[#7b2cbf]/42 dark:text-white/82 dark:placeholder:text-white/38"
         />
       </div>
     </label>
@@ -69,7 +64,6 @@ type PasswordFieldProps = {
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
-// Campo de senha com alternância de visibilidade.
 function PasswordField({
   label,
   placeholder,
@@ -80,31 +74,31 @@ function PasswordField({
 
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-muted">
+      <span className="mb-1.5 block text-[0.62rem] font-black text-[#5b21b6] dark:text-white/78">
         {label}
       </span>
 
-      <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-soft bg-surface-muted px-4 backdrop-blur-2xl transition focus-within:border-accent-soft focus-within:bg-accent-muted">
-        <Lock className="h-5 w-5 text-accent" />
+      <div className="flex min-h-10 items-center gap-3 rounded-2xl border border-[#7b2cbf]/20 bg-[#fbf8ff] px-3.5 dark:border-white/10 dark:bg-[#191722] text-[#5b21b6] dark:text-white/78 transition focus-within:border-[#7b2cbf]/45 focus-within:bg-white dark:focus-within:border-[#a855f7]/45 dark:focus-within:bg-[#211c2d]">
+        <Lock className="h-4 w-4 shrink-0 text-[#7b2cbf] dark:text-[#d8b4fe]/85" />
 
         <input
           type={showPassword ? "text" : "password"}
           placeholder={placeholder}
           value={value}
           onChange={onChange}
-          className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-soft"
+          className="auth-input w-full bg-transparent text-[0.72rem] font-medium text-[#4c1d95] outline-none placeholder:text-[#7b2cbf]/42 dark:text-white/82 dark:placeholder:text-white/38"
         />
 
         <button
           type="button"
           onClick={() => setShowPassword((prev) => !prev)}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-surface-muted hover:text-secondary active:scale-[0.96]"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[#7b2cbf] dark:text-[#d8b4fe]/70 transition hover:bg-[#7b2cbf]/10 hover:text-[#6d28d9] dark:text-[#d8b4fe] active:scale-[0.96]"
           aria-label={showPassword ? "Esconder senha" : "Mostrar senha"}
         >
           {showPassword ? (
-            <EyeOff className="h-5 w-5" />
+            <EyeOff className="h-4 w-4" />
           ) : (
-            <Eye className="h-5 w-5" />
+            <Eye className="h-4 w-4" />
           )}
         </button>
       </div>
@@ -119,25 +113,15 @@ function PasswordField({
 export default function Signup() {
   const navigate = useNavigate();
 
-  // ---------------------------------------------------------------------------
-  // Estado do formulário
-  // ---------------------------------------------------------------------------
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // ---------------------------------------------------------------------------
-  // Estado de envio, erro e aceite legal
-  // ---------------------------------------------------------------------------
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [acceptedTerms, setAcceptedTerms] = useState(false);
 
-  // ---------------------------------------------------------------------------
-  // Validação e criação da conta
-  // ---------------------------------------------------------------------------
-  // Depois do cadastro, a sessão é salva e o usuário entra no onboarding.
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
@@ -175,41 +159,29 @@ export default function Signup() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app px-4 py-8 text-primary">
-      <AuthBackground />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#2d0850] px-4 py-8 text-white">
+      <AuthGlow />
 
-      <div className="relative z-10 w-full max-w-[440px]">
-        <AuthLogo />
+      <div className="relative z-10 w-full max-w-[340px]">
+        <SignupLogo />
 
         <motion.section
-          initial={{ opacity: 0, y: 24, scale: 0.98 }}
+          initial={{ opacity: 0, y: 22, scale: 0.985 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.55 }}
-          className="overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl sm:p-6"
+          transition={{ duration: 0.48, ease: "easeOut" }}
+          className="overflow-hidden rounded-[1.65rem] border border-white/90 bg-white dark:border-white/10 dark:bg-[#11101a]/94 px-5 pb-7 pt-6 text-[#4c1d95] dark:text-white shadow-[0_28px_90px_rgba(0,0,0,0.26)] dark:text-white dark:shadow-[0_28px_90px_rgba(0,0,0,0.48)]"
         >
-          {/* Cabeçalho: prepara o usuário para o cadastro e o questionário. */}
-          <div className="mb-4">
-            <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs text-accent">
-              <Sparkles className="h-3.5 w-3.5" />
-              Primeiro acesso
-            </div>
-
-            <h1 className="text-[2rem] font-semibold leading-[1.05] tracking-[-0.045em] text-primary">
-              Crie seu Axon pessoal.
+          <div className="mb-6 text-center">
+            <h1 className="mx-auto max-w-[15rem] text-[1.55rem] font-black leading-[0.95] tracking-[-0.045em] text-[#4c1d95] dark:text-white">
+              Crie seu assistente pessoal Inteligente
             </h1>
 
-            <div className="flex items-start gap-3 py-4">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-accent" />
-
-              <p className="text-sm leading-6 text-muted">
-                Depois do cadastro, você responderá um questionário rápido para
-                personalizar sua experiência.
-              </p>
-            </div>
+            <p className="mx-auto mt-3 max-w-[16.5rem] text-[0.68rem] font-medium leading-5 text-[#6d28d9] dark:text-[#d8b4fe]/62 dark:text-white/62">
+              Seja bem-vindo ao AXON
+            </p>
           </div>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            {/* Dados básicos da nova conta. */}
+          <form className="space-y-2.5" onSubmit={handleSubmit}>
             <InputField
               icon={User}
               label="Nome"
@@ -228,7 +200,6 @@ export default function Signup() {
               onChange={(e) => setEmail(e.target.value)}
             />
 
-            {/* Senha e confirmação antes de criar a conta no backend. */}
             <PasswordField
               label="Senha"
               placeholder="Crie uma senha segura"
@@ -247,15 +218,7 @@ export default function Signup() {
               }
             />
 
-            {error && (
-              <div className="flex items-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3">
-                <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-300" />
-                <p className="text-xs text-red-600 dark:text-red-200">{error}</p>
-              </div>
-            )}
-
-            {/* Aceite obrigatório antes do cadastro tradicional. */}
-            <label className="flex cursor-pointer items-start gap-3 pt-1">
+            <label className="flex cursor-pointer items-start gap-2 pt-1">
               <input
                 type="checkbox"
                 checked={acceptedTerms}
@@ -265,48 +228,55 @@ export default function Signup() {
                 className="peer sr-only"
               />
 
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-soft bg-surface-muted transition peer-checked:border-accent-soft peer-checked:bg-[var(--accent-strong)]" />
+              <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-[0.35rem] border border-[#7b2cbf]/30 bg-white dark:border-white/16 dark:bg-[#191722] transition peer-checked:border-[#7b2cbf] peer-checked:bg-[#7b2cbf]" />
 
-              <span className="text-xs leading-5 text-muted">
+              <span className="text-[0.62rem] leading-4 text-[#6d28d9] dark:text-[#d8b4fe]/68 dark:text-white/62">
                 Li e concordo com os{" "}
-                <a href="#" className="font-medium text-accent">
+                <a href="#" className="font-black text-[#6d28d9] dark:text-[#d8b4fe] hover:text-[#7b2cbf] dark:text-[#d8b4fe]">
                   Termos de Uso
                 </a>{" "}
                 e a{" "}
-                <a href="#" className="font-medium text-accent">
+                <a href="#" className="font-black text-[#6d28d9] dark:text-[#d8b4fe] hover:text-[#7b2cbf] dark:text-[#d8b4fe]">
                   Política de Privacidade
                 </a>
                 .
               </span>
             </label>
 
-            {/* Cadastro social e divisor visual. */}
-            <div className="pt-4">
-              <GoogleAuthButton label="Cadastrar com o Google" />
-
-              <div className="my-5 flex items-center gap-3">
-                <div className="h-px flex-1 bg-[var(--border-soft)]" />
-                <span className="text-xs font-medium text-muted">ou</span>
-                <div className="h-px flex-1 bg-[var(--border-soft)]" />
+            {error && (
+              <div className="flex items-center gap-2 rounded-2xl border border-red-400/20 dark:border-red-300/20 bg-red-500/10 dark:bg-red-500/14 px-4 py-3">
+                <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-200" />
+                <p className="text-xs text-red-600 dark:text-red-200">{error}</p>
               </div>
-            </div>
+            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="mt-1 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+              className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-2xl bg-[#7b2cbf] px-6 text-sm font-medium text-white shadow-[0_18px_42px_rgba(123,44,191,0.22)] transition hover:bg-[#8d31dd] dark:bg-[#a855f7] dark:hover:bg-[#b968ff] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {loading ? "Criando conta..." : "Criar minha conta"}
+              {loading ? "Criando conta..." : "Criar conta"}
               {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
             </button>
+
+            <div className="py-3">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-[#7b2cbf]/28 dark:bg-white/18" />
+                <span className="text-[0.68rem] font-medium text-[#6d28d9] dark:text-[#d8b4fe]/62 dark:text-white/62">
+                  ou
+                </span>
+                <div className="h-px flex-1 bg-[#7b2cbf]/28 dark:bg-white/18" />
+              </div>
+            </div>
+
+            <GoogleAuthButton label="Continuar com o Google" />
           </form>
 
-          {/* Link para quem já possui uma conta. */}
-          <p className="mt-6 text-center text-xs text-muted">
-            Já tem conta?{" "}
+          <p className="mt-6 text-center text-[0.68rem] text-[#6d28d9] dark:text-[#d8b4fe]/62 dark:text-white/62">
+            Já tem uma conta?{" "}
             <Link
               to="/login"
-              className="font-medium text-accent"
+              className="font-black text-[#6d28d9] dark:text-[#d8b4fe] transition hover:text-[#7b2cbf] dark:text-[#d8b4fe]"
             >
               Entrar
             </Link>
@@ -314,5 +284,38 @@ export default function Signup() {
         </motion.section>
       </div>
     </main>
+  );
+}
+
+// ===========================================================================
+// ELEMENTOS VISUAIS
+// ===========================================================================
+
+function SignupLogo() {
+  return (
+    <div className="mb-6 flex justify-center">
+      <Link
+        to="/"
+        aria-label="Voltar para a landing page"
+        className="flex h-12 w-12 rotate-45 items-center justify-center rounded-2xl border border-white/18 bg-white/10 shadow-[0_20px_60px_rgba(168,85,247,0.35)] backdrop-blur-2xl transition active:scale-[0.96]"
+      >
+        <img
+          src="/axon-logo.svg"
+          alt="Axon"
+          className="h-12 w-12 -rotate-45 object-contain"
+        />
+      </Link>
+    </div>
+  );
+}
+
+function AuthGlow() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute left-1/2 top-[-14rem] h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#7b2cbf]/60 blur-[120px]" />
+      <div className="absolute bottom-[-18rem] left-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#7b2cbf]/32 blur-[120px]" />
+      <div className="absolute bottom-[-16rem] right-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#7b2cbf]/22 blur-[120px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:22px_22px] opacity-[0.1]" />
+    </div>
   );
 }

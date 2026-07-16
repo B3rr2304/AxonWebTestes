@@ -8,42 +8,25 @@ import {
   Eye,
   EyeOff,
   Lock,
-  Sparkles,
 } from "lucide-react";
 
-import AuthLogo from "../components/auth/AuthLogo";
-import AuthBackground from "../components/layout/AuthBackground";
-
 // ===========================================================================
-// PÁGINA DE REDEFINIÇÃO DE SENHA
+// PÁGINA — REDEFINIR SENHA
 // ===========================================================================
 
 export default function ResetPassword() {
   const navigate = useNavigate();
 
-  // ---------------------------------------------------------------------------
-  // Campos do formulário
-  // ---------------------------------------------------------------------------
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
 
-  // ---------------------------------------------------------------------------
-  // Visibilidade dos campos de senha
-  // ---------------------------------------------------------------------------
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // ---------------------------------------------------------------------------
-  // Estado de envio e feedback
-  // ---------------------------------------------------------------------------
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState("");
 
-  // ---------------------------------------------------------------------------
-  // Validação e envio da nova senha
-  // ---------------------------------------------------------------------------
-  // Fluxo visual temporário até conectar a API real de reset de senha.
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
@@ -78,37 +61,32 @@ export default function ResetPassword() {
   }
 
   return (
-    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-app px-4 py-6 text-primary">
-      <AuthBackground />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#2d0850] px-4 py-8 text-white">
+      <AuthGlow />
 
-      <div className="relative z-10 w-full max-w-[430px]">
-        <AuthLogo />
+      <div className="relative z-10 w-full max-w-[340px]">
+        <AuthLogoMark />
 
-        <section className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),transparent_40%)] opacity-60 dark:opacity-30" />
-
-          <div className="relative">
-            {!success ? (
-              <ResetPasswordForm
-                password={password}
-                confirmPassword={confirmPassword}
-                showPassword={showPassword}
-                showConfirmPassword={showConfirmPassword}
-                loading={loading}
-                error={error}
-                onSubmit={handleSubmit}
-                onPasswordChange={setPassword}
-                onConfirmPasswordChange={setConfirmPassword}
-                onTogglePassword={() => setShowPassword((prev) => !prev)}
-                onToggleConfirmPassword={() =>
-                  setShowConfirmPassword((prev) => !prev)
-                }
-              />
-            ) : (
-              <ResetPasswordSuccess onGoToLogin={() => navigate("/login")} />
-            )}
-          </div>
+        <section className="overflow-hidden rounded-[1.65rem] border border-white/90 bg-white dark:border-white/10 dark:bg-[#11101a]/94 px-5 pb-7 pt-6 text-[#4c1d95] dark:text-white shadow-[0_28px_90px_rgba(0,0,0,0.26)] dark:text-white dark:shadow-[0_28px_90px_rgba(0,0,0,0.48)]">
+          {!success ? (
+            <ResetPasswordForm
+              password={password}
+              confirmPassword={confirmPassword}
+              showPassword={showPassword}
+              showConfirmPassword={showConfirmPassword}
+              loading={loading}
+              error={error}
+              onSubmit={handleSubmit}
+              onPasswordChange={setPassword}
+              onConfirmPasswordChange={setConfirmPassword}
+              onTogglePassword={() => setShowPassword((prev) => !prev)}
+              onToggleConfirmPassword={() =>
+                setShowConfirmPassword((prev) => !prev)
+              }
+            />
+          ) : (
+            <ResetPasswordSuccess onGoToLogin={() => navigate("/login")} />
+          )}
         </section>
       </div>
     </main>
@@ -116,7 +94,7 @@ export default function ResetPassword() {
 }
 
 // ===========================================================================
-// ESTADOS VISUAIS DA TELA
+// ESTADOS VISUAIS
 // ===========================================================================
 
 function ResetPasswordForm({
@@ -146,23 +124,17 @@ function ResetPasswordForm({
 }) {
   return (
     <>
-      {/* Estado inicial: coleta e confirma a nova senha. */}
-      <div className="mb-7">
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
-          <Sparkles className="h-3.5 w-3.5" />
-          Redefinir senha
-        </div>
-
-        <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-primary">
-          Crie uma nova senha.
+      <div className="mb-7 text-center">
+        <h1 className="mx-auto max-w-[15rem] text-[1.6rem] font-black leading-[0.96] tracking-[-0.045em] text-[#4c1d95] dark:text-white">
+          Crie uma nova senha
         </h1>
 
-        <p className="mt-3 text-sm leading-6 text-muted">
+        <p className="mx-auto mt-4 max-w-[17.5rem] text-[0.7rem] font-medium leading-5 text-[#6d28d9] dark:text-[#d8b4fe]/62 dark:text-white/62">
           Escolha uma senha segura para recuperar seu acesso ao Axon.
         </p>
       </div>
 
-      <form className="space-y-4" onSubmit={onSubmit}>
+      <form className="space-y-3" onSubmit={onSubmit}>
         <PasswordField
           label="Nova senha"
           placeholder="Digite sua nova senha"
@@ -181,18 +153,12 @@ function ResetPasswordForm({
           onChange={(event) => onConfirmPasswordChange(event.target.value)}
         />
 
-        {error && (
-          <div className="flex items-center gap-2 rounded-2xl border border-red-400/20 bg-red-500/10 px-4 py-3">
-            <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-300" />
-
-            <p className="text-xs leading-5 text-red-600 dark:text-red-200">{error}</p>
-          </div>
-        )}
+        {error && <ErrorMessage message={error} />}
 
         <button
           type="submit"
           disabled={loading}
-          className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+          className="mt-2 inline-flex min-h-10 w-full items-center justify-center rounded-2xl bg-[#7b2cbf] px-6 text-sm font-medium text-white shadow-[0_18px_42px_rgba(123,44,191,0.22)] transition hover:bg-[#8d31dd] dark:bg-[#a855f7] dark:hover:bg-[#b968ff] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Salvando..." : "Salvar nova senha"}
           {!loading && <ArrowRight className="ml-2 h-4 w-4" />}
@@ -201,7 +167,7 @@ function ResetPasswordForm({
 
       <Link
         to="/login"
-        className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
+        className="mt-3 inline-flex min-h-10 w-full items-center justify-center rounded-2xl border border-[#7b2cbf]/20 bg-[#fbf8ff] px-6 dark:border-white/10 dark:bg-[#191722] text-[0.74rem] font-medium text-[#6d28d9] dark:text-[#d8b4fe] transition hover:bg-white active:scale-[0.98] dark:hover:bg-[#211c2d]"
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
         Voltar para login
@@ -217,22 +183,16 @@ function ResetPasswordSuccess({
 }) {
   return (
     <>
-      {/* Estado de sucesso: confirma que a senha foi redefinida. */}
-      <div className="mb-7">
-        <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-          <CheckCircle2 className="h-7 w-7" />
+      <div className="mb-7 text-center">
+        <div className="mx-auto mb-5 flex h-12 w-12 items-center justify-center rounded-2xl border border-[#7b2cbf]/20 bg-[#7b2cbf]/10 text-[#7b2cbf] dark:text-[#d8b4fe]">
+          <CheckCircle2 className="h-6 w-6" />
         </div>
 
-        <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
-          <Sparkles className="h-3.5 w-3.5" />
-          Senha alterada
-        </div>
-
-        <h1 className="text-[2rem] font-semibold leading-[1.04] tracking-[-0.055em] text-primary">
-          Seu acesso foi recuperado.
+        <h1 className="mx-auto max-w-[15rem] text-[1.6rem] font-black leading-[0.96] tracking-[-0.045em] text-[#4c1d95] dark:text-white">
+          Seu acesso foi recuperado
         </h1>
 
-        <p className="mt-3 text-sm leading-6 text-muted">
+        <p className="mx-auto mt-4 max-w-[17.5rem] text-[0.7rem] font-medium leading-5 text-[#6d28d9] dark:text-[#d8b4fe]/62 dark:text-white/62">
           Sua senha foi redefinida com sucesso. Agora você já pode entrar
           novamente no Axon.
         </p>
@@ -241,7 +201,7 @@ function ResetPasswordSuccess({
       <button
         type="button"
         onClick={onGoToLogin}
-        className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
+        className="inline-flex min-h-10 w-full items-center justify-center rounded-2xl bg-[#7b2cbf] px-6 text-sm font-medium text-white shadow-[0_18px_42px_rgba(123,44,191,0.22)] transition hover:bg-[#8d31dd] dark:bg-[#a855f7] dark:hover:bg-[#b968ff] active:scale-[0.98]"
       >
         Ir para login
         <ArrowRight className="ml-2 h-4 w-4" />
@@ -263,7 +223,6 @@ type PasswordFieldProps = {
   onChange: (event: React.ChangeEvent<HTMLInputElement>) => void;
 };
 
-// Campo de senha reutilizado para nova senha e confirmação.
 function PasswordField({
   label,
   placeholder,
@@ -274,12 +233,12 @@ function PasswordField({
 }: PasswordFieldProps) {
   return (
     <label className="block">
-      <span className="mb-2 block text-sm font-medium text-muted">
+      <span className="mb-1.5 block text-[0.62rem] font-black text-[#5b21b6] dark:text-white/78">
         {label}
       </span>
 
-      <div className="flex min-h-14 items-center gap-3 rounded-2xl border border-soft bg-surface-muted px-4 backdrop-blur-2xl transition focus-within:border-accent-soft focus-within:bg-accent-muted">
-        <Lock className="h-5 w-5 text-accent" />
+      <div className="flex min-h-10 items-center gap-3 rounded-2xl border border-[#7b2cbf]/20 bg-[#fbf8ff] px-3.5 dark:border-white/10 dark:bg-[#191722] text-[#5b21b6] dark:text-white/78 transition focus-within:border-[#7b2cbf]/45 focus-within:bg-white dark:focus-within:border-[#a855f7]/45 dark:focus-within:bg-[#211c2d]">
+        <Lock className="h-4 w-4 shrink-0 text-[#7b2cbf] dark:text-[#d8b4fe]/85" />
 
         <input
           type={showPassword ? "text" : "password"}
@@ -287,22 +246,60 @@ function PasswordField({
           value={value}
           onChange={onChange}
           required
-          className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-soft"
+          className="auth-input w-full bg-transparent text-[0.72rem] font-medium text-[#4c1d95] outline-none placeholder:text-[#7b2cbf]/42 dark:text-white/82 dark:placeholder:text-white/38"
         />
 
         <button
           type="button"
           onClick={onToggleVisibility}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-muted transition hover:bg-surface-muted hover:text-secondary active:scale-[0.96]"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl text-[#7b2cbf] dark:text-[#d8b4fe]/70 transition hover:bg-[#7b2cbf]/10 hover:text-[#6d28d9] dark:text-[#d8b4fe] active:scale-[0.96]"
           aria-label={showPassword ? "Ocultar senha" : "Mostrar senha"}
         >
           {showPassword ? (
-            <EyeOff className="h-4.5 w-4.5" />
+            <EyeOff className="h-4 w-4" />
           ) : (
-            <Eye className="h-4.5 w-4.5" />
+            <Eye className="h-4 w-4" />
           )}
         </button>
       </div>
     </label>
+  );
+}
+
+function ErrorMessage({ message }: { message: string }) {
+  return (
+    <div className="flex items-center gap-2 rounded-2xl border border-red-400/20 dark:border-red-300/20 bg-red-500/10 dark:bg-red-500/14 px-4 py-3">
+      <AlertCircle className="h-4 w-4 shrink-0 text-red-600 dark:text-red-200" />
+      <p className="text-xs leading-5 text-red-600 dark:text-red-200">{message}</p>
+    </div>
+  );
+}
+
+function AuthLogoMark() {
+  return (
+    <div className="mb-6 flex justify-center">
+      <Link
+        to="/"
+        aria-label="Voltar para a landing page"
+        className="flex h-12 w-12 rotate-45 items-center justify-center rounded-2xl border border-white/18 bg-white/10 shadow-[0_20px_60px_rgba(168,85,247,0.35)] backdrop-blur-2xl transition active:scale-[0.96]"
+      >
+        <img
+          src="/axon-logo.svg"
+          alt="Axon"
+          className="h-12 w-12 -rotate-45 object-contain"
+        />
+      </Link>
+    </div>
+  );
+}
+
+function AuthGlow() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute left-1/2 top-[-14rem] h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#7b2cbf]/60 blur-[120px]" />
+      <div className="absolute bottom-[-18rem] left-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#7b2cbf]/32 blur-[120px]" />
+      <div className="absolute bottom-[-16rem] right-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#7b2cbf]/22 blur-[120px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:22px_22px] opacity-[0.1]" />
+    </div>
   );
 }
