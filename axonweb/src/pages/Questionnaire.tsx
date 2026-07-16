@@ -1,22 +1,23 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useState, type ElementType } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import * as api from "../lib/api";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence, motion } from "framer-motion";
 import {
-  ArrowLeft,
-  ArrowRight,
   Briefcase,
   Brain,
+  CalendarClock,
   Check,
+  ChevronLeft,
+  ChevronRight,
   Clock3,
+  Loader2,
   Moon,
   Sparkles,
+  SlidersHorizontal,
   Sun,
   Sunrise,
   Zap,
 } from "lucide-react";
-
-import OnboardingBackground from "../components/layout/OnboardingBackground";
 
 // ===========================================================================
 // TIPOS DO QUESTIONÁRIO
@@ -30,7 +31,7 @@ type Question = {
   id: string;
   category: string;
   title: string;
-  icon: React.ElementType;
+  icon: ElementType;
   options: Option[];
 };
 
@@ -323,19 +324,73 @@ const questions: Question[] = [
   },
 ];
 
+const QUESTIONNAIRE_PROGRESS_KEY = "axon_questionnaire_progress_v1";
+
+type QuestionnaireProgress = {
+  currentIndex: number;
+  answers: Record<string, string>;
+  updatedAt: number;
+};
+
+function loadQuestionnaireProgress(): QuestionnaireProgress | null {
+  try {
+    const stored = localStorage.getItem(QUESTIONNAIRE_PROGRESS_KEY);
+
+    if (!stored) return null;
+
+    const parsed = JSON.parse(stored) as QuestionnaireProgress;
+
+    const isValidIndex =
+      Number.isInteger(parsed.currentIndex) &&
+      parsed.currentIndex >= 0 &&
+      parsed.currentIndex < questions.length;
+
+    const hasValidAnswers =
+      parsed.answers &&
+      typeof parsed.answers === "object" &&
+      !Array.isArray(parsed.answers);
+
+    if (!isValidIndex || !hasValidAnswers) {
+      localStorage.removeItem(QUESTIONNAIRE_PROGRESS_KEY);
+      return null;
+    }
+
+    return parsed;
+  } catch {
+    localStorage.removeItem(QUESTIONNAIRE_PROGRESS_KEY);
+    return null;
+  }
+}
+
+function saveQuestionnaireProgress(
+  currentIndex: number,
+  answers: Record<string, string>
+) {
+  const progress: QuestionnaireProgress = {
+    currentIndex,
+    answers,
+    updatedAt: Date.now(),
+  };
+
+  localStorage.setItem(QUESTIONNAIRE_PROGRESS_KEY, JSON.stringify(progress));
+}
+
+function clearQuestionnaireProgress() {
+  localStorage.removeItem(QUESTIONNAIRE_PROGRESS_KEY);
+}
+
 // ===========================================================================
 // COMPONENTES VISUAIS AUXILIARES
 // ===========================================================================
 
-// Barra superior que acompanha a posição atual no questionário.
 function ProgressBar({ progress }: { progress: number }) {
   return (
-    <div className="h-2 overflow-hidden rounded-full bg-[var(--border-soft)]">
+    <div className="h-1.5 overflow-hidden rounded-full bg-[#7b2cbf]/14 dark:bg-white/12">
       <motion.div
-        className="h-full rounded-full bg-[var(--accent)] shadow-[0_0_18px_var(--accent-soft)]"
+        className="h-full rounded-full bg-[#7b2cbf] shadow-[0_0_18px_rgba(123,44,191,0.28)] dark:bg-[#a855f7]"
         initial={{ width: 0 }}
         animate={{ width: `${progress}%` }}
-        transition={{ duration: 0.35 }}
+        transition={{ duration: 0.35, ease: "easeOut" }}
       />
     </div>
   );
@@ -348,36 +403,36 @@ function ProgressBar({ progress }: { progress: number }) {
 export default function Questionnaire() {
   const navigate = useNavigate();
 
-  // ---------------------------------------------------------------------------
-  // Estado principal do fluxo
-  // ---------------------------------------------------------------------------
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [submitted, setSubmitted] = useState(false);
+  const savedProgress = loadQuestionnaireProgress();
 
-  // ---------------------------------------------------------------------------
-  // Dados derivados da pergunta atual
-  // ---------------------------------------------------------------------------
+  const [currentIndex, setCurrentIndex] = useState(
+    savedProgress?.currentIndex ?? 0
+  );
+
+  const [answers, setAnswers] = useState<Record<string, string>>(
+    savedProgress?.answers ?? {}
+  );
+  const [submitted, setSubmitted] = useState(false);
+  useEffect(() => {
+    if (submitted) return;
+
+    saveQuestionnaireProgress(currentIndex, answers);
+  }, [currentIndex, answers, submitted]);
+
   const currentQuestion = questions[currentIndex];
   const selectedAnswer = answers[currentQuestion?.id];
   const progress = ((currentIndex + 1) / questions.length) * 100;
+  const isLastQuestion = currentIndex === questions.length - 1;
 
-  // ---------------------------------------------------------------------------
-  // Seleção de resposta
-  // ---------------------------------------------------------------------------
-  // Mantém as respostas por id da pergunta para facilitar o envio final.
   function selectAnswer(optionId: string) {
+    if (submitted) return;
+
     setAnswers((prev) => ({
       ...prev,
       [currentQuestion.id]: optionId,
     }));
   }
 
-  // ---------------------------------------------------------------------------
-  // Finalização e classificação
-  // ---------------------------------------------------------------------------
-  // Só avança para a tela de análise depois que o resultado foi calculado/salvo.
-  // Assim evitamos mostrar o loading como sucesso quando a API retorna erro.
   async function handleFinish(finalAnswers: Record<string, string>) {
     const {
       P9: qualidade_sono = "F",
@@ -414,6 +469,8 @@ export default function Questionnaire() {
         localStorage.setItem("axon_schedule_type", schedule_type);
       }
 
+      clearQuestionnaireProgress();
+
       navigate("/analyzing");
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -431,14 +488,10 @@ export default function Questionnaire() {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // Navegação entre perguntas
-  // ---------------------------------------------------------------------------
-  // Impede avanço sem resposta e bloqueia duplo envio no fim do questionário.
   function goNext() {
     if (!selectedAnswer || submitted) return;
 
-    if (currentIndex === questions.length - 1) {
+    if (isLastQuestion) {
       setSubmitted(true);
       const finalAnswers = { ...answers, [currentQuestion.id]: selectedAnswer };
       handleFinish(finalAnswers);
@@ -448,154 +501,277 @@ export default function Questionnaire() {
     setCurrentIndex((prev) => prev + 1);
   }
 
-  // Volta para a introdução quando o usuário está na primeira pergunta.
   function goBack() {
-    if (currentIndex === 0) {
-      navigate("/questionnaire-intro");
-      return;
-    }
-
+    if (submitted || currentIndex === 0) return;
     setCurrentIndex((prev) => prev - 1);
   }
 
-  const Icon = currentQuestion.icon;
-
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-app px-4 py-5 text-primary">
-      <OnboardingBackground />
+    <main className="relative min-h-screen overflow-x-hidden bg-[#2d0850] px-4 py-5 text-white">
+      <QuestionnaireBackground />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-40px)] w-full max-w-[430px] flex-col">
         <Header />
 
-        {/* Progresso e card da pergunta atual. */}
-        <section className="flex flex-1 flex-col py-6">
-          <div className="mb-6">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-sm text-muted">
-                Pergunta {currentIndex + 1} de {questions.length}
-              </p>
-              <p className="text-sm text-accent">
-                {Math.round(progress)}%
-              </p>
-            </div>
-
-            <ProgressBar progress={progress} />
-          </div>
-
+        <section className="flex flex-1 flex-col justify-center py-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={currentQuestion.id}
               initial={{ opacity: 0, x: 24 }}
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -24 }}
-              transition={{ duration: 0.28 }}
-              className="overflow-hidden rounded-[2.2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl"
+              transition={{ duration: 0.28, ease: "easeOut" }}
             >
-              <div className="mb-6 flex h-16 w-16 items-center justify-center rounded-[1.4rem] border border-accent-soft bg-accent-soft text-accent shadow-card">
-                <Icon className="h-7 w-7" />
-              </div>
-
-              <div className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
-                {currentQuestion.category}
-              </div>
-
-              <h1 className="text-[1.6rem] font-semibold leading-[1.1] tracking-[-0.04em] text-primary">
-                {currentQuestion.title}
-              </h1>
-
-              {/* Opções da pergunta atual. */}
-              <div className="mt-7 space-y-3">
-                {currentQuestion.options.map((option) => {
-                  const isSelected = selectedAnswer === option.id;
-
-                  return (
-                    <button
-                      key={option.id}
-                      type="button"
-                      onClick={() => selectAnswer(option.id)}
-                      className={`flex min-h-[60px] w-full items-center gap-3 rounded-3xl border p-4 text-left transition duration-300 active:scale-[0.99] ${
-                        isSelected
-                          ? "border-accent-soft bg-accent-soft shadow-card"
-                          : "border-soft bg-surface-muted hover:bg-accent-muted"
-                      }`}
-                    >
-                      <div
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl border transition ${
-                          isSelected
-                            ? "border-accent-soft bg-[var(--accent-strong)] text-white"
-                            : "border-soft bg-surface-elevated text-muted"
-                        }`}
-                      >
-                        {isSelected ? (
-                          <Check className="h-4 w-4" />
-                        ) : (
-                          <span className="text-xs font-semibold text-muted">
-                            {option.id}
-                          </span>
-                        )}
-                      </div>
-
-                      <p className="text-sm font-medium leading-5 text-primary">
-                        {option.label}
-                      </p>
-                    </button>
-                  );
-                })}
-              </div>
+              <QuestionCard
+                question={currentQuestion}
+                currentIndex={currentIndex}
+                total={questions.length}
+                progress={progress}
+                selectedAnswer={selectedAnswer}
+                submitted={submitted}
+                isLastQuestion={isLastQuestion}
+                onSelectAnswer={selectAnswer}
+                onNext={goNext}
+                onBack={goBack}
+              />
             </motion.div>
           </AnimatePresence>
         </section>
-
-        {/* Ações fixas do fluxo: avançar/finalizar e voltar. */}
-        <footer className="space-y-3 pb-2">
-          <button
-            type="button"
-            onClick={goNext}
-            disabled={!selectedAnswer || submitted}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition hover:brightness-105 active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-surface-muted disabled:text-soft disabled:shadow-none"
-          >
-            {currentIndex === questions.length - 1 ? (
-              <>
-                Analisar meu perfil
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            ) : (
-              <>
-                Continuar
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </>
-            )}
-          </button>
-
-          <button
-            type="button"
-            onClick={goBack}
-            disabled={submitted}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition hover:text-primary active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            <ArrowLeft className="mr-2 h-4 w-4" />
-            Voltar
-          </button>
-        </footer>
       </div>
     </main>
   );
 }
 
-// Header compacto usado somente durante o mapeamento inicial.
+// ===========================================================================
+// ESTRUTURA VISUAL
+// ===========================================================================
+
 function Header() {
   return (
     <header className="flex items-center justify-between">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-          <Brain className="h-5 w-5" />
+      <Link to="/" className="flex items-center gap-2">
+        <img
+          src="/axon-logo-inverted.svg"
+          alt="Axon"
+          className="h-8 w-8 object-contain"
+        />
+
+        <span className="text-sm font-semibold tracking-[-0.02em] text-white">
+          AXON
+        </span>
+      </Link>
+    </header>
+  );
+}
+
+function QuestionCard({
+  question,
+  currentIndex,
+  total,
+  progress,
+  selectedAnswer,
+  submitted,
+  isLastQuestion,
+  onSelectAnswer,
+  onNext,
+  onBack,
+}: {
+  question: Question;
+  currentIndex: number;
+  total: number;
+  progress: number;
+  selectedAnswer?: string;
+  submitted: boolean;
+  isLastQuestion: boolean;
+  onSelectAnswer: (optionId: string) => void;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  const Icon = question.icon;
+
+  return (
+    <div className="relative mx-auto w-full max-w-[350px]">
+      <DecorativeStack />
+
+      <div className="relative z-10 overflow-hidden rounded-[2.2rem] border border-white/90 bg-white px-5 pb-5 pt-6 text-[#4c1d95] shadow-[0_28px_90px_rgba(0,0,0,0.24)] dark:border-white/10 dark:bg-[#11101a]/94 dark:text-white dark:shadow-[0_28px_90px_rgba(0,0,0,0.48)]">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-[#7b2cbf]/20 bg-[#7b2cbf]/10 text-[#7b2cbf] dark:border-white/10 dark:bg-[#191722] dark:text-white/78">
+            <Icon className="h-4 w-4" />
+          </div>
+
+          <span className="rounded-xl border border-[#7b2cbf]/20 bg-[#fbf8ff] px-3 py-1 text-[0.62rem] font-semibold text-[#6d28d9]/72 dark:border-white/10 dark:bg-[#191722] dark:text-white/62">
+            {question.category}
+          </span>
         </div>
 
-        <div>
-          <p className="text-sm font-semibold text-primary">Axon</p>
-          <p className="text-xs text-muted">Mapeamento inicial</p>
+        <ProgressBar progress={progress} />
+
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-[0.7rem] font-black text-[#4c1d95] dark:text-white/86">
+            {currentIndex + 1} de {total}
+          </p>
+
+          <p className="text-[0.7rem] font-black text-[#4c1d95] dark:text-white/86">
+            {Math.round(progress)}%
+          </p>
         </div>
+
+        <h1 className="mx-auto mt-5 max-w-[17.5rem] text-center text-[1.25rem] font-black leading-[1.02] tracking-[-0.04em] text-[#4c1d95] dark:text-white">
+          {question.title}
+        </h1>
+
+        <div className="mt-6 space-y-2">
+          {question.options.map((option) => (
+            <AnswerOption
+              key={option.id}
+              questionId={question.id}
+              option={option}
+              selected={selectedAnswer === option.id}
+              disabled={submitted}
+              onSelect={onSelectAnswer}
+            />
+          ))}
+        </div>
+
+        <QuestionActions
+          currentIndex={currentIndex}
+          isLastQuestion={isLastQuestion}
+          selectedAnswer={selectedAnswer}
+          submitted={submitted}
+          onNext={onNext}
+          onBack={onBack}
+        />
       </div>
-    </header>
+    </div>
+  );
+}
+
+function AnswerOption({
+  questionId,
+  option,
+  selected,
+  disabled,
+  onSelect,
+}: {
+  questionId: string;
+  option: Option;
+  selected: boolean;
+  disabled: boolean;
+  onSelect: (optionId: string) => void;
+}) {
+  const ScheduleIcon =
+    questionId === "SCHED"
+      ? option.id === "flexible"
+        ? SlidersHorizontal
+        : CalendarClock
+      : null;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onSelect(option.id)}
+      disabled={disabled}
+      className={`flex min-h-9 w-full items-center gap-3 rounded-xl border px-3 py-2 text-left transition active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-60 ${
+        selected
+          ? "border-[#7b2cbf]/48 bg-[#7b2cbf]/10 shadow-[0_12px_28px_rgba(123,44,191,0.1)] dark:border-[#a855f7]/55 dark:bg-[#a855f7]/14"
+          : "border-[#7b2cbf]/18 bg-[#fbf8ff] hover:border-[#7b2cbf]/30 hover:bg-white dark:border-white/10 dark:bg-[#191722] dark:hover:border-white/18 dark:hover:bg-[#211c2d]"
+      }`}
+    >
+      <span
+        className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-lg border text-[0.58rem] font-black transition ${
+          selected
+            ? "border-[#7b2cbf] bg-[#7b2cbf] text-white dark:border-[#a855f7] dark:bg-[#a855f7]"
+            : "border-[#7b2cbf]/20 bg-white text-[#6d28d9]/72 dark:border-white/12 dark:bg-[#11101a] dark:text-white/54"
+        }`}
+      >
+        {selected ? (
+          <Check className="h-3.5 w-3.5" />
+        ) : ScheduleIcon ? (
+          <ScheduleIcon className="h-3.5 w-3.5" />
+        ) : (
+          option.id
+        )}
+      </span>
+
+      <span className="text-[0.76rem] font-medium leading-4 text-[#4c1d95] dark:text-white/82">
+        {option.label}
+      </span>
+    </button>
+  );
+}
+
+function QuestionActions({
+  currentIndex,
+  isLastQuestion,
+  selectedAnswer,
+  submitted,
+  onNext,
+  onBack,
+}: {
+  currentIndex: number;
+  isLastQuestion: boolean;
+  selectedAnswer?: string;
+  submitted: boolean;
+  onNext: () => void;
+  onBack: () => void;
+}) {
+  return (
+    <footer className="mt-6 flex items-center justify-between">
+      {currentIndex > 0 ? (
+        <button
+          type="button"
+          onClick={onBack}
+          disabled={submitted}
+          aria-label="Voltar pergunta"
+          className="group flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-[#7b2cbf]/24 bg-[#fbf8ff] text-[#6d28d9] shadow-[0_12px_28px_rgba(45,8,80,0.08)] transition hover:-translate-y-0.5 hover:border-[#7b2cbf]/38 hover:bg-white hover:shadow-[0_18px_38px_rgba(123,44,191,0.14)] active:scale-[0.96] disabled:cursor-not-allowed disabled:opacity-40 dark:border-white/10 dark:bg-[#191722] dark:text-white/70 dark:shadow-[0_12px_28px_rgba(0,0,0,0.2)] dark:hover:border-white/18 dark:hover:bg-[#211c2d] dark:hover:text-white"
+        >
+          <ChevronLeft className="h-5 w-5 transition group-hover:-translate-x-0.5" />
+        </button>
+      ) : (
+        <div className="h-11 w-11" aria-hidden="true" />
+      )}
+
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={!selectedAnswer || submitted}
+        aria-label={isLastQuestion ? "Analisar perfil" : "Avançar pergunta"}
+        className={`group flex h-11 shrink-0 items-center justify-center rounded-2xl bg-[#7b2cbf] text-white shadow-[0_18px_42px_rgba(123,44,191,0.22)] transition hover:-translate-y-0.5 hover:bg-[#8d31dd] hover:shadow-[0_22px_48px_rgba(123,44,191,0.28)] active:scale-[0.96] disabled:cursor-not-allowed disabled:bg-[#7b2cbf]/28 disabled:text-white/48 disabled:shadow-none dark:bg-[#a855f7] dark:hover:bg-[#b968ff] dark:disabled:bg-white/10 ${
+          isLastQuestion ? "w-[9.6rem] px-4 text-xs font-semibold" : "w-11"
+        }`}
+      >
+        {submitted ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isLastQuestion ? (
+          "Analisar perfil"
+        ) : (
+          <ChevronRight className="h-5 w-5 transition group-hover:translate-x-0.5" />
+        )}
+      </button>
+    </footer>
+  );
+}
+
+// ===========================================================================
+// ELEMENTOS VISUAIS
+// ===========================================================================
+
+function DecorativeStack() {
+  return (
+    <>
+      <div className="pointer-events-none absolute inset-0 -z-10 translate-x-4 translate-y-3 rotate-[6deg] rounded-[2.2rem] border border-white/18 bg-white/[0.045] dark:border-white/10" />
+      <div className="pointer-events-none absolute inset-0 -z-10 -translate-x-3 translate-y-5 rotate-[-8deg] rounded-[2.2rem] border border-white/16 bg-white/[0.035] dark:border-white/8" />
+    </>
+  );
+}
+
+function QuestionnaireBackground() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute left-1/2 top-[-14rem] h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#7b2cbf]/60 blur-[120px]" />
+      <div className="absolute bottom-[-18rem] left-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#7b2cbf]/32 blur-[120px]" />
+      <div className="absolute bottom-[-16rem] right-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#7b2cbf]/22 blur-[120px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:22px_22px] opacity-[0.1]" />
+    </div>
   );
 }

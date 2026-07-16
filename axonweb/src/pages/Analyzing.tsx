@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, type ElementType } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -11,10 +11,18 @@ import {
   Zap,
 } from "lucide-react";
 
-import OnboardingBackground from "../components/layout/OnboardingBackground";
+// ===========================================================================
+// ETAPAS DA ANÁLISE
+// ===========================================================================
+// Etapas exibidas durante o carregamento visual antes da tela de resultado.
 
-// Etapas exibidas durante a análise antes de liberar o resultado do cronotipo.
-const steps = [
+type AnalysisStep = {
+  icon: ElementType;
+  title: string;
+  text: string;
+};
+
+const steps: AnalysisStep[] = [
   {
     icon: Clock3,
     title: "Lendo seus horários",
@@ -22,13 +30,13 @@ const steps = [
   },
   {
     icon: Zap,
-    title: "Mapeando energia",
+    title: "Mapeando sua energia",
     text: "Identificando seus melhores momentos de disposição.",
   },
   {
     icon: Brain,
     title: "Entendendo seu foco",
-    text: "Cruzando suas respostas sobre clareza e produtividade.",
+    text: "Cruzando informações sobre clareza e produtividade.",
   },
   {
     icon: Moon,
@@ -37,299 +45,267 @@ const steps = [
   },
   {
     icon: Sparkles,
-    title: "Preparando resultado",
+    title: "Preparando resultados",
     text: "Montando sua configuração inicial no Axon.",
   },
 ];
 
-export default function Analyzing() {
-  // Navegação e estado da etapa ativa da animação.
-  const navigate = useNavigate();
-  const [activeStep, setActiveStep] = useState(0);
+const TOTAL_DURATION = 6200;
 
-  // Dados derivados usados para trocar ícone, texto e progresso visual.
-  const currentStep = steps[activeStep];
+// ===========================================================================
+// PÁGINA — ANÁLISE DO PERFIL
+// ===========================================================================
+
+export default function Analyzing() {
+  const navigate = useNavigate();
+
+  const [progress, setProgress] = useState(0);
+
+  const activeStepIndex = useMemo(() => {
+    const stepIndex = Math.floor((progress / 100) * steps.length);
+    return Math.min(stepIndex, steps.length - 1);
+  }, [progress]);
+
+  const currentStep = steps[activeStepIndex];
   const CurrentIcon = currentStep.icon;
-  const progress = ((activeStep + 1) / steps.length) * 100;
+  const isFinished = progress >= 100;
 
   useEffect(() => {
-    // Avança as mensagens da análise enquanto mantém a última etapa fixa até o redirect.
-    const stepTimer = setInterval(() => {
-      setActiveStep((prev) => {
-        if (prev === steps.length - 1) return prev;
-        return prev + 1;
-      });
-    }, 950);
+    const startedAt = Date.now();
 
-    // Fluxo automático após o questionário: análise visual -> tela de resultado.
-    const redirectTimer = setTimeout(() => {
-      navigate("/result");
-    }, 5600);
+    const progressTimer = window.setInterval(() => {
+      const elapsed = Date.now() - startedAt;
+      const nextProgress = Math.min((elapsed / TOTAL_DURATION) * 100, 100);
+
+      setProgress(nextProgress);
+
+      if (nextProgress >= 100) {
+        window.clearInterval(progressTimer);
+      }
+    }, 80);
 
     return () => {
-      clearInterval(stepTimer);
-      clearTimeout(redirectTimer);
+      window.clearInterval(progressTimer);
     };
-  }, [navigate]);
+  }, []);
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
-      <OnboardingBackground />
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[#2d0850] px-4 py-8 text-white">
+      <AnalyzingBackground />
 
-      <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
-        {/* Header compacto mantém a identidade do Axon durante a transição. */}
-        <header className="flex shrink-0 items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-            <Brain className="h-5 w-5" />
-          </div>
-
-          <div>
-            <p className="text-sm font-semibold text-primary">Axon</p>
-            <p className="text-xs text-muted">Análise do seu ritmo</p>
-          </div>
-        </header>
+      <div className="relative z-10 flex min-h-[calc(100vh-64px)] w-full max-w-[430px] flex-col">
+        <Header />
 
         <section className="flex flex-1 flex-col justify-center py-6">
-          <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-soft backdrop-blur-2xl">
-            {/* Camadas internas dão profundidade glassmorphism ao card principal. */}
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_52%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--app-grid-color)_1px,transparent_1px)] [background-size:26px_26px] opacity-70" />
-
-            <div className="relative">
-              {/* Ilustração neural central: órbitas, linhas e pulso visual do Axon. */}
-              <div className="mb-6 flex h-[230px] items-center justify-center overflow-hidden rounded-[1.7rem] border border-soft bg-surface-muted">
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 28,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute h-44 w-44 rounded-full border border-accent-soft"
-                />
-
-                <motion.div
-                  animate={{ rotate: -360 }}
-                  transition={{
-                    duration: 38,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute h-32 w-32 rounded-full border border-fuchsia-300/10"
-                />
-
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{
-                    duration: 52,
-                    repeat: Infinity,
-                    ease: "linear",
-                  }}
-                  className="absolute h-24 w-24 rounded-full border border-soft"
-                />
-
-                <svg
-                  className="absolute h-[230px] w-[230px] opacity-45"
-                  viewBox="0 0 230 230"
-                  fill="none"
-                >
-                  <motion.path
-                    d="M38 78C74 34 112 58 115 115C118 172 174 182 198 136"
-                    stroke="url(#line-one)"
-                    strokeWidth="1.2"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{
-                      duration: 2.3,
-                      repeat: Infinity,
-                      repeatType: "reverse",
-                      ease: "easeInOut",
-                    }}
-                  />
-
-                  <motion.path
-                    d="M34 154C74 126 96 166 115 115C134 64 170 72 200 96"
-                    stroke="url(#line-two)"
-                    strokeWidth="1.2"
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{
-                      duration: 2.8,
-                      repeat: Infinity,
-                      repeatType: "reverse",
-                      ease: "easeInOut",
-                      delay: 0.25,
-                    }}
-                  />
-
-                  <motion.circle
-                    cx="38"
-                    cy="78"
-                    r="3.5"
-                    fill="#c084fc"
-                    animate={{ opacity: [0.35, 1, 0.35] }}
-                    transition={{ duration: 1.8, repeat: Infinity }}
-                  />
-
-                  <motion.circle
-                    cx="198"
-                    cy="136"
-                    r="3.5"
-                    fill="#e879f9"
-                    animate={{ opacity: [1, 0.35, 1] }}
-                    transition={{ duration: 1.8, repeat: Infinity }}
-                  />
-
-                  <motion.circle
-                    cx="34"
-                    cy="154"
-                    r="3.5"
-                    fill="#a855f7"
-                    animate={{ opacity: [0.45, 1, 0.45] }}
-                    transition={{ duration: 2.1, repeat: Infinity }}
-                  />
-
-                  <motion.circle
-                    cx="200"
-                    cy="96"
-                    r="3.5"
-                    fill="#c084fc"
-                    animate={{ opacity: [1, 0.45, 1] }}
-                    transition={{ duration: 2.1, repeat: Infinity }}
-                  />
-
-                  <defs>
-                    <linearGradient
-                      id="line-one"
-                      x1="38"
-                      y1="78"
-                      x2="198"
-                      y2="136"
-                      gradientUnits="userSpaceOnUse"
-                    >
-                      <stop stopColor="#7c3aed" stopOpacity="0" />
-                      <stop offset="0.5" stopColor="#c084fc" />
-                      <stop offset="1" stopColor="#ec4899" stopOpacity="0" />
-                    </linearGradient>
-
-                    <linearGradient
-                      id="line-two"
-                      x1="34"
-                      y1="154"
-                      x2="200"
-                      y2="96"
-                      gradientUnits="userSpaceOnUse"
-                    >
-                      <stop stopColor="#7c3aed" stopOpacity="0" />
-                      <stop offset="0.5" stopColor="#e879f9" />
-                      <stop offset="1" stopColor="#a855f7" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                </svg>
-
-                <motion.div
-                  animate={{
-                    scale: [1, 1.08, 1],
-                    opacity: [0.88, 1, 0.88],
-                  }}
-                  transition={{
-                    duration: 3.1,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="absolute h-24 w-24 rounded-[1.8rem] border border-accent-soft bg-accent-soft shadow-card backdrop-blur-2xl"
-                />
-
-                <motion.div
-                  animate={{ y: [-4, 4, -4] }}
-                  transition={{
-                    duration: 3.3,
-                    repeat: Infinity,
-                    ease: "easeInOut",
-                  }}
-                  className="relative flex h-20 w-20 items-center justify-center rounded-[1.5rem] border border-soft bg-surface-elevated"
-                >
-                  <Brain className="h-10 w-10 text-accent" />
-                </motion.div>
-              </div>
-
-              {/* Texto principal explica a espera sem expor detalhes técnicos do cálculo. */}
-              <div className="text-center">
-                <div className="mx-auto mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
-                  <Activity className="h-3.5 w-3.5" />
-                  Processando respostas
-                </div>
-
-                <h1 className="mx-auto max-w-[19rem] text-[1.9rem] font-semibold leading-[1.04] tracking-[-0.055em] text-primary">
-                  Estamos montando seu perfil inicial.
-                </h1>
-
-                <p className="mx-auto mt-3 max-w-[18.5rem] text-sm leading-6 text-muted">
-                  O Axon está analisando seu ritmo para criar uma experiência
-                  mais alinhada com você.
-                </p>
-              </div>
-
-              {/* Card dinâmico mostra qual parte da análise está em destaque. */}
-              <div className="mt-6 overflow-hidden rounded-3xl border border-soft bg-surface-muted p-4">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={currentStep.title}
-                    initial={{ opacity: 0, y: 12 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -8 }}
-                    transition={{ duration: 0.25 }}
-                    className="flex items-center gap-3"
-                  >
-                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated text-accent">
-                      <CurrentIcon className="h-5 w-5" />
-                    </div>
-
-                    <div>
-                      <p className="text-sm font-semibold text-primary">
-                        {currentStep.title}
-                      </p>
-                      <p className="mt-1 text-xs leading-5 text-muted">
-                        {currentStep.text}
-                      </p>
-                    </div>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-
-              {/* Progresso calculado pela etapa ativa; não depende de resposta do backend. */}
-              <div className="mt-5">
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="text-xs text-muted">Análise em andamento</p>
-                  <p className="text-xs text-accent">
-                    {Math.round(progress)}%
-                  </p>
-                </div>
-
-                <div className="h-2 overflow-hidden rounded-full bg-[var(--border-soft)]">
-                  <motion.div
-                    className="h-full rounded-full bg-[var(--accent)] shadow-[0_0_18px_var(--accent-soft)]"
-                    animate={{ width: `${progress}%` }}
-                    transition={{ duration: 0.45, ease: "easeOut" }}
-                  />
-                </div>
-              </div>
-            </div>
-          </div>
+          <AnalysisCard
+            progress={progress}
+            isFinished={isFinished}
+            currentStep={currentStep}
+            CurrentIcon={CurrentIcon}
+            onContinue={() => navigate("/result")}
+          />
         </section>
-
-        {/* Atalho manual evita prender o usuário caso ele queira pular a animação. */}
-        <footer className="shrink-0">
-          <button
-            type="button"
-            onClick={() => navigate("/result")}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
-          >
-            Ver resultado agora
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </button>
-        </footer>
       </div>
     </main>
+  );
+}
+
+// ===========================================================================
+// COMPONENTES VISUAIS
+// ===========================================================================
+
+function Header() {
+  return (
+    <header className="flex items-center justify-center">
+      <Link
+        to="/"
+        aria-label="Voltar para a landing page"
+        className="flex h-12 w-12 rotate-45 items-center justify-center rounded-2xl border border-white/18 bg-white/10 shadow-[0_20px_60px_rgba(168,85,247,0.35)] backdrop-blur-2xl transition active:scale-[0.96]"
+      >
+        <img
+          src="/axon-logo-inverted.svg"
+          alt="Axon"
+          className="h-12 w-12 -rotate-45 object-contain"
+        />
+      </Link>
+    </header>
+  );
+}
+
+function AnalysisCard({
+  progress,
+  isFinished,
+  currentStep,
+  CurrentIcon,
+  onContinue,
+}: {
+  progress: number;
+  isFinished: boolean;
+  currentStep: AnalysisStep;
+  CurrentIcon: ElementType;
+  onContinue: () => void;
+}) {
+  const roundedProgress = Math.round(progress);
+
+  return (
+    <div className="relative mx-auto w-full max-w-[340px]">
+      <div className="relative z-10 h-[520px] overflow-hidden rounded-[1.65rem] border border-white/90 bg-white px-5 pb-6 pt-6 text-center text-[#4c1d95] shadow-[0_28px_90px_rgba(0,0,0,0.26)] dark:border-white/10 dark:bg-[#11101a]/94 dark:text-white dark:shadow-[0_28px_90px_rgba(0,0,0,0.48)]">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,var(--analysis-card-glow),transparent_55%)]" />
+
+        <div className="relative flex h-full flex-col">
+          <div className="mx-auto mb-7 inline-flex rounded-full border border-[#7b2cbf]/16 bg-[#fbf8ff] px-3 py-1 text-[0.62rem] font-semibold text-[#6d28d9]/68 dark:border-white/10 dark:bg-[#191722] dark:text-white/58">
+            Processando respostas
+          </div>
+
+          <AnalysisVisual
+            CurrentIcon={CurrentIcon}
+            iconKey={currentStep.title}
+          />
+
+          <div className="mt-7 flex h-[132px] items-start justify-center">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentStep.title}
+                initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
+                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                exit={{ opacity: 0, y: -8, filter: "blur(4px)" }}
+                transition={{ duration: 0.28, ease: "easeOut" }}
+                className="w-full"
+              >
+                <h1 className="mx-auto flex min-h-[64px] max-w-[14rem] items-center justify-center text-[1.75rem] font-black leading-[0.95] tracking-[-0.05em] text-[#4c1d95] dark:text-white">
+                  {currentStep.title}
+                </h1>
+
+                <p className="mx-auto mt-3 flex min-h-[40px] max-w-[17rem] items-start justify-center text-[0.72rem] font-medium leading-5 text-[#6d28d9]/62 dark:text-white/62">
+                  {currentStep.text}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
+
+          <div className="mt-4">
+            <div className="mb-2 flex items-center justify-between">
+              <p className="text-[0.62rem] font-semibold text-[#6d28d9]/58 dark:text-white/52">
+                Análise em andamento
+              </p>
+
+              <span className="rounded-full border border-[#7b2cbf]/16 bg-[#fbf8ff] px-2 py-0.5 text-[0.58rem] font-black text-[#6d28d9]/72 dark:border-white/10 dark:bg-[#191722] dark:text-white/58">
+                {roundedProgress}%
+              </span>
+            </div>
+
+            <div className="h-1.5 overflow-hidden rounded-full bg-[#7b2cbf]/14 dark:bg-white/12">
+              <motion.div
+                className="h-full rounded-full bg-[#7b2cbf] shadow-[0_0_18px_rgba(123,44,191,0.28)] dark:bg-[#a855f7]"
+                animate={{ width: `${roundedProgress}%` }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+              />
+            </div>
+          </div>
+
+          <button
+            type="button"
+            onClick={onContinue}
+            disabled={!isFinished}
+            className="mt-6 inline-flex min-h-10 w-full items-center justify-center rounded-2xl bg-[#7b2cbf] px-6 text-sm font-semibold text-white shadow-[0_18px_42px_rgba(123,44,191,0.22)] transition hover:bg-[#8d31dd] active:scale-[0.98] disabled:cursor-not-allowed disabled:bg-[#7b2cbf]/28 disabled:text-white/48 disabled:shadow-none dark:bg-[#a855f7] dark:hover:bg-[#b968ff] dark:disabled:bg-white/10"
+          >
+            {isFinished ? "Ver resultado agora" : "Ver resultado em breve"}
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function AnalysisVisual({
+  CurrentIcon,
+  iconKey,
+}: {
+  CurrentIcon: ElementType;
+  iconKey: string;
+}) {
+  return (
+    <div className="relative mx-auto flex h-[132px] w-[132px] items-center justify-center">
+      {/* Glow suave atrás do símbolo */}
+      <motion.div
+        animate={{
+          scale: [1, 1.08, 1],
+          opacity: [0.35, 0.62, 0.35],
+        }}
+        transition={{
+          duration: 3,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="absolute h-[116px] w-[116px] rounded-[2rem] bg-[#7b2cbf]/10 blur-xl dark:bg-[#a855f7]/14"
+      />
+
+      {/* Losango base, sem rotação contínua */}
+      <div className="absolute h-[92px] w-[92px] rotate-45 rounded-[1.65rem] border border-[#7b2cbf]/12 bg-[#7b2cbf]/6 shadow-[0_18px_50px_rgba(123,44,191,0.1)] dark:border-white/10 dark:bg-white/[0.05] dark:shadow-[0_20px_52px_rgba(0,0,0,0.28)]" />
+
+      {/* Losango interno sutil */}
+      <motion.div
+        animate={{
+          scale: [1, 0.94, 1],
+          opacity: [0.55, 0.82, 0.55],
+        }}
+        transition={{
+          duration: 3.6,
+          repeat: Infinity,
+          ease: "easeInOut",
+        }}
+        className="absolute h-[68px] w-[68px] rotate-45 rounded-[1.35rem] border border-[#7b2cbf]/10 bg-white/25 dark:border-white/8 dark:bg-white/[0.035]"
+      />
+
+      {/* Ícone central */}
+      <div className="relative flex h-[74px] w-[74px] items-center justify-center text-[#7b2cbf] dark:text-white/78">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={iconKey}
+            initial={{ opacity: 0, scale: 0.82, y: 4 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.82, y: -4 }}
+            transition={{ duration: 0.24, ease: "easeOut" }}
+          >
+            <CurrentIcon className="h-9 w-9" />
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* Pontos decorativos bem discretos */}
+      <motion.span
+        animate={{ opacity: [0.25, 0.75, 0.25] }}
+        transition={{ duration: 2.4, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute left-5 top-6 h-2 w-2 rounded-full bg-[#7b2cbf]/22 dark:bg-white/18"
+      />
+
+      <motion.span
+        animate={{ opacity: [0.75, 0.25, 0.75] }}
+        transition={{ duration: 2.8, repeat: Infinity, ease: "easeInOut" }}
+        className="absolute bottom-6 right-5 h-2.5 w-2.5 rounded-full bg-[#7b2cbf]/16 dark:bg-white/14"
+      />
+    </div>
+  );
+}
+
+function AnalyzingBackground() {
+  return (
+    <div aria-hidden="true" className="pointer-events-none absolute inset-0 overflow-hidden">
+      <div className="absolute left-1/2 top-[-14rem] h-[30rem] w-[30rem] -translate-x-1/2 rounded-full bg-[#7b2cbf]/60 blur-[120px]" />
+      <div className="absolute bottom-[-18rem] left-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#7b2cbf]/32 blur-[120px]" />
+      <div className="absolute bottom-[-16rem] right-[-12rem] h-[30rem] w-[30rem] rounded-full bg-[#7b2cbf]/22 blur-[120px]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(255,255,255,0.08)_1px,transparent_1px)] [background-size:22px_22px] opacity-[0.1]" />
+
+      <style>{`
+        :root {
+          --analysis-card-glow: rgba(123, 44, 191, 0.08);
+        }
+
+        .dark {
+          --analysis-card-glow: rgba(168, 85, 247, 0.14);
+        }
+      `}</style>
+    </div>
   );
 }
