@@ -10,8 +10,8 @@ import {
   FileText,
   Focus,
   MessageCircle,
+  Flame,
   Moon,
-  Plus,
   Sparkles,
   Star,
   Target,
@@ -23,23 +23,19 @@ import {
 import DayReview from "./DayReview";
 import Sidebar from "../components/layout/Sidebar";
 import * as api from "../lib/api";
-import type { DashboardData, FocusBlock, BlockTask, Task, Subtask } from "../lib/api";
+import type { DashboardData, FocusBlock, Task, Subtask } from "../lib/api";
 import { AppBackground } from "../components/layout/AppBackground";
 import PageHeader from "../components/layout/PageHeader";
+import axonHeadHappy from "../assets/axon/axon-head-happy.png";
 import EmptyState from "../components/ui/EmptyState";
 import { ScrollArea } from "../components/ui/ScrollArea";
+
+const NOTIFICATIONS_PAGE_SIZE = 10;
 
 // ============================================================================
 // Tipos locais
 // Props e aliases usados apenas na montagem visual do Dashboard.
 // ============================================================================
-
-type MetricCardProps = {
-  icon: ElementType;
-  label: string;
-  value: string;
-  helper: string;
-};
 
 // ============================================================================
 // Página Dashboard
@@ -64,7 +60,7 @@ export default function Dashboard() {
   const [todayLog, setTodayLog] = useState<api.DailyLog | null>(null);
   const [reviewOpen, setReviewOpen] = useState(false);
   const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
-  const [unreadCount, setUnreadCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState<number | null>(null);
   const [searchParams, setSearchParams] = useSearchParams();
 
   // --------------------------------------------------------------------------
@@ -73,9 +69,14 @@ export default function Dashboard() {
   // --------------------------------------------------------------------------
   const refreshUnreadCount = useCallback(() => {
     api
-      .getNotifications(50, 0)
+      .getNotifications(NOTIFICATIONS_PAGE_SIZE + 1, 0)
       .then((notifications) => {
-        const nextUnreadCount = notifications.filter(
+        const visibleNotifications = notifications.slice(
+          0,
+          NOTIFICATIONS_PAGE_SIZE
+        );
+
+        const nextUnreadCount = visibleNotifications.filter(
           (notification) => notification.status === "unread"
         ).length;
 
@@ -282,327 +283,429 @@ export default function Dashboard() {
       ? "Sua melhor janela de foco está ativa agora."
       : "Sua próxima janela produtiva está chegando.";
 
+  const isDashboardBooting = loading && !data;
+
+  const flatTasks = dayBlocks.flatMap((block) => block.tasks);
+
+  const focusRecommendationByTaskId = useMemo(() => {
+    const recommendationMap: Record<
+      string,
+      {
+        label: string;
+        time: string;
+      }
+    > = {};
+
+    currentBlock?.tasks.forEach((task) => {
+      recommendationMap[task.id] = {
+        label: "Pico atual",
+        time: `${currentBlock.start} – ${currentBlock.end}`,
+      };
+    });
+
+    nextBlock?.tasks.forEach((task) => {
+      if (recommendationMap[task.id]) return;
+
+      recommendationMap[task.id] = {
+        label: "Próximo pico",
+        time: `${nextBlock.start} – ${nextBlock.end}`,
+      };
+    });
+
+    return recommendationMap;
+  }, [currentBlock, nextBlock]);
+
+  const taskTypeLabel: Record<string, string> = {
+    task: "Tarefa",
+    event: "Evento",
+    routine: "Rotina",
+  };
+
   return (
     <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
-      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        {/* Header fixo: acesso ao dashboard, central de notificações e sidebar. */}
+      <div className="relative z-10 mx-auto min-h-screen w-full max-w-[430px] px-4 pb-6 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-7">
         <PageHeader
           title="Dashboard"
-          subtitle="Seu dia agora"
+          subtitle="Central do Axon"
           onBack={() => navigate("/dashboard")}
           onMenuClick={() => setIsSidebarOpen(true)}
           rightSlot={
-            <button
-            type="button"
-            onClick={() => setIsNotificationsOpen(true)}
-            className="relative flex h-11 w-11 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
-            aria-label="Abrir notificações"
-          >
-            <Bell className="h-5 w-5" />
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="flex h-10 min-w-10 items-center justify-center gap-1.5 rounded-2xl border border-soft bg-surface-muted px-2.5 text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
+                aria-label="Ver ofensiva"
+              >
+                <Flame className="h-4 w-4 text-accent" />
+                <span className="text-[0.65rem] font-black text-muted">0</span>
+              </button>
 
-            {Number(unreadCount) > 0 && (
-              <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[var(--app-bg)] bg-purple-400" />
-            )}
-          </button>
+              <button
+                type="button"
+                onClick={() => setIsNotificationsOpen(true)}
+                className="relative flex h-10 w-10 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
+                aria-label="Abrir notificações"
+              >
+                <Bell className="h-4 w-4" />
+
+                {unreadCount !== null && unreadCount > 0 && (
+                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full border-2 border-[var(--app-bg)] bg-[var(--accent)]" />
+                )}
+              </button>
+            </div>
           }
         />
 
-        {/* Bloco “Agora”: resume a janela de foco atual e o próximo bloco do dia. */}
-        <section className="mb-4">
-          <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 shadow-card backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.055),transparent_42%)]" />
+        {isDashboardBooting ? (
+          <DashboardGreetingSkeleton />
+        ) : (
+          <section className="mt-5">
+            <div className="relative overflow-hidden rounded-[2.15rem] border border-soft bg-surface-elevated p-5 shadow-card backdrop-blur-2xl lg:p-6">
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_54%)]" />
+              <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[var(--accent-muted)] to-transparent" />
 
-            <div className="relative">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
-                <Sparkles className="h-3.5 w-3.5" />
-                Ajustado ao seu ritmo
-              </div>
+              <div className="relative flex items-center justify-between gap-4">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold uppercase tracking-[0.16em] text-accent">
+                    {chronotypeLabel}
+                  </p>
 
-              <h1 className="text-[1.95rem] font-semibold leading-[1.03] tracking-[-0.06em] text-primary">
-                {greeting}. Vamos focar no que move seu dia.
-              </h1>
+                  <h1 className="mt-2 text-[1.75rem] font-black leading-[0.95] tracking-[-0.055em] text-primary">
+                    {greeting}
+                  </h1>
 
-              <p className="mt-3 text-sm leading-6 text-muted">
-                {mainAction}
-              </p>
+                  <p className="mt-3 max-w-[16.5rem] text-xs leading-5 text-muted">
+                    Seu painel foi ajustado para energia, foco e prioridades de hoje.
+                  </p>
 
-              <div className="mt-5 rounded-[1.55rem] border border-accent-soft bg-surface-muted p-3.5 shadow-inner">
-                <div className="mb-3 flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-2.5">
-                    <div className="flex h-9 w-9 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-                      <Focus className="h-4 w-4" />
-                    </div>
-
-                    <div>
-                      <p className="text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-accent">
-                        Agora
-                      </p>
-                      <p className="mt-0.5 text-xs text-muted">
-                        Ritmo atual do seu dia
-                      </p>
-                    </div>
-                  </div>
-
-                  {currentBlock && (
-                    <p className="shrink-0 text-xs font-medium text-muted">
-                      {currentBlock.start} – {currentBlock.end}
-                    </p>
+                  {showReviewCard && (
+                    <button
+                      type="button"
+                      onClick={() => setReviewOpen(true)}
+                      className="mt-4 inline-flex min-h-9 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft px-3 text-[0.68rem] font-semibold text-accent transition active:scale-[0.96]"
+                    >
+                      Revisar dia
+                    </button>
                   )}
                 </div>
 
-                <CurrentFocusBlockCard
-                  currentBlock={currentBlock}
-                  nextBlock={nextBlock}
-                  fallbackLabel={nextFocus?.label}
-                  fallbackStart={nextFocus?.start}
-                  fallbackProgress={energyPercent}
-                  showNextBlock={showNextBlock}
-                  onToggleNext={() => setShowNextBlock((current) => !current)}
-                />
+                <div className="relative flex h-[112px] w-[116px] shrink-0 items-center justify-center sm:h-[128px] sm:w-[138px] lg:h-[142px] lg:w-[180px]">
+                  <div className="absolute h-[104px] w-[104px] rounded-full bg-accent-soft blur-2xl sm:h-[118px] sm:w-[118px] lg:h-[132px] lg:w-[132px]" />
 
-                <button
-                  onClick={() => navigate("/chat")}
-                  className="mt-3 inline-flex items-center gap-2 rounded-full px-1 text-xs font-semibold text-accent active:scale-[0.98]"
-                >
-                  Ajustar com o Axon
-                  <MessageCircle className="h-3.5 w-3.5" />
-                </button>
+                  <img
+                    src={axonHeadHappy}
+                    alt="Axon feliz"
+                    className="relative z-10 h-[108px] w-auto object-contain drop-shadow-[0_22px_42px_rgba(45,8,80,0.16)] sm:h-[122px] lg:h-[136px] dark:drop-shadow-[0_26px_46px_rgba(0,0,0,0.34)]"
+                  />
+                </div>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
+        )}
 
-        {/* Tarefa-chave: destaque rápido para a prioridade principal do dia. */}
-        {keyTask && (
-          <section className="mb-4">
+        <div className="mt-4 grid gap-4 lg:grid-cols-[minmax(0,1.12fr)_minmax(360px,0.88fr)] lg:items-stretch lg:gap-5">
+          <div className="space-y-4">
+            <section>
+              {isDashboardBooting ? (
+                <FocusBlockSkeleton />
+              ) : (
+                <div className="mt-2 rounded-[2rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl lg:p-5">
+                  <div className="mb-3 flex items-center justify-between gap-3">
+                    <div>
+                      <p className="text-sm font-black text-primary">
+                        Bloco de foco atual
+                      </p>
+                      <p className="mt-1 text-[0.68rem] font-medium text-muted">
+                        Janela recomendada para foco
+                      </p>
+                    </div>
+
+                    <span className="shrink-0 rounded-full border border-accent-soft bg-accent-soft px-2.5 py-1 text-[0.65rem] font-black text-accent">
+                      {currentBlock
+                        ? `${currentBlock.start} – ${currentBlock.end}`
+                        : nextFocus?.start ?? energyPeak}
+                    </span>
+                  </div>
+
+                  <CurrentFocusBlockCard
+                    currentBlock={currentBlock}
+                    nextBlock={nextBlock}
+                    fallbackLabel={nextFocus?.label}
+                    fallbackStart={nextFocus?.start}
+                    fallbackProgress={energyPercent}
+                    showNextBlock={showNextBlock}
+                    onToggleNext={() => setShowNextBlock((current) => !current)}
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => navigate("/chat")}
+                    className="mt-3 inline-flex items-center gap-2 rounded-full text-xs font-semibold text-accent transition active:scale-[0.98]"
+                  >
+                    Ajustar com o Axon
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+              )}
+            </section>
+
+            {keyTask && (
+          <section>
             <button
               type="button"
               onClick={() => navigate("/planning")}
-              className={`group w-full overflow-hidden rounded-[2rem] border p-4 text-left shadow-xl backdrop-blur-2xl active:scale-[0.98] transition ${
+              className={`group w-full rounded-[1.8rem] border p-4 text-left shadow-card transition active:scale-[0.98] ${
                 keyTask.status === "done"
-                  ? "border-emerald-300/20 bg-emerald-400/[0.07] shadow-emerald-950/10"
-                  : "border-amber-300/25 bg-amber-400/[0.07] shadow-amber-950/10"
+                  ? "border-emerald-300/25 bg-emerald-500/10"
+                  : "border-amber-300/25 bg-amber-500/10"
               }`}
             >
               <div className="flex items-center gap-3">
-                <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
-                  keyTask.status === "done"
-                    ? "border-emerald-300/25 bg-emerald-400/15 text-emerald-200"
-                    : "border-amber-300/25 bg-amber-400/15 text-amber-200"
-                }`}>
-                  <Star className={`h-5 w-5 ${keyTask.status !== "done" ? "fill-amber-300 text-amber-300" : ""}`} />
+                <div
+                  className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border ${
+                    keyTask.status === "done"
+                      ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100"
+                      : "border-amber-300/25 bg-amber-500/10 text-amber-700 dark:text-amber-100"
+                  }`}
+                >
+                  <Star
+                    className={`h-5 w-5 ${
+                      keyTask.status !== "done"
+                        ? "fill-amber-400 text-amber-400"
+                        : ""
+                    }`}
+                  />
                 </div>
 
                 <div className="min-w-0 flex-1">
-                  <p className="text-[0.68rem] font-semibold uppercase tracking-[0.14em] text-soft">
-                    Tarefa chave de hoje
+                  <p className="text-[0.68rem] font-black uppercase tracking-[0.14em] text-muted">
+                    Tarefa-chave
                   </p>
-                  <p className={`mt-0.5 truncate text-sm font-semibold ${
-                    keyTask.status === "done" ? "text-emerald-600 line-through opacity-70" : "text-primary"
-                  }`}>
+
+                  <p
+                    className={`mt-1 truncate text-sm font-black ${
+                      keyTask.status === "done"
+                        ? "text-emerald-700 line-through opacity-70 dark:text-emerald-100"
+                        : "text-primary"
+                    }`}
+                  >
                     {keyTask.title}
                   </p>
                 </div>
 
-                <span className={`shrink-0 rounded-full border px-3 py-1.5 text-xs font-semibold ${
-                  keyTask.status === "done"
-                    ? "border-emerald-300/25 bg-emerald-400/10 text-emerald-600 dark:text-emerald-100"
-                    : "border-amber-300/20 bg-amber-400/10 text-amber-100"
-                }`}>
-                  {keyTask.status === "done" ? "Concluída" : "Pendente"}
+                <span
+                  className={`shrink-0 rounded-full border px-3 py-1 text-[0.68rem] font-black ${
+                    keyTask.status === "done"
+                      ? "border-emerald-300/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-100"
+                      : "border-amber-300/25 bg-amber-500/10 text-amber-700 dark:text-amber-100"
+                  }`}
+                >
+                  {keyTask.status === "done" ? "Feita" : "Pendente"}
                 </span>
               </div>
             </button>
           </section>
         )}
 
-        {/* Revisão diária: aparece à noite quando ainda não existe registro de hoje. */}
-        {showReviewCard && (
-          <section className="mb-4">
-            <button
-              type="button"
-              onClick={() => setReviewOpen(true)}
-              className="group w-full overflow-hidden rounded-[2rem] border border-accent-soft bg-accent-soft p-4 text-left shadow-card backdrop-blur-2xl active:scale-[0.98]"
-            >
-              <div className="flex items-center gap-3">
-                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-                  <Moon className="h-5 w-5" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="text-sm font-semibold text-primary">Como foi o seu dia?</p>
-                  <p className="mt-0.5 text-xs text-muted">
-                    Leva menos de 1 minuto · Alimenta seus Insights
-                  </p>
-                </div>
-                <span className="shrink-0 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent">
-                  Registrar
-                </span>
-              </div>
-            </button>
-          </section>
-        )}
-
-        {/* Métricas rápidas: energia, foco, próximo pico e ritmo predominante. */}
-        <section className="mb-4 grid grid-cols-2 gap-3">
-          <MetricCard
+        <section className="grid grid-cols-2 gap-3">
+          <CircularMetricCard
             icon={Zap}
             label="Energia"
-            value={loading ? "..." : `${energyPercent}%`}
+            value={isDashboardBooting ? null : energyPercent}
             helper="nível atual"
           />
 
-          <MetricCard
+          <CircularMetricCard
             icon={Focus}
             label="Foco"
-            value={loading ? "..." : `${focusPercent}%`}
+            value={isDashboardBooting ? null : focusPercent}
             helper="clareza mental"
           />
-
-          <MetricCard
-            icon={Clock3}
-            label="Pico"
-            value={nextPeakValue}
-            helper="produtividade"
-          />
-
-          <MetricCard
-            icon={Moon}
-            label="Ritmo"
-            value={rhythmLabel}
-            helper={focusWindow}
-          />
         </section>
+          </div>
 
-        {/* Plano enxuto: mostra até cinco itens dos blocos do dia, com subtarefas. */}
-        <section className="rounded-[2rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="space-y-4 lg:flex lg:h-full lg:min-h-0 lg:flex-col">
+        <section className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl lg:flex lg:h-full lg:min-h-0 lg:flex-col lg:p-5">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_58%)]" />
+
+          <div className="relative mb-4 flex items-start justify-between gap-4">
             <div>
-              <p className="text-sm font-semibold text-primary">Hoje</p>
-              <p className="mt-1 text-xs text-muted">
-                Plano enxuto do dia
+              <p className="text-[1.35rem] font-black leading-none tracking-[-0.04em] text-primary">
+                Hoje
+              </p>
+              <p className="mt-2 text-xs leading-5 text-muted">
+                Próximos movimentos do seu dia
               </p>
             </div>
 
-            <CalendarDays className="h-5 w-5 text-accent" />
+            <button
+              type="button"
+              onClick={() => navigate("/planning")}
+              className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-2xl border border-accent-soft bg-accent-soft px-3 text-xs font-black text-accent transition active:scale-[0.96]"
+              aria-label="Abrir planejamento"
+            >
+              <CalendarDays className="h-4 w-4" />
+              <span className="hidden sm:inline">Agenda</span>
+            </button>
           </div>
 
-          {(() => {
-            const flatTasks = dayBlocks.flatMap((b) => b.tasks);
-            const typeLabel: Record<string, string> = {
-              task: "Tarefa", event: "Evento", routine: "Rotina",
-            };
+          {flatTasks.length === 0 ? (
+            <EmptyState
+              icon={CalendarDays}
+              title="Nenhuma tarefa para hoje"
+              description="Converse com o Axon para organizar seu dia ou adicione tarefas no Planejamento."
+              actionLabel="Adicionar tarefa"
+              onAction={() => navigate("/planning")}
+            />
+          ) : (
+            <div className="custom-scrollbar relative space-y-2.5 lg:min-h-0 lg:flex-1 lg:space-y-3 lg:overflow-y-auto lg:pr-1">
+              {flatTasks.slice(0, 5).map((task) => {
+                const isActive = task.status === "progress";
+                const isDone = task.status === "done";
+                const isKey = task.is_key_task;
 
-            if (flatTasks.length === 0) {
-              return (
-                <EmptyState
-                  icon={CalendarDays}
-                  title="Nenhuma tarefa para hoje"
-                  description="Converse com o Axon para organizar seu dia ou adicione tarefas no Planejamento."
-                  actionLabel="Adicionar tarefa"
-                  onAction={() => navigate("/planning")}
-                />
-              );
-            }
+                const subtasks = subtasksMap[task.id] ?? [];
+                const completedSubtasks = subtasks.filter(
+                  (subtask) => subtask.done
+                ).length;
+                const hasSubtasks = subtasks.length > 0;
+                const focusRecommendation = focusRecommendationByTaskId[task.id];
 
-            return (
-              <div className="space-y-3">
-                {flatTasks.slice(0, 5).map((task) => {
-                  const isActive = task.status === "progress";
-                  const isKey = task.is_key_task;
-
-                  const subtasks = subtasksMap[task.id] ?? [];
-                  const completedSubtasks = subtasks.filter(
-                    (subtask) => subtask.done
-                  ).length;
-                  const hasSubtasks = subtasks.length > 0;
-
-                  return (
+                return (
+                  <button
+                    key={task.id}
+                    type="button"
+                    onClick={() => navigate("/planning")}
+                    className={`group relative flex w-full gap-3 overflow-hidden rounded-[1.45rem] border p-3 text-left transition active:scale-[0.99] lg:p-3.5 ${
+                      isKey
+                        ? "border-amber-300/25 bg-amber-500/10"
+                        : focusRecommendation
+                        ? "border-accent-soft bg-accent-soft"
+                        : isActive
+                        ? "border-accent-soft bg-surface-muted"
+                        : "border-soft bg-surface-muted"
+                    }`}
+                  >
                     <div
-                      key={task.id}
-                      className={`flex items-center gap-3 rounded-[1.45rem] border p-3 ${
+                      className={`absolute left-0 top-4 h-[calc(100%-2rem)] w-1 rounded-r-full ${
                         isKey
-                          ? "border-amber-300/25 bg-amber-400/[0.07]"
-                          : isActive
-                          ? "border-purple-300/25 bg-purple-500/10"
-                          : "border-soft bg-surface-muted"
+                          ? "bg-amber-400"
+                          : focusRecommendation || isActive
+                          ? "bg-[var(--accent)]"
+                          : "bg-transparent"
                       }`}
-                    >
-                      <div
-                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border text-xs font-semibold ${
-                          isKey
-                            ? "border-amber-300/25 bg-amber-400/15 text-amber-200"
-                            : isActive
-                            ? "border-accent-soft bg-accent-soft text-accent"
-                            : "border-soft bg-surface-muted text-muted"
-                        }`}
-                      >
-                        {task.start_time ?? "—"}
-                      </div>
+                    />
 
-                      <div className="min-w-0 flex-1">
-                        <p
-                          className={`truncate text-sm font-semibold ${
-                            isKey ? "text-amber-700 dark:text-amber-100" : "text-primary"
-                          }`}
-                        >
-                          {task.title}
-                        </p>
+                    <div className="min-w-0 flex-1 py-0.5">
+                      <div className="flex min-w-0 items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p
+                            className={`min-w-0 truncate text-sm font-black leading-5 ${
+                              isDone
+                                ? "text-muted line-through"
+                                : isKey
+                                ? "text-amber-700 dark:text-amber-100"
+                                : "text-primary"
+                            }`}
+                          >
+                            {task.title}
+                          </p>
 
-                        <p className="mt-0.5 text-xs text-muted">
-                          {task.objective_title ? (
-                            <span className="inline-flex items-center gap-1">
-                              <Star className="h-3 w-3 text-purple-300/60" />
-                              {task.objective_title}
+                          <div className="mt-1.5 flex flex-wrap items-center gap-1.5 text-xs text-muted">
+                            <span>
+                              {task.objective_title ? task.objective_title : taskTypeLabel[task.task_type] ?? "Tarefa"}
                             </span>
-                          ) : (
-                            typeLabel[task.task_type] ?? "Tarefa"
-                          )}
-                        </p>
 
-                        {hasSubtasks && (
-                          <div className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-accent-soft bg-accent-soft px-2.5 py-1 text-[0.65rem] font-semibold text-accent">
-                            <CheckCircle2 className="h-3 w-3" />
-                            {completedSubtasks}/{subtasks.length} subtarefas
+                            {hasSubtasks && (
+                              <>
+                                <span className="text-soft">·</span>
+
+                                <span className="inline-flex items-center gap-1 font-semibold text-accent">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  {completedSubtasks}/{subtasks.length}
+                                </span>
+                              </>
+                            )}
+
+                            {isKey && (
+                              <>
+                                <span className="text-soft">·</span>
+
+                                <span className="inline-flex items-center gap-1 font-semibold text-amber-700 dark:text-amber-100">
+                                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                                  Tarefa-chave
+                                </span>
+                              </>
+                            )}
+
+                            {focusRecommendation && (
+                              <>
+                                <span className="text-soft">·</span>
+
+                                <span
+                                  title={focusRecommendation.time}
+                                  className="inline-flex items-center gap-1 font-semibold text-accent"
+                                >
+                                  <Sparkles className="h-3 w-3" />
+                                  {focusRecommendation.label}
+                                </span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+
+                        {(task.start_time || task.end_time) && (
+                          <div className="shrink-0 pt-0.5 text-right">
+                            <p className="text-[0.7rem] font-black leading-none text-secondary">
+                              {task.start_time ?? "—"}
+                            </p>
+
+                            {task.end_time && (
+                              <p className="mt-1 text-[0.56rem] font-semibold leading-none text-soft">
+                                até {task.end_time}
+                              </p>
+                            )}
                           </div>
                         )}
                       </div>
-
-                      {isKey && (
-                        <Star className="h-4 w-4 shrink-0 fill-amber-300 text-amber-300" />
-                      )}
-
-                      {!isKey && isActive && (
-                        <CheckCircle2 className="h-5 w-5 shrink-0 text-accent" />
-                      )}
                     </div>
-                  );
-                })}
-              </div>
-            );
-          })()}
 
-          <button
-            onClick={() => navigate("/planning")}
-            className="mt-4 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary backdrop-blur-2xl active:scale-[0.98]"
-          >
-            Ver planejamento
-            <CalendarDays className="ml-2 h-4 w-4" />
-          </button>
+                    {isDone && (
+                      <div className="flex shrink-0 items-center text-emerald-700 dark:text-emerald-100">
+                        <CheckCircle2 className="h-4 w-4" />
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
+          )}
+
+          {flatTasks.length > 5 && (
+            <button
+              type="button"
+              onClick={() => navigate("/planning")}
+              className="relative mt-3 inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-4 text-xs font-black text-secondary transition active:scale-[0.98] lg:hidden"
+            >
+              Ver todos os movimentos
+              <CalendarDays className="ml-2 h-4 w-4" />
+            </button>
+          )}
         </section>
 
-        {/* Relatórios narrativos: gerados pelo scheduler (semanal toda segunda, mensal todo dia 1º). */}
         {reports?.weekly && (
           <PeriodReportCard title="Relatório da semana" report={reports.weekly} />
         )}
+
         {reports?.monthly && (
           <PeriodReportCard title="Relatório do mês" report={reports.monthly} />
         )}
+          </div>
+        </div>
       </div>
 
-      {/* Overlays globais: sidebar, revisão diária e central de notificações. */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -631,24 +734,96 @@ export default function Dashboard() {
 // Cards visuais usados apenas nesta página.
 // ============================================================================
 
-// Card compacto usado na grade de métricas rápidas do topo.
-function MetricCard({ icon: Icon, label, value, helper }: MetricCardProps) {
+function DashboardGreetingSkeleton() {
   return (
-    <div className="rounded-[1.55rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl">
-      <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-        <Icon className="h-4 w-4" />
+    <section className="mt-5">
+      <div className="relative overflow-hidden rounded-[2.15rem] border border-soft bg-surface-elevated p-5 shadow-card backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_54%)]" />
+
+        <div className="relative flex items-center justify-between gap-4">
+          <div className="min-w-0 flex-1 animate-pulse">
+            <div className="h-3 w-32 rounded-full bg-surface-muted" />
+            <div className="mt-4 h-9 w-40 rounded-2xl bg-surface-muted" />
+            <div className="mt-4 h-3 w-full max-w-[15rem] rounded-full bg-surface-muted" />
+            <div className="mt-2 h-3 w-4/5 rounded-full bg-surface-muted" />
+          </div>
+
+          <div className="relative flex h-[112px] w-[116px] shrink-0 items-center justify-center sm:h-[128px] sm:w-[138px] lg:h-[142px] lg:w-[180px]">
+            <div className="absolute h-[104px] w-[104px] rounded-full bg-accent-soft blur-2xl sm:h-[118px] sm:w-[118px] lg:h-[132px] lg:w-[132px]" />
+            <div className="relative z-10 h-[88px] w-[104px] rounded-[2rem] bg-surface-muted" />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function FocusBlockSkeleton() {
+  return (
+    <div className="mt-2 rounded-[2rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl">
+      <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="animate-pulse">
+          <div className="h-4 w-36 rounded-full bg-surface-muted" />
+          <div className="mt-2 h-3 w-44 rounded-full bg-surface-muted" />
+        </div>
+
+        <div className="h-7 w-24 rounded-full border border-accent-soft bg-accent-soft" />
       </div>
 
-      <p className="text-xs text-muted">{label}</p>
-
-      <p className="mt-1 text-xl font-semibold tracking-tight text-primary">
-        {value}
-      </p>
-
-      <p className="mt-1 text-xs leading-5 text-soft">{helper}</p>
+      <div className="rounded-[1.6rem] border border-soft bg-surface-muted p-4">
+        <div className="animate-pulse">
+          <div className="h-5 w-28 rounded-full bg-surface-elevated" />
+          <div className="mt-5 h-4 w-full rounded-full bg-surface-elevated" />
+          <div className="mt-3 h-4 w-4/5 rounded-full bg-surface-elevated" />
+          <div className="mt-8 h-2 w-full rounded-full bg-surface-elevated" />
+        </div>
+      </div>
     </div>
   );
 }
+
+function CircularMetricCard({
+  icon: Icon,
+  label,
+  value,
+  helper,
+}: {
+  icon: ElementType;
+  label: string;
+  value: number | null;
+  helper: string;
+}) {
+  const isLoading = value === null;
+  const safeValue = isLoading ? 0 : clampPercent(value);
+
+  return (
+    <div className="rounded-[1.8rem] border border-soft bg-surface-elevated p-4 shadow-card backdrop-blur-2xl">
+      <div className="flex items-center gap-3">
+        <div
+          className="relative flex h-20 w-20 shrink-0 items-center justify-center rounded-full"
+          style={{
+            background: `conic-gradient(var(--accent) ${safeValue * 3.6}deg, var(--surface-muted) 0deg)`,
+          }}
+        >
+          <div className="flex h-[4.25rem] w-[4.25rem] items-center justify-center rounded-full bg-surface-elevated">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
+              <Icon className="h-4 w-4" />
+            </div>
+          </div>
+        </div>
+
+        <div className="min-w-0">
+          <p className="text-sm font-black text-primary">{label}</p>
+          <p className="mt-1 text-[1.35rem] font-black leading-none tracking-[-0.04em] text-primary">
+            {isLoading ? "—" : `${safeValue}%`}
+          </p>
+          <p className="mt-1 text-xs text-muted">{helper}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 
 // Narrativa gerada pelo scheduler (relatório semanal ou mensal), com os
 // principais números do período em chips abaixo do texto.
@@ -786,14 +961,6 @@ function CurrentFocusBlockCard({
         {currentBlock.description}
       </p>
 
-      {currentBlock.tasks.length > 0 && (
-        <div className="mt-3 space-y-2">
-          {currentBlock.tasks.map((task) => (
-            <BlockTaskRow key={task.id} task={task} />
-          ))}
-        </div>
-      )}
-
       <div className="mt-3">
         <div className="mb-2 flex items-center justify-between text-[0.68rem] text-soft">
           <span>Progresso</span>
@@ -846,45 +1013,9 @@ function CurrentFocusBlockCard({
                 {nextBlock.description}
               </p>
 
-              {nextBlock.tasks.length > 0 && (
-                <div className="mt-2.5 space-y-1.5">
-                  {nextBlock.tasks.map((task) => (
-                    <BlockTaskRow key={task.id} task={task} compact />
-                  ))}
-                </div>
-              )}
             </div>
           )}
         </div>
-      )}
-    </div>
-  );
-}
-
-// Linha curta de tarefa dentro dos blocos de foco atual/próximo.
-function BlockTaskRow({ task, compact = false }: { task: BlockTask; compact?: boolean }) {
-  const isProgress = task.status === "progress";
-
-  return (
-    <div className={`flex items-center gap-2.5 ${compact ? "px-0 py-1" : "px-3 py-2.5"}`}>
-      {task.is_key_task ? (
-        <Star className="h-3.5 w-3.5 shrink-0 fill-amber-300 text-amber-300" />
-      ) : (
-        <div className={`h-1.5 w-1.5 shrink-0 rounded-full ${
-          isProgress ? "bg-purple-300" : "bg-[var(--text-soft)]"
-        }`} />
-      )}
-
-      <p className={`min-w-0 flex-1 truncate text-xs font-semibold ${
-        task.is_key_task ? "text-amber-700 dark:text-amber-100" : "text-secondary"
-      }`}>
-        {task.title}
-      </p>
-
-      {task.start_time && (
-        <p className="shrink-0 text-[0.65rem] text-soft">
-          {task.start_time}{task.end_time ? `–${task.end_time}` : ""}
-        </p>
       )}
     </div>
   );
@@ -1183,8 +1314,6 @@ function NotificationsSheet({
   );
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
-  const NOTIFICATIONS_PAGE_SIZE = 10;
-
   // Listas derivadas para separar rapidamente o que está pendente do que já foi tratado.
   const unreadNotifications = notifications.filter(
     (notification) => notification.status === "unread"
@@ -1216,7 +1345,7 @@ function NotificationsSheet({
         setNotifications(visibleNotifications);
         setHasMore(data.length > NOTIFICATIONS_PAGE_SIZE);
 
-        const nextUnreadCount = data.filter(
+        const nextUnreadCount = visibleNotifications.filter(
           (notification) => notification.status === "unread"
         ).length;
 
