@@ -47,6 +47,7 @@ def build_task_metrics(
       - carried_forward: tarefas naquele dia que já foram adiadas (carry_count > 0)
     """
     snapshots = snapshots or {}
+    now = datetime.now(tz)
     window = [today - timedelta(days=i) for i in range(days - 1, -1, -1)]
     buckets = {
         d: {"completed": 0, "pending": 0, "carried_forward": 0} for d in window
@@ -55,6 +56,28 @@ def build_task_metrics(
 
     for t in tasks:
         status = t.get("status")
+
+        # Eventos: contam como concluídos quando status 'done' OU já passaram do
+        # horário de término (mesma regra do Planning/daily_stats_service), no
+        # dia em que estão agendados. Sem esse ramo, um evento que aconteceu mas
+        # nunca virou 'done' caía como "pendente" e não entrava na % de hoje.
+        if t.get("task_type") == "event":
+            sched = t.get("scheduled_date")
+            if not sched:
+                continue
+            try:
+                sday = date.fromisoformat(sched)
+            except (ValueError, TypeError):
+                continue
+            if sday not in window_set:
+                continue
+            if daily_stats_service.event_completed(t, now, tz):
+                buckets[sday]["completed"] += 1
+            else:
+                buckets[sday]["pending"] += 1
+            if (t.get("carry_count") or 0) > 0:
+                buckets[sday]["carried_forward"] += 1
+            continue
 
         # Concluídas: contam no dia em que foram concluídas (completed_at).
         if status == "done":
@@ -86,10 +109,12 @@ def build_task_metrics(
         snap = snapshots.get(str(d))
         if snap is not None and d < today:
             # Dia passado congelado — fonte da verdade histórica.
-            # completed = tarefas concluídas por esforço (sem eventos auto-
-            # concluídos), igual ao caminho ao vivo (status 'done'). Fallback
-            # para completed_items em snapshots antigos sem a coluna.
-            completed = snap.get("completed_tasks", snap["completed_items"])
+            # completed = itens concluídos incluindo eventos que já terminaram
+            # (completed_items), igual ao anel de adesão do Planning. Assim a
+            # barra roxa e a % batem com o Planning: um evento que aconteceu
+            # conta como concluído. (completed_tasks exclui eventos de propósito
+            # — é usado só no "dia mais produtivo por esforço", não aqui.)
+            completed = snap["completed_items"]
             total     = snap["total"]
             rate      = snap["completion_rate"]
             carried   = snap.get("carried_forward", 0)
@@ -149,9 +174,16 @@ def get_task_insights(
     since_iso = f"{since}T00:00:00+00:00"
 
     # Concluídas na janela (por completed_at) + pendentes agendadas na janela.
+    # task_type/start_time/end_time/end_date entram para o cálculo ao vivo de
+    # eventos (contam como concluídos quando o horário já passou — ver
+    # build_task_metrics).
+    _cols = (
+        "id, status, task_type, scheduled_date, end_date, "
+        "start_time, end_time, completed_at, carry_count"
+    )
     completed = (
         supabase.table("tasks")
-        .select("id, status, scheduled_date, completed_at, carry_count")
+        .select(_cols)
         .eq("user_id", user_id)
         .eq("status", "done")
         .gte("completed_at", since_iso)
@@ -159,7 +191,7 @@ def get_task_insights(
     )
     scheduled = (
         supabase.table("tasks")
-        .select("id, status, scheduled_date, completed_at, carry_count")
+        .select(_cols)
         .eq("user_id", user_id)
         .neq("status", "done")
         .gte("scheduled_date", since)

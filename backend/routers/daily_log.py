@@ -1,6 +1,6 @@
 from datetime import datetime, date, timedelta
 
-from fastapi import APIRouter, Depends, Header, Query
+from fastapi import APIRouter, Depends, Header, HTTPException, Query
 from auth_helper import get_current_user
 from database import supabase
 from models.schemas import DailyLogCreate, DailyLogResponse
@@ -39,7 +39,19 @@ def upsert_daily_log(
 ):
     user_id = current_user["id"]
     tz_name = user_tz.resolve(user_id, x_timezone)
-    today   = str(datetime.now(user_tz.zone(tz_name)).date())
+    now_date = datetime.now(user_tz.zone(tz_name)).date()
+
+    # Registro retroativo: só ontem é aceito. A checagem mora aqui (e não no
+    # schema) porque "ontem" depende do fuso do usuário — ver DailyLogCreate.
+    if body.date:
+        target = date.fromisoformat(body.date)
+        if target != now_date - timedelta(days=1):
+            raise HTTPException(
+                status_code=400, detail="só é permitido registrar ontem"
+            )
+        today = body.date
+    else:
+        today = str(now_date)
 
     hours_slept = None
     if body.sleep_time and body.wake_time:
@@ -98,6 +110,31 @@ def get_today(
         .select("*")
         .eq("user_id", user_id)
         .eq("date", today)
+        .limit(1)
+        .execute()
+    )
+
+    if not result.data:
+        return None
+
+    return _serialize(result.data[0])
+
+
+@router.get("/yesterday", response_model=DailyLogResponse | None)
+def get_yesterday(
+    x_timezone: str | None = Header(default=None),
+    current_user: dict = Depends(get_current_user),
+):
+    """Registro de ontem (no fuso do usuário) ou None se ainda não preenchido."""
+    user_id   = current_user["id"]
+    tz_name   = user_tz.resolve(user_id, x_timezone)
+    yesterday = str(datetime.now(user_tz.zone(tz_name)).date() - timedelta(days=1))
+
+    result = (
+        supabase.table("daily_logs")
+        .select("*")
+        .eq("user_id", user_id)
+        .eq("date", yesterday)
         .limit(1)
         .execute()
     )
