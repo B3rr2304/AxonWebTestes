@@ -29,11 +29,6 @@ def _recalculate_task_progress(user_id: str, task_id: str) -> None:
         )
         rows = res.data or []
         total = len(rows)
-        if total == 0:
-            return
-        done_count = sum(1 for r in rows if r.get("done"))
-        progress = round((done_count / total) * 100)
-        status = "done" if done_count == total else ("progress" if done_count > 0 else "todo")
 
         # Lê o status atual para detectar a transição e manter completed_at
         # coerente com o caminho de tasks_service.update_task — sem isso a
@@ -48,6 +43,25 @@ def _recalculate_task_progress(user_id: str, task_id: str) -> None:
             .execute()
         )
         current_status = (current.data or {}).get("status")
+
+        if total == 0:
+            # A última subtarefa foi excluída: a tarefa volta a ser uma tarefa
+            # simples, sem checklist. Zera o progresso e, se ela estava 'done'
+            # apenas por causa do checklist, reabre — senão ficaria concluída
+            # para sempre sem nenhuma subtarefa, contaminando as métricas de
+            # Insights (que filtram por completed_at).
+            payload = {"progress": 0}
+            if current_status == "done":
+                payload["status"] = "todo"
+                payload["completed_at"] = None
+            supabase.table("tasks").update(payload).eq("id", task_id).eq(
+                "user_id", user_id
+            ).execute()
+            return
+
+        done_count = sum(1 for r in rows if r.get("done"))
+        progress = round((done_count / total) * 100)
+        status = "done" if done_count == total else ("progress" if done_count > 0 else "todo")
 
         payload: dict = {"progress": progress, "status": status}
         if status == "done" and current_status != "done":

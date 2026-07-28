@@ -1,6 +1,9 @@
 from pydantic import BaseModel, EmailStr, field_validator, model_validator
 from typing import Optional
 from datetime import date, time
+# Alias: o campo `date` de DailyLogCreate sombreia o nome dentro do corpo da
+# classe — usar _date nos validators evita qualquer ambiguidade.
+from datetime import date as _date
 
 
 # --- Auth ---
@@ -260,6 +263,12 @@ _VALID_PEAK_PERIODS = {
 
 
 class DailyLogCreate(BaseModel):
+    # "YYYY-MM-DD" — apenas ontem é aceito; None = hoje.
+    # A checagem de "é realmente ontem?" NÃO pode ficar aqui: depende do fuso do
+    # usuário (X-Timezone), que o Pydantic não enxerga — usar date.today() do
+    # servidor rejeitaria registros legítimos de quem está em fuso diferente do
+    # UTC. Aqui validamos só o formato; o endpoint valida a data no fuso certo.
+    date:                Optional[str] = None
     sleep_time:          Optional[str] = None   # "23:30"
     wake_time:           Optional[str] = None   # "07:00"
     sleep_rating:        Optional[int] = None   # 1–5
@@ -271,6 +280,17 @@ class DailyLogCreate(BaseModel):
     peak_periods:        list[str]     = []     # até 2 slugs de período
     exercised:           Optional[bool] = None
     notes:               Optional[str]  = None
+
+    @field_validator("date")
+    @classmethod
+    def _date_formato_iso(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        try:
+            _date.fromisoformat(v)
+        except ValueError:
+            raise ValueError("date deve estar no formato YYYY-MM-DD")
+        return v
 
     @field_validator("sleep_rating", "mood_rating", "productivity_rating")
     @classmethod

@@ -63,6 +63,16 @@ def _event_completed(task: dict, ref_now: datetime, tz: ZoneInfo) -> bool:
     return end_dt is not None and ref_now >= end_dt
 
 
+def event_completed(task: dict, ref_now: datetime, tz: ZoneInfo) -> bool:
+    """
+    Versão pública de _event_completed: um evento conta como concluído se está
+    'done' ou se seu horário de término já passou (ref_now). Usada também pelo
+    router de insights para o cálculo ao vivo de hoje, mantendo uma única
+    definição de "evento concluído" compartilhada com o snapshot e o Planning.
+    """
+    return _event_completed(task, ref_now, tz)
+
+
 def _task_on_date(task: dict, day: date) -> bool:
     """Réplica de isTaskOnDate: evento multi-dia cobre o intervalo; resto = dia exato."""
     sched = task.get("scheduled_date")
