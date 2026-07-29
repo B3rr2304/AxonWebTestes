@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type ElementType, type FormEvent } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import ReactMarkdown, { type Components } from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -8,7 +8,6 @@ import {
   Brain,
   Check,
   Edit3,
-  Info,
   Briefcase,
   Loader2,
   Menu,
@@ -160,7 +159,6 @@ export default function ChatConversation() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isOptionsOpen, setIsOptionsOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
-  const [isContextOpen, setIsContextOpen] = useState(false);
   const [confirmAction, setConfirmAction] = useState<ConfirmAction>(null);
   const [actionLoading, setActionLoading] = useState(false);
   const [isProjectSheetOpen, setIsProjectSheetOpen] = useState(false);
@@ -267,7 +265,7 @@ export default function ChatConversation() {
   }
 
   // Envio de mensagem: cria bolhas locais e acompanha o streaming do backend.
-  function handleSend(e?: React.FormEvent) {
+  function handleSend(e?: FormEvent) {
     e?.preventDefault();
     const text = message.trim();
     if (!text || isSending) return;
@@ -455,19 +453,19 @@ export default function ChatConversation() {
 
       <div className="relative z-10 flex h-full flex-col px-4 pb-4 pt-5">
         <header className="mb-4 shrink-0">
-          <div className="flex items-center justify-between">
-            <div className="flex min-w-0 items-center gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <button
                 type="button"
                 onClick={() => navigate("/chat")}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary shadow-card backdrop-blur-2xl transition active:scale-[0.96]"
                 aria-label="Voltar"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
 
               <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-primary">
+                <p className="truncate text-base font-black leading-tight tracking-[-0.035em] text-primary">
                   {chatTitle}
                 </p>
                 <p className="truncate text-xs text-muted">
@@ -476,11 +474,11 @@ export default function ChatConversation() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => setIsOptionsOpen(true)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary shadow-card backdrop-blur-2xl transition active:scale-[0.96]"
                 aria-label="Opções da conversa"
               >
                 <MoreVertical className="h-5 w-5" />
@@ -489,7 +487,7 @@ export default function ChatConversation() {
               <button
                 type="button"
                 onClick={() => setIsSidebarOpen(true)}
-                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary backdrop-blur-2xl transition active:scale-[0.96]"
+                className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-secondary shadow-card backdrop-blur-2xl transition active:scale-[0.96]"
                 aria-label="Abrir menu"
               >
                 <Menu className="h-5 w-5" />
@@ -498,23 +496,27 @@ export default function ChatConversation() {
           </div>
         </header>
 
-        <ScrollArea className="flex-1" contentClassName="pr-1">
+        <ScrollArea className="min-h-0 flex-1" contentClassName="pr-1 pb-4">
           <div className="space-y-3 pb-4">
             {messages.length === 0 ? (
               <div className="flex min-h-[56vh] items-center justify-center">
-                <div className="w-full rounded-[2rem] border border-soft bg-surface-elevated p-5 text-center text-primary shadow-soft backdrop-blur-2xl">
-                  <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-                    <Sparkles className="h-6 w-6" />
+                <div className="relative w-full overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-6 text-center text-primary shadow-soft backdrop-blur-2xl">
+                  <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top,var(--accent-soft),transparent_58%)]" />
+
+                  <div className="relative">
+                    <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
+                      <Sparkles className="h-6 w-6" />
+                    </div>
+
+                    <h2 className="text-xl font-black tracking-[-0.04em] text-primary">
+                      Comece uma conversa.
+                    </h2>
+
+                    <p className="mx-auto mt-3 max-w-[260px] text-sm leading-6 text-muted">
+                      Use o Axon para reorganizar seu dia, clarear prioridades ou
+                      transformar pensamentos soltos em ações.
+                    </p>
                   </div>
-
-                  <h2 className="text-xl font-semibold tracking-[-0.04em] text-primary">
-                    Comece uma conversa.
-                  </h2>
-
-                  <p className="mx-auto mt-3 max-w-[260px] text-sm leading-6 text-muted">
-                    Use o Axon para reorganizar seu dia, clarear prioridades ou
-                    transformar pensamentos soltos em ações.
-                  </p>
                 </div>
               </div>
             ) : (
@@ -540,7 +542,7 @@ export default function ChatConversation() {
         <footer className="shrink-0 pt-3">
           <form
             onSubmit={(e) => handleSend(e)}
-            className="flex min-h-[58px] items-center gap-2 rounded-[1.7rem] border border-soft bg-surface-elevated p-2 shadow-soft backdrop-blur-2xl"
+            className="flex min-h-[58px] items-end gap-2 rounded-[1.7rem] border border-soft bg-surface-elevated p-2 shadow-soft backdrop-blur-2xl"
           >
             <textarea
               value={message}
@@ -586,10 +588,6 @@ export default function ChatConversation() {
           setIsOptionsOpen(false);
           setIsRenameOpen(true);
         }}
-        onContext={() => {
-          setIsOptionsOpen(false);
-          setIsContextOpen(true);
-        }}
         onMoveProject={() => {
           setIsOptionsOpen(false);
           setIsProjectSheetOpen(true);
@@ -614,15 +612,6 @@ export default function ChatConversation() {
         onChange={setDraftTitle}
         onClose={() => setIsRenameOpen(false)}
         onConfirm={handleRename}
-      />
-
-      <ConversationContextModal
-        isOpen={isContextOpen}
-        onClose={() => setIsContextOpen(false)}
-        chatTitle={chatTitle}
-        messageCount={messages.length}
-        chronotypeLabel={result.label}
-        energyPeak={result.energyPeak}
       />
 
       {confirmAction && (
@@ -657,7 +646,6 @@ function ChatOptionsSheet({
   isOpen,
   onClose,
   onRename,
-  onContext,
   onMoveProject,
   onClear,
   onArchive,
@@ -666,7 +654,6 @@ function ChatOptionsSheet({
   isOpen: boolean;
   onClose: () => void;
   onRename: () => void;
-  onContext: () => void;
   onMoveProject: () => void;
   onClear: () => void;
   onArchive: () => void;
@@ -675,20 +662,24 @@ function ChatOptionsSheet({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative w-full max-w-[430px] overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm">
+      <div className="relative max-h-[88dvh] w-full max-w-[430px] overflow-y-auto rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_50%)]" />
 
-        <div className="relative px-5 pb-4 pt-4">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
-
+        <div className="relative">
           <div className="mb-5 flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
+            <div className="min-w-0">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent">
+                <MoreVertical className="h-3.5 w-3.5" />
+                Ações
+              </div>
+
+              <h2 className="text-[1.65rem] font-black leading-[1.02] tracking-[-0.055em] text-primary">
                 Opções da conversa
-              </p>
+              </h2>
+
               <p className="mt-2 text-xs leading-5 text-muted">
-                Gerencie esta aba sem alterar as outras conversas.
+                Gerencie esta conversa sem alterar as demais.
               </p>
             </div>
 
@@ -705,43 +696,36 @@ function ChatOptionsSheet({
           <div className="space-y-2">
             <OptionButton
               icon={Edit3}
-              title="Renomear conversa"
-              description="Altere o nome desta aba."
+              title="Renomear"
+              description="Altere o nome desta conversa."
               onClick={onRename}
-            />
-
-            <OptionButton
-              icon={Info}
-              title="Ver contexto"
-              description="Veja o foco e os dados dessa conversa."
-              onClick={onContext}
             />
 
             <OptionButton
               icon={Briefcase}
               title="Mover para projeto"
-              description="Coloque esta conversa dentro de um projeto."
+              description="Organize esta conversa dentro de um projeto."
               onClick={onMoveProject}
             />
 
             <OptionButton
               icon={Eraser}
               title="Limpar mensagens"
-              description="Remove as mensagens, mas mantém a aba."
+              description="Remove as mensagens, mas mantém a conversa."
               onClick={onClear}
             />
 
             <OptionButton
               icon={Archive}
-              title="Arquivar conversa"
+              title="Arquivar"
               description="Remove da lista principal."
               onClick={onArchive}
             />
 
             <OptionButton
               icon={Trash2}
-              title="Excluir conversa"
-              description="Apaga esta aba de conversa."
+              title="Excluir"
+              description="Apaga esta conversa permanentemente."
               danger
               onClick={onDelete}
             />
@@ -760,7 +744,7 @@ function OptionButton({
   danger = false,
   onClick,
 }: {
-  icon: React.ElementType;
+  icon: ElementType;
   title: string;
   description: string;
   danger?: boolean;
@@ -770,7 +754,7 @@ function OptionButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-2xl border p-4 text-left transition active:scale-[0.99] ${
+      className={`flex w-full items-center gap-3 rounded-[1.45rem] border p-3 text-left shadow-card transition active:scale-[0.99] ${
         danger
           ? "border-red-300/20 bg-red-500/10"
           : "border-soft bg-surface-muted"
@@ -788,7 +772,7 @@ function OptionButton({
 
       <div className="min-w-0 flex-1">
         <p
-          className={`text-sm font-semibold ${
+          className={`text-sm font-black ${
             danger ? "text-red-600 dark:text-red-100" : "text-primary"
           }`}
         >
@@ -817,110 +801,67 @@ function RenameConversationModal({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
-      <div className="w-full max-w-[430px] rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
-        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm">
+      <div className="relative w-full max-w-[430px] overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_50%)]" />
 
-        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
-          Renomear conversa
-        </h2>
+        <div className="relative">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div>
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent">
+                <Edit3 className="h-3.5 w-3.5" />
+                Conversa
+              </div>
 
-        <p className="mt-2 text-xs leading-5 text-muted">
-          Escolha um nome claro para encontrar esta aba depois.
-        </p>
+              <h2 className="text-[1.65rem] font-black leading-[1.02] tracking-[-0.055em] text-primary">
+                Renomear conversa
+              </h2>
 
-        <label className="mt-5 block">
-          <span className="mb-2 block text-xs font-medium text-muted">
-            Nome da conversa
-          </span>
+              <p className="mt-2 text-xs leading-5 text-muted">
+                Escolha um nome claro para encontrar esta conversa depois.
+              </p>
+            </div>
 
-          <input
-            value={value}
-            onChange={(event) => onChange(event.target.value)}
-            className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
-          />
-        </label>
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
+              aria-label="Fechar"
+            >
+              <X className="h-5 w-5" />
+            </button>
+          </div>
 
-        <button
-          type="button"
-          onClick={onConfirm}
-          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
-        >
-          Salvar nome
-        </button>
+          <label className="block">
+            <span className="mb-2 block text-xs font-semibold text-muted">
+              Nome da conversa
+            </span>
 
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98]"
-        >
-          Cancelar
-        </button>
-      </div>
-    </div>
-  );
-}
+            <input
+              value={value}
+              onChange={(event) => onChange(event.target.value)}
+              className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none transition placeholder:text-soft focus:border-accent-soft"
+            />
+          </label>
 
-// Mostra um resumo rápido do contexto usado nesta conversa.
-function ConversationContextModal({
-  isOpen,
-  onClose,
-  chatTitle,
-  messageCount,
-  chronotypeLabel,
-  energyPeak,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  chatTitle: string;
-  messageCount: number;
-  chronotypeLabel: string;
-  energyPeak: string;
-}) {
-  if (!isOpen) return null;
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="mt-5 inline-flex min-h-13 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
+          >
+            Salvar nome
+            <Check className="ml-2 h-4 w-4" />
+          </button>
 
-  return (
-    <div className="fixed inset-0 z-[130] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
-      <div className="w-full max-w-[430px] rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
-        <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
-
-        <div className="mb-4 flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-accent" />
-          <p className="text-sm font-semibold text-accent">
-            Contexto da conversa
-          </p>
+          <button
+            type="button"
+            onClick={onClose}
+            className="mt-3 inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary transition active:scale-[0.98]"
+          >
+            Cancelar
+          </button>
         </div>
-
-        <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
-          {chatTitle}
-        </h2>
-
-        <div className="mt-5 space-y-3">
-          <ContextRow label="Foco da aba" value={chatTitle} />
-          <ContextRow label="Mensagens" value={`${messageCount}`} />
-          <ContextRow label="Perfil ativo" value={chronotypeLabel} />
-          <ContextRow label="Pico de energia" value={energyPeak} />
-          <ContextRow label="Memória" value="Contexto separado por conversa" />
-        </div>
-
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-5 inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
-        >
-          Entendi
-        </button>
       </div>
-    </div>
-  );
-}
-
-// Linha compacta usada dentro do resumo de contexto.
-function ContextRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-soft bg-surface-muted p-4">
-      <p className="text-xs text-muted">{label}</p>
-      <p className="mt-1 text-sm font-semibold text-primary">{value}</p>
     </div>
   );
 }
@@ -933,7 +874,7 @@ function ContextRow({ label, value }: { label: string; value: string }) {
 function TypingIndicator() {
   return (
     <div className="flex justify-start">
-      <div className="animate-[messageIn_0.25s_ease-out] max-w-[86%] rounded-[1.6rem] border border-soft bg-surface-elevated px-4 py-3 shadow-card backdrop-blur-2xl">
+      <div className="animate-[messageIn_0.25s_ease-out] max-w-[86%] rounded-[1.6rem] rounded-bl-md border border-soft bg-surface-elevated px-4 py-3 shadow-card backdrop-blur-2xl">
         <div className="flex items-center gap-3">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-accent-soft bg-accent-soft text-accent">
             <Brain className="h-4 w-4" />
@@ -1021,7 +962,7 @@ function MessageBubble({
   return (
     <div className={`animate-[messageIn_0.25s_ease-out] flex ${isUser ? "justify-end" : "justify-start"}`}>
       <div
-        className={`max-w-[82%] rounded-[1.35rem] px-4 py-3 text-sm leading-6 shadow-card ${
+        className={`max-w-[84%] rounded-[1.45rem] px-4 py-3 text-sm leading-6 shadow-card ${
           isUser
             ? "rounded-br-md bg-[var(--accent-strong)] text-white"
             : "rounded-bl-md border border-soft bg-surface-elevated text-secondary backdrop-blur-2xl"
@@ -1197,6 +1138,8 @@ function MoveConversationProjectSheet({
   if (!isOpen) return null;
 
   async function handleMove() {
+    if (!selectedProjectId) return;
+
     setSubmitting(true);
     setError(null);
 
@@ -1211,26 +1154,24 @@ function MoveConversationProjectSheet({
   }
 
   return (
-    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm">
-      <div className="relative flex max-h-[82vh] w-full max-w-[390px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
+    <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm">
+      <div className="relative flex max-h-[88dvh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_50%)]" />
 
-        <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-4">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
-
+        <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-5">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
+            <div className="min-w-0">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent">
                 <Briefcase className="h-3.5 w-3.5" />
                 Projeto
               </div>
 
-              <h2 className="text-[1.45rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
+              <h2 className="text-[1.65rem] font-black leading-[1.02] tracking-[-0.055em] text-primary">
                 Mover conversa
               </h2>
 
               <p className="mt-2 text-xs leading-5 text-muted">
-                Escolha em qual projeto esta conversa deve ficar.
+                Escolha o projeto onde esta conversa deve ficar.
               </p>
             </div>
 
@@ -1249,37 +1190,26 @@ function MoveConversationProjectSheet({
         <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
           {loading ? (
             <div className="flex items-center justify-center gap-2 py-10 text-sm text-muted">
-              <Loader2 className="h-4 w-4 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin text-accent" />
               Carregando projetos…
             </div>
+          ) : projects.length === 0 ? (
+            <div className="rounded-[1.5rem] border border-dashed border-soft bg-surface-muted px-4 py-8 text-center">
+              <Briefcase className="mx-auto h-6 w-6 text-accent" />
+
+              <p className="mt-3 text-sm font-black text-primary">
+                Nenhum projeto criado
+              </p>
+
+              <p className="mx-auto mt-2 max-w-[18rem] text-xs leading-5 text-muted">
+                Crie um projeto na tela de Chat para mover esta conversa.
+              </p>
+            </div>
           ) : (
-            <div className="space-y-3">
-              <button
-                type="button"
-                onClick={() => setSelectedProjectId(null)}
-                disabled={submitting}
-                className={`flex min-h-14 w-full items-center justify-between rounded-2xl border px-4 text-left active:scale-[0.98] disabled:opacity-60 ${
-                  selectedProjectId === null
-                    ? "border-accent-soft bg-accent-soft"
-                    : "border-soft bg-surface-muted"
-                }`}
-              >
-                <div>
-                  <p className="text-sm font-semibold text-primary">
-                    Fora de projetos
-                  </p>
-                  <p className="mt-1 text-xs text-muted">
-                    A conversa aparece na aba Todas.
-                  </p>
-                </div>
-
-                {selectedProjectId === null ? (
-                  <Check className="h-4 w-4 text-accent" />
-                ) : null}
-              </button>
-
+            <div className="space-y-2">
               {projects.map((project) => {
                 const isSelected = selectedProjectId === project.id;
+                const isCurrent = currentProjectId === project.id;
 
                 return (
                   <button
@@ -1287,47 +1217,67 @@ function MoveConversationProjectSheet({
                     type="button"
                     onClick={() => setSelectedProjectId(project.id)}
                     disabled={submitting}
-                    className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-2xl border px-4 text-left active:scale-[0.98] disabled:opacity-60 ${
+                    className={`flex min-h-16 w-full items-center justify-between gap-3 rounded-[1.45rem] border px-4 py-3 text-left shadow-card transition active:scale-[0.98] disabled:opacity-60 ${
                       isSelected
                         ? "border-accent-soft bg-accent-soft"
                         : "border-soft bg-surface-muted"
                     }`}
                   >
-                    <div className="min-w-0">
-                      <p className="truncate text-sm font-semibold text-primary">
-                        {project.name}
-                      </p>
+                    <div className="flex min-w-0 items-center gap-3">
+                      <div
+                        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+                          isSelected
+                            ? "border-accent-soft bg-surface-elevated text-accent"
+                            : "border-soft bg-surface-elevated text-muted"
+                        }`}
+                      >
+                        <Briefcase className="h-4 w-4" />
+                      </div>
 
-                      <p className="mt-1 line-clamp-1 text-xs text-muted">
-                        {project.description || "Sem descrição"}
-                      </p>
+                      <div className="min-w-0">
+                        <div className="flex min-w-0 items-center gap-2">
+                          <p className="truncate text-sm font-black text-primary">
+                            {project.name}
+                          </p>
+
+                          {isCurrent && (
+                            <span className="shrink-0 rounded-full border border-accent-soft bg-surface-elevated px-2 py-0.5 text-[0.58rem] font-black text-accent">
+                              Atual
+                            </span>
+                          )}
+                        </div>
+
+                        <p className="mt-1 line-clamp-1 text-xs text-muted">
+                          {project.description || "Sem descrição"}
+                        </p>
+                      </div>
                     </div>
 
                     {isSelected ? (
-                      <Check className="h-4 w-4 text-accent" />
+                      <Check className="h-4 w-4 shrink-0 text-accent" />
                     ) : null}
                   </button>
                 );
               })}
-
-              {projects.length === 0 && (
-                <EmptyState
-                  title="Nenhum projeto criado"
-                  description="Crie um projeto na tela de Chat para mover esta conversa."
-                />
-              )}
             </div>
           )}
 
           {error && (
-            <p className="mt-3 text-xs font-medium text-rose-300">{error}</p>
+            <p className="mt-3 rounded-xl border border-red-300/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-300">
+              {error}
+            </p>
           )}
         </ScrollArea>
+
         <div className="relative border-t border-[var(--border-soft)] bg-surface-elevated px-5 py-4">
           <button
             type="button"
             onClick={handleMove}
-            disabled={submitting || selectedProjectId === currentProjectId}
+            disabled={
+              submitting ||
+              !selectedProjectId ||
+              selectedProjectId === currentProjectId
+            }
             className="inline-flex min-h-13 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-5 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-55"
           >
             {submitting ? (
@@ -1337,7 +1287,7 @@ function MoveConversationProjectSheet({
               </>
             ) : (
               <>
-                Mover
+                Mover conversa
                 <Briefcase className="ml-2 h-4 w-4" />
               </>
             )}
@@ -1401,10 +1351,10 @@ function NotificationsConversation({
   ).length;
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-app text-primary">
+    <main className="relative h-[100dvh] overflow-hidden bg-app text-primary">
       <AppBackground />
 
-      <div className="relative z-10 flex min-h-screen flex-col px-4 pb-5 pt-5">
+      <div className="relative z-10 flex h-full flex-col px-4 pb-5 pt-5">
         <header className="mb-4 flex items-center justify-between">
           <div className="flex min-w-0 items-center gap-2">
             <button
@@ -1462,7 +1412,7 @@ function NotificationsConversation({
           </div>
         </section>
 
-        <ScrollArea className="flex-1" contentClassName="pr-1">
+        <ScrollArea className="min-h-0 flex-1" contentClassName="pr-1 pb-4">
           <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-soft">
             Recentes
           </p>
