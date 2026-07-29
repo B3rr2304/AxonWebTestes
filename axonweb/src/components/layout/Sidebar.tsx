@@ -1,5 +1,5 @@
-import React, { useEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState, type ElementType } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   BarChart3,
@@ -34,9 +34,15 @@ type SidebarProps = {
 type NavItem = {
   label: string;
   description: string;
-  icon: React.ElementType;
+  icon: ElementType;
   path: string;
   state?: Record<string, unknown>;
+};
+
+type SecondaryItem = {
+  label: string;
+  icon: ElementType;
+  path: string;
 };
 
 // ===========================================================================
@@ -77,7 +83,7 @@ const mainItems: NavItem[] = [
 ];
 
 // Atalhos relacionados à conta.
-const secondaryItems = [
+const secondaryItems: SecondaryItem[] = [
   {
     label: "Perfil",
     icon: User,
@@ -102,6 +108,7 @@ export default function Sidebar({
   userAvatar,
 }: SidebarProps) {
   const navigate = useNavigate();
+  const location = useLocation();
 
   // ---------------------------------------------------------------------------
   // Estado interno
@@ -130,6 +137,28 @@ export default function Sidebar({
   const displayInitial = useMemo(() => {
     return displayName.trim().charAt(0).toUpperCase() || "A";
   }, [displayName]);
+
+  const activePathname = location.pathname;
+
+  function isActivePath(path: string) {
+    if (path === "/dashboard") {
+      return activePathname === "/dashboard";
+    }
+
+    if (path === "/chat") {
+      return activePathname === "/chat" || activePathname.startsWith("/chat/");
+    }
+
+    if (path === "/planning") {
+      return (
+        activePathname === "/planning" ||
+        activePathname === "/planejamento" ||
+        activePathname.startsWith("/rotina/")
+      );
+    }
+
+    return activePathname === path || activePathname.startsWith(`${path}/`);
+  }
 
   // ---------------------------------------------------------------------------
   // Navegação e sessão
@@ -180,7 +209,7 @@ export default function Sidebar({
               animate={{ x: 0, opacity: 1 }}
               exit={{ x: "105%", opacity: 0 }}
               transition={{ type: "spring", stiffness: 260, damping: 28 }}
-              className="fixed bottom-3 right-3 top-3 z-[90] w-[84vw] max-w-[340px] overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl"
+              className="fixed bottom-3 right-3 top-3 z-[90] w-[84vw] max-w-[340px] overflow-hidden rounded-[1.45rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl"
             >
               <div className="absolute inset-0 bg-gradient-to-br from-[var(--accent-muted)] via-transparent to-[var(--accent-soft)]" />
               <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,var(--app-grid-color)_1px,transparent_1px)] [background-size:28px_28px] opacity-35" />
@@ -244,22 +273,41 @@ export default function Sidebar({
                     </p>
 
                     <div className="space-y-2">
-                      {mainItems.map((item) => {
+                      {mainItems.map((item: NavItem) => {
                         const Icon = item.icon;
+                        const isActive = isActivePath(item.path);
 
                         return (
                           <button
                             key={item.label}
                             type="button"
                             onClick={() => goTo(item.path, item.state)}
-                            className="group flex w-full items-center gap-3 rounded-[1.35rem] border border-transparent px-3 py-3 text-left transition hover:border-soft hover:bg-surface-muted active:scale-[0.98]"
+                            className={`group relative flex w-full items-center gap-3 rounded-[1.35rem] border border-transparent px-3 py-3 text-left transition active:scale-[0.98] ${
+                              isActive
+                                ? "bg-transparent"
+                                : "hover:border-soft hover:bg-surface-muted"
+                            }`}
                           >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition group-hover:border-accent-soft group-hover:bg-accent-soft group-hover:text-accent">
+                            {isActive && (
+                              <span className="absolute left-0 top-1/2 h-9 w-1.5 -translate-y-1/2 rounded-r-full bg-[var(--accent)] shadow-[0_0_18px_var(--accent)]" />
+                            )}
+
+                            <div
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition ${
+                                isActive
+                                  ? "border-transparent bg-transparent text-accent"
+                                  : "border-soft bg-surface-muted text-muted group-hover:border-accent-soft group-hover:bg-accent-soft group-hover:text-accent"
+                              }`}
+                            >
                               <Icon className="h-4 w-4" />
                             </div>
 
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-primary">
+                            <div className="min-w-0 flex-1">
+                              <p
+                                className={`text-sm font-semibold ${
+                                  isActive ? "text-primary" : "text-secondary"
+                                }`}
+                              >
                                 {item.label}
                               </p>
 
@@ -279,21 +327,40 @@ export default function Sidebar({
                     </p>
 
                     <div className="space-y-1.5">
-                      {secondaryItems.map((item) => {
+                      {secondaryItems.map((item: SecondaryItem) => {
                         const Icon = item.icon;
+                        const isActive = isActivePath(item.path);
 
                         return (
                           <button
                             key={item.label}
                             type="button"
                             onClick={() => goTo(item.path)}
-                            className="group flex w-full items-center gap-3 rounded-[1.35rem] border border-transparent px-3 py-3 text-left transition hover:border-soft hover:bg-surface-muted active:scale-[0.98]"
+                            className={`group relative flex w-full items-center gap-3 rounded-[1.35rem] border border-transparent px-3 py-3 text-left transition active:scale-[0.98] ${
+                              isActive
+                                ? "bg-transparent"
+                                : "hover:border-soft hover:bg-surface-muted"
+                            }`}
                           >
-                            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition group-hover:border-accent-soft group-hover:bg-accent-soft group-hover:text-accent">
+                            {isActive && (
+                              <span className="absolute left-0 top-1/2 h-9 w-1.5 -translate-y-1/2 rounded-r-full bg-[var(--accent)] shadow-[0_0_18px_var(--accent)]" />
+                            )}
+
+                            <div
+                              className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border transition ${
+                                isActive
+                                  ? "border-transparent bg-transparent text-accent"
+                                  : "border-soft bg-surface-muted text-muted group-hover:border-accent-soft group-hover:bg-accent-soft group-hover:text-accent"
+                              }`}
+                            >
                               <Icon className="h-4 w-4" />
                             </div>
 
-                            <p className="text-sm font-semibold text-primary">
+                            <p
+                              className={`min-w-0 flex-1 text-sm font-semibold ${
+                                isActive ? "text-primary" : "text-secondary"
+                              }`}
+                            >
                               {item.label}
                             </p>
                           </button>
@@ -393,4 +460,3 @@ function LogoutConfirmModal({
     </AnimatePresence>
   );
 }
-
