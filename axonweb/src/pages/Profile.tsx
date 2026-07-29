@@ -1,8 +1,19 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ChangeEvent,
+  type ElementType,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { useNavigate } from "react-router-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
   Brain,
+  Briefcase,
+  CalendarClock,
   Camera,
   Check,
   ChevronDown,
@@ -10,9 +21,11 @@ import {
   Edit3,
   Loader2,
   Mail,
+  MessageCircle,
+  Plus,
   RefreshCcw,
-  Settings,
   Sparkles,
+  Tag,
   Trash2,
   User,
   Workflow,
@@ -21,6 +34,7 @@ import {
 
 import { results, type ChronotypeResultKey } from "../data/results";
 import Sidebar from "../components/layout/Sidebar";
+import TagEditorSheet from "../components/settings/TagEditorSheet";
 import * as api from "../lib/api";
 import type { ProfileData } from "../lib/api";
 import AppBackground from "../components/layout/AppBackground";
@@ -29,7 +43,7 @@ import PageHeader from "../components/layout/PageHeader";
 // ===========================================================================
 // MAPEAMENTOS DO PERFIL
 // ===========================================================================
-// Normaliza nomes vindos do backend para as chaves usadas em data/results.ts.
+
 const CHRONOTYPE_TO_KEY: Record<string, ChronotypeResultKey> = {
   Matutino: "Matutino",
   Vespertino: "Vespertino",
@@ -50,6 +64,8 @@ const validKeys: ChronotypeResultKey[] = [
   "Bimodal",
 ];
 
+type ScheduleType = "flexible" | "fixed";
+
 const SCHEDULE_TYPE_LABEL: Record<string, string> = {
   flexible: "Flexível",
   fixed: "Fixo",
@@ -62,17 +78,12 @@ const SCHEDULE_TYPE_LABEL: Record<string, string> = {
 export default function Profile() {
   const navigate = useNavigate();
 
-  // ---------------------------------------------------------------------------
-  // Estados principais
-  // ---------------------------------------------------------------------------
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [scheduleModalOpen, setScheduleModalOpen] = useState(false);
+  const [tagEditorOpen, setTagEditorOpen] = useState(false);
 
-  // ---------------------------------------------------------------------------
-  // Dados do usuário
-  // ---------------------------------------------------------------------------
-  // Garante sessão ativa e carrega os dados exibidos no perfil.
   useEffect(() => {
     if (!api.isLoggedIn()) {
       navigate("/login");
@@ -85,10 +96,6 @@ export default function Profile() {
       .catch(() => setProfile(null));
   }, [navigate]);
 
-  // ---------------------------------------------------------------------------
-  // Cronotipo
-  // ---------------------------------------------------------------------------
-  // Prioriza o valor do backend; usa localStorage apenas como fallback visual.
   const resultKey = useMemo<ChronotypeResultKey>(() => {
     const fromBackend = profile?.chronotype
       ? CHRONOTYPE_TO_KEY[profile.chronotype]
@@ -108,158 +115,88 @@ export default function Profile() {
   const result = results[resultKey];
   const hasChronotype = Boolean(profile?.chronotype);
 
-  // ---------------------------------------------------------------------------
-  // Dados derivados para UI
-  // ---------------------------------------------------------------------------
   const userName = profile?.name || "Usuário";
   const userEmail = profile?.email || "";
 
-  const scheduleLabel = profile?.schedule_type
-    ? SCHEDULE_TYPE_LABEL[profile.schedule_type] ?? profile.schedule_type
-    : "—";
+  const scheduleType: ScheduleType =
+    profile?.schedule_type === "fixed" || profile?.schedule_type === "flexible"
+      ? profile.schedule_type
+      : "flexible";
 
-  const profileDetails = [
-    { label: "Estilo de rotina", value: scheduleLabel },
-    { label: "Modo de trabalho", value: "Blocos de foco" },
-    { label: "Tom do Axon", value: "Direto e estratégico" },
-  ];
+  const scheduleLabel = SCHEDULE_TYPE_LABEL[scheduleType];
+
+  function openResult() {
+    if (!hasChronotype) {
+      navigate("/questionnaire-intro");
+      return;
+    }
+
+    navigate(`/result-report?chronotype=${resultKey}`);
+  }
+
+  async function handleScheduleTypeSave(nextScheduleType: ScheduleType) {
+    setProfile((prev) =>
+      prev ? ({ ...prev, schedule_type: nextScheduleType } as ProfileData) : prev
+    );
+
+    setScheduleModalOpen(false);
+
+    try {
+      const payload = {
+        schedule_type: nextScheduleType,
+      } as unknown as Parameters<typeof api.updateProfile>[0];
+
+      const updated = await api.updateProfile(payload);
+      setProfile(updated);
+    } catch {
+      // Mantém a alteração visual até o backend receber esse campo.
+    }
+  }
 
   return (
     <main className="relative min-h-screen overflow-hidden bg-app text-primary">
       <AppBackground />
 
-      <div className="relative z-10 min-h-screen px-4 pb-6 pt-5">
-        {/* Header: acesso ao Dashboard e abertura da sidebar global. */}
+      <div className="relative z-10 mx-auto min-h-screen w-full max-w-[430px] overflow-x-hidden px-4 pb-6 pt-5 lg:max-w-[1120px] lg:px-8 lg:pt-7">
         <PageHeader
           title="Perfil"
-          subtitle="Identidade e preferências"
+          subtitle="Suas informações"
           onBack={() => navigate("/dashboard")}
           onMenuClick={() => setIsSidebarOpen(true)}
         />
 
-        {/* Card principal: avatar, nome, e-mail e ação de edição. */}
-        <section className="mb-4">
-          <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),transparent_40%)] opacity-60 dark:opacity-30" />
+        <ProfileHeader
+          userName={userName}
+          userEmail={userEmail}
+          avatarUrl={profile?.avatar_url}
+          onEditProfile={() => setIsEditOpen(true)}
+        />
 
-            <div className="relative">
-              <div className="mb-5 flex items-center gap-4">
-                <AvatarUpload
-                  avatarUrl={profile?.avatar_url}
-                  onUpdate={(updated) => setProfile(updated)}
-                />
+        <div className="mt-6 grid min-w-0 gap-5 lg:grid-cols-[minmax(0,0.92fr)_minmax(0,1.08fr)] lg:items-start lg:gap-6">
+          <div className="min-w-0 space-y-5">
+            <ProfileSection title="Seu ritmo">
+              <ProductiveProfileCard
+                hasChronotype={hasChronotype}
+                result={result}
+                resultKey={resultKey}
+                onOpenResult={openResult}
+                onQuestionnaire={() => navigate("/questionnaire-intro")}
+              />
+            </ProfileSection>
 
-                <div className="min-w-0 flex-1">
-                  <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1 text-[0.68rem] font-medium text-accent">
-                    <Sparkles className="h-3.5 w-3.5" />
-                    Perfil ativo
-                  </div>
-
-                  <h1 className="truncate text-2xl font-semibold tracking-[-0.045em] text-primary">
-                    {userName}
-                  </h1>
-
-                  <div className="mt-1 flex items-center gap-2 text-muted">
-                    <Mail className="h-3.5 w-3.5" />
-                    <span className="truncate">{userEmail}</span>
-                  </div>
-                </div>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => setIsEditOpen(true)}
-                className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
-              >
-                Editar perfil
-                <Edit3 className="ml-2 h-4 w-4" />
-              </button>
-            </div>
-          </div>
-        </section>
-
-        {/* Cronotipo: resumo do perfil produtivo e link para o resultado completo. */}
-        <section className="mb-4 rounded-[2rem] border border-accent-soft bg-accent-soft p-4 text-primary shadow-card backdrop-blur-2xl">
-          <div className="mb-4 flex items-center gap-2">
-            <Brain className="h-4 w-4 text-accent" />
-            <p className="text-sm font-semibold text-accent">
-              Perfil produtivo
-            </p>
+            <ProfileSection title="Como o Axon se adapta a você">
+              <PreferencesCard
+                scheduleLabel={scheduleLabel}
+                onEditSchedule={() => setScheduleModalOpen(true)}
+                onEditTags={() => setTagEditorOpen(true)}
+              />
+            </ProfileSection>
           </div>
 
-          <h2 className="text-[1.75rem] font-semibold leading-[1.05] tracking-[-0.055em] text-primary">
-            {hasChronotype ? result.label : "Cronotipo não definido"}
-          </h2>
-
-          <p className="mt-3 text-sm leading-6 text-muted">
-            {hasChronotype
-              ? result.subtitle
-              : "Você ainda não respondeu o questionário nesta conta. Responda para o Axon conhecer seu ritmo."}
-          </p>
-
-          <button
-            type="button"
-            onClick={() =>
-              navigate(`/result?from=profile&chronotype=${resultKey}`)
-            }
-            className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated px-5 text-sm font-semibold text-accent transition active:scale-[0.98]"
-          >
-            Ver resultado completo
-            <ChevronRight className="ml-2 h-4 w-4" />
-          </button>
-        </section>
-
-        {/* Preferências principais: leitura rápida do estilo de uso atual. */}
-        <section className="mb-4 rounded-[2rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
-          <div className="mb-4 flex items-center gap-2">
-            <Workflow className="h-4 w-4 text-accent" />
-            <p className="text-sm font-semibold text-primary">
-              Preferências principais
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {profileDetails.map((item) => (
-              <div
-                key={item.label}
-                className="flex items-center justify-between gap-3 rounded-[1.4rem] border border-soft bg-surface-muted px-4 py-3"
-              >
-                <p className="text-xs text-muted">{item.label}</p>
-                <p className="text-xs font-semibold text-secondary">
-                  {item.value}
-                </p>
-              </div>
-            ))}
-          </div>
-        </section>
-
-        {/* O que o Axon aprendeu sobre o usuário. */}
-        <AxonMemories />
-
-        {/* Ações de conta relacionadas ao perfil. */}
-        <section className="space-y-3">
-          <button
-            type="button"
-            onClick={() => navigate("/questionnaire-intro")}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
-          >
-            Refazer questionário
-            <RefreshCcw className="ml-2 h-4 w-4" />
-          </button>
-
-          <button
-            type="button"
-            onClick={() => navigate("/settings")}
-            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-soft bg-surface-muted px-6 text-sm font-semibold text-secondary backdrop-blur-2xl transition active:scale-[0.98]"
-          >
-            Configurações da conta
-            <Settings className="ml-2 h-4 w-4" />
-          </button>
-        </section>
+          <AxonMemories />
+        </div>
       </div>
 
-      {/* Overlays e componentes globais da página. */}
       <Sidebar
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
@@ -269,17 +206,304 @@ export default function Profile() {
         userEmail={userEmail}
       />
 
-      <EditNameModal
+      <EditProfileModal
         isOpen={isEditOpen}
         currentName={userName}
+        avatarUrl={profile?.avatar_url}
+        onAvatarUpdate={(updated) => setProfile(updated)}
         onClose={() => setIsEditOpen(false)}
-        onSave={(newName) => {
+        onSaveName={(newName) => {
           setProfile((prev) => (prev ? { ...prev, name: newName } : prev));
           setIsEditOpen(false);
         }}
       />
+
+      <ScheduleStyleModal
+        isOpen={scheduleModalOpen}
+        currentValue={scheduleType}
+        onClose={() => setScheduleModalOpen(false)}
+        onSave={handleScheduleTypeSave}
+      />
+
+      <TagEditorSheet
+        isOpen={tagEditorOpen}
+        onClose={() => setTagEditorOpen(false)}
+      />
     </main>
   );
+}
+
+// ===========================================================================
+// CARDS PRINCIPAIS DO PERFIL
+// ===========================================================================
+
+function ProfileHeader({
+  userName,
+  userEmail,
+  avatarUrl,
+  onEditProfile,
+}: {
+  userName: string;
+  userEmail: string;
+  avatarUrl?: string;
+  onEditProfile: () => void;
+}) {
+  return (
+    <section className="mt-5">
+      <div className="relative overflow-hidden rounded-[2.15rem] border border-soft bg-surface-elevated px-5 pb-5 pt-7 text-center shadow-card backdrop-blur-2xl lg:p-7">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,var(--accent-soft),transparent_58%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-28 bg-gradient-to-b from-[var(--accent-muted)] to-transparent" />
+
+        <div className="relative mx-auto flex w-fit items-center justify-center">
+          <div className="absolute h-44 w-44 rounded-full bg-[var(--accent)]/28 blur-[48px]" />
+          <AvatarDisplay avatarUrl={avatarUrl} userName={userName} />
+        </div>
+
+        <div className="relative mx-auto mt-5 max-w-[20rem]">
+          <h1 className="truncate text-2xl font-black leading-none tracking-[-0.05em] text-primary">
+            {userName}
+          </h1>
+
+          {userEmail && (
+            <div className="mx-auto mt-2 flex min-w-0 max-w-[18rem] items-center justify-center gap-1.5 text-[0.72rem] font-medium text-muted">
+              <Mail className="h-3 w-3 shrink-0 text-accent" />
+              <span className="truncate">{userEmail}</span>
+            </div>
+          )}
+
+        </div>
+
+        <button
+          type="button"
+          onClick={onEditProfile}
+          className="relative mx-auto mt-5 inline-flex min-h-11 w-full max-w-[17rem] items-center justify-center rounded-2xl border border-soft bg-surface-muted px-5 text-sm font-semibold text-secondary transition hover:border-accent-soft hover:text-primary active:scale-[0.98]"
+        >
+          Editar perfil
+          <Edit3 className="ml-2 h-4 w-4" />
+        </button>
+      </div>
+    </section>
+  );
+}
+
+function AvatarDisplay({
+  avatarUrl,
+  userName,
+}: {
+  avatarUrl?: string;
+  userName: string;
+}) {
+  const initial = userName.trim().charAt(0).toUpperCase() || "A";
+
+  return (
+    <div className="relative z-10 flex h-28 w-28 items-center justify-center overflow-hidden rounded-full bg-accent-soft text-3xl font-black text-accent shadow-[0_24px_80px_rgba(123,44,191,0.34)] ring-4 ring-white/6 dark:shadow-[0_28px_90px_rgba(168,85,247,0.32)]">
+      {avatarUrl ? (
+        <img
+          src={avatarUrl}
+          alt={userName}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <span>{initial}</span>
+      )}
+    </div>
+  );
+}
+
+function ProfileSection({
+  title,
+  children,
+}: {
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <section className="mb-5 min-w-0">
+      <p className="mb-3 px-1 text-xs font-semibold uppercase tracking-[0.16em] text-soft">
+        {title}
+      </p>
+
+      <div className="space-y-3">{children}</div>
+    </section>
+  );
+}
+
+function ProductiveProfileCard({
+  hasChronotype,
+  result,
+  resultKey,
+  onOpenResult,
+  onQuestionnaire,
+}: {
+  hasChronotype: boolean;
+  result: (typeof results)[ChronotypeResultKey];
+  resultKey: ChronotypeResultKey;
+  onOpenResult: () => void;
+  onQuestionnaire: () => void;
+}) {
+  return (
+    <article className="relative w-full min-w-0 overflow-hidden rounded-[1.95rem] border border-accent-soft bg-accent-soft p-5 text-primary shadow-card backdrop-blur-2xl">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_50%)]" />
+      <div className="pointer-events-none absolute -right-16 -top-20 h-44 w-44 rounded-full bg-[var(--accent)]/18 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-20 left-[-4rem] h-44 w-44 rounded-full bg-[var(--accent)]/10 blur-3xl" />
+
+      <div className="relative">
+        <div className="mb-4 flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-surface-elevated px-3 py-1 text-[0.62rem] font-black uppercase tracking-[0.1em] text-accent">
+              <Brain className="h-3.5 w-3.5" />
+              Seu ritmo atual
+            </div>
+
+            <h2 className="text-[1.85rem] font-black leading-[0.95] tracking-[-0.06em] text-primary">
+              {hasChronotype ? result.label : "Cronotipo não definido"}
+            </h2>
+          </div>
+
+          <span className="shrink-0 rounded-full border border-accent-soft bg-surface-elevated px-2.5 py-1 text-[0.58rem] font-black uppercase tracking-[0.08em] text-accent">
+            {resultKey}
+          </span>
+        </div>
+
+        <p className="max-w-[21rem] text-sm leading-6 text-muted">
+          {hasChronotype
+            ? result.subtitle
+            : "Responda o questionário para o Axon entender seus horários de energia, foco e descanso."}
+        </p>
+
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <ProductiveMetric label="Pico de energia" value={result.energyPeak} />
+          <ProductiveMetric label="Melhor foco" value={result.focusWindow} />
+        </div>
+
+        <div className="mt-4 grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+          <button
+            type="button"
+            onClick={onOpenResult}
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-4 text-sm font-black text-white shadow-card transition active:scale-[0.98]"
+          >
+            Ver relatório completo
+            <ChevronRight className="ml-2 h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={onQuestionnaire}
+            className="inline-flex min-h-12 w-full items-center justify-center rounded-2xl border border-accent-soft bg-surface-elevated px-4 text-sm font-black text-accent transition active:scale-[0.98] sm:w-auto"
+          >
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Recalibrar
+          </button>
+        </div>
+
+        <p className="mt-3 text-[0.68rem] leading-5 text-muted">
+          Sua rotina mudou? Recalibre para o Axon ajustar melhor suas sugestões.
+        </p>
+      </div>
+    </article>
+  );
+}
+
+function ProductiveMetric({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-[1.35rem] border border-accent-soft bg-surface-elevated px-3 py-3">
+      <p className="truncate text-[0.62rem] font-black uppercase tracking-[0.08em] text-soft">
+        {label}
+      </p>
+      <p className="mt-1 truncate text-xs font-black text-primary">{value}</p>
+    </div>
+  );
+}
+
+function PreferencesCard({
+  scheduleLabel,
+  onEditSchedule,
+  onEditTags,
+}: {
+  scheduleLabel: string;
+  onEditSchedule: () => void;
+  onEditTags: () => void;
+}) {
+  return (
+    <div className="grid min-w-0 gap-2">
+      <PreferenceRow
+        icon={CalendarClock}
+        title="Estilo de rotina"
+        description="Horários fixos ou rotina flexível."
+        value={scheduleLabel}
+        onClick={onEditSchedule}
+      />
+
+      <PreferenceRow
+        icon={MessageCircle}
+        title="Tom do Axon"
+        description="Como o chat deve conversar com você."
+        value="Em breve"
+      />
+
+      <PreferenceRow
+        icon={Tag}
+        title="Tags da revisão"
+        description="Categorias usadas para registrar seu dia."
+        value="Editar"
+        onClick={onEditTags}
+      />
+    </div>
+  );
+}
+
+function PreferenceRow({
+  icon: Icon,
+  title,
+  description,
+  value,
+  onClick,
+}: {
+  icon: ElementType;
+  title: string;
+  description: string;
+  value: string;
+  onClick?: () => void;
+}) {
+  const content = (
+    <>
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
+        <Icon className="h-5 w-5" />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="truncate text-sm font-black text-primary">{title}</p>
+        <p className="mt-0.5 truncate text-xs text-muted">{description}</p>
+      </div>
+
+      <div className="flex shrink-0 items-center gap-2">
+        <span className="rounded-full border border-accent-soft bg-accent-soft px-2.5 py-1 text-[0.62rem] font-black text-accent">
+          {value}
+        </span>
+
+        {onClick && <ChevronRight className="h-4 w-4 text-soft" />}
+      </div>
+    </>
+  );
+
+  const className =
+    "group flex w-full min-w-0 items-center gap-3 rounded-[1.55rem] border border-soft bg-surface-elevated px-4 py-3 text-left shadow-card backdrop-blur-2xl transition active:scale-[0.98]";
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {content}
+      </button>
+    );
+  }
+
+  return <div className={className}>{content}</div>;
 }
 
 // ===========================================================================
@@ -291,14 +515,13 @@ function AxonMemories() {
   const [loading, setLoading] = useState(true);
   const [confirmingId, setConfirmingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [expanded, setExpanded] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
-  const visibleMemories = expanded ? memories : memories.slice(0, 3);
-  const hiddenCount = memories.length - visibleMemories.length;
-  const canExpand = memories.length > 3;
+  const visibleMemories = memories.slice(0, 2);
 
   useEffect(() => {
-    api.getMemories()
+    api
+      .getMemories()
       .then(setMemories)
       .catch(() => setMemories([]))
       .finally(() => setLoading(false));
@@ -306,9 +529,10 @@ function AxonMemories() {
 
   async function handleDelete(id: string) {
     setDeletingId(id);
+
     try {
       await api.deleteMemory(id);
-      setMemories((prev) => prev.filter((m) => m.id !== id));
+      setMemories((prev) => prev.filter((memory) => memory.id !== id));
       setConfirmingId(null);
     } catch {
       // Mantém a memória na lista em caso de erro.
@@ -318,109 +542,601 @@ function AxonMemories() {
   }
 
   return (
-    <section className="mb-4 rounded-[2rem] border border-white/10 bg-[#1b1b27]/76 p-4 shadow-xl shadow-black/20 backdrop-blur-2xl">
-      <div className="mb-4 flex items-center gap-2">
-        <Brain className="h-4 w-4 text-purple-200" />
-        <p className="text-sm font-semibold text-white">
-          O que o Axon sabe sobre você
-        </p>
-      </div>
+    <>
+      <ProfileSection title="Memórias do Axon">
+        <div className="relative min-w-0 overflow-hidden rounded-[1.95rem] border border-soft bg-surface-elevated p-5 shadow-card backdrop-blur-2xl lg:p-6">
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_58%)]" />
+          <div className="pointer-events-none absolute -right-14 -top-16 h-36 w-36 rounded-full bg-[var(--accent)]/12 blur-3xl" />
 
-      {/* Aviso fixo: como adicionar/corrigir memórias. */}
-      <div className="mb-4 flex items-start gap-2.5 rounded-[1.4rem] border border-purple-300/20 bg-purple-500/10 px-4 py-3">
-        <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-purple-200" />
-        <p className="text-xs leading-5 text-purple-100/80">
-          Quer adicionar ou corrigir uma informação? Converse diretamente com o
-          Axon no chat e conte o que quer mudar — ele aprende com o que você
-          compartilha.
-        </p>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center gap-2 py-3 text-xs text-white/35">
-          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando…
-        </div>
-      ) : memories.length === 0 ? (
-        <p className="rounded-[1.4rem] border border-dashed border-white/12 bg-black/15 px-4 py-5 text-center text-xs leading-5 text-white/42">
-          O Axon ainda não anotou nada sobre você. Converse com ele para que ele
-          possa te conhecer melhor.
-        </p>
-      ) : (
-        <div className="space-y-2">
-          {visibleMemories.map((memory) => (
-            <div
-              key={memory.id}
-              className="rounded-[1.4rem] border border-white/10 bg-black/20 px-4 py-3"
-            >
-              <div className="flex items-start gap-3">
-                <p className="min-w-0 flex-1 break-words text-xs leading-5 text-white/70">
-                  {memory.content}
-                </p>
-
-                {confirmingId !== memory.id && (
-                  <button
-                    type="button"
-                    onClick={() => setConfirmingId(memory.id)}
-                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded-xl bg-white/[0.055] text-white/35 active:scale-[0.94]"
-                    aria-label="Remover memória"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </button>
-                )}
+          <div className="relative">
+            <div className="mb-4 flex items-start gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
+                <Brain className="h-5 w-5" />
               </div>
 
-              {confirmingId === memory.id && (
-                <div className="mt-3 flex items-center justify-between gap-3 border-t border-white/8 pt-3">
-                  <p className="text-[0.7rem] leading-4 text-white/50">
-                    Tem certeza? Esta memória será removida permanentemente.
+              <div className="min-w-0 flex-1">
+                <div className="flex min-w-0 items-center justify-between gap-3">
+                  <p className="truncate text-sm font-black text-primary">
+                    O que torna o Axon mais pessoal
                   </p>
 
-                  <div className="flex shrink-0 items-center gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setConfirmingId(null)}
-                      disabled={deletingId === memory.id}
-                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.055] text-white/40 active:scale-[0.94] disabled:opacity-50"
-                      aria-label="Cancelar"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDelete(memory.id)}
-                      disabled={deletingId === memory.id}
-                      className="flex h-8 items-center gap-1.5 rounded-xl bg-rose-500/90 px-3 text-xs font-semibold text-white active:scale-[0.96] disabled:opacity-60"
-                    >
-                      {deletingId === memory.id ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Trash2 className="h-3.5 w-3.5" />
-                      )}
-                      Remover
-                    </button>
-                  </div>
+                  <span className="shrink-0 rounded-full border border-accent-soft bg-accent-soft px-2.5 py-1 text-[0.62rem] font-black text-accent">
+                    {memories.length}
+                  </span>
                 </div>
+
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  Informações salvas pelo chat para adaptar respostas,
+                  planejamento e recomendações ao seu contexto real.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {loading ? (
+                <div className="flex items-center gap-2 rounded-[1.35rem] border border-soft bg-surface-muted px-4 py-5 text-xs text-muted">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin text-accent" />
+                  Carregando memórias…
+                </div>
+              ) : memories.length === 0 ? (
+                <div className="rounded-[1.35rem] border border-dashed border-soft bg-surface-muted px-4 py-6 text-center">
+                  <p className="text-sm font-black text-primary">
+                    Nenhuma memória registrada
+                  </p>
+                  <p className="mx-auto mt-2 max-w-[18rem] text-xs leading-5 text-muted">
+                    Quando o Axon aprender algo importante sobre você, aparecerá aqui.
+                  </p>
+                </div>
+              ) : (
+                visibleMemories.map((memory) => (
+                  <p
+                    key={memory.id}
+                    className="line-clamp-2 rounded-[1.25rem] border border-soft bg-surface-muted px-4 py-3 text-xs leading-5 text-secondary"
+                  >
+                    {memory.content}
+                  </p>
+                ))
               )}
             </div>
-          ))}
 
-          {canExpand && (
             <button
               type="button"
-              onClick={() => setExpanded((v) => !v)}
-              className="flex w-full items-center justify-center gap-1.5 rounded-[1.4rem] border border-white/10 bg-white/[0.03] py-2.5 text-xs font-semibold text-purple-100/70 active:scale-[0.98]"
+              onClick={() => setIsModalOpen(true)}
+              className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft px-4 text-sm font-black text-accent transition active:scale-[0.98]"
             >
-              <ChevronDown
-                className={`h-3.5 w-3.5 transition-transform ${
-                  expanded ? "rotate-180" : ""
-                }`}
-              />
-              {expanded ? "Ver menos" : `Ver mais (${hiddenCount})`}
+              Ver memórias salvas
+              <ChevronRight className="ml-2 h-4 w-4" />
             </button>
-          )}
+          </div>
         </div>
+      </ProfileSection>
+
+      <MemoriesModal
+        isOpen={isModalOpen}
+        memories={memories}
+        confirmingId={confirmingId}
+        deletingId={deletingId}
+        onClose={() => setIsModalOpen(false)}
+        onAskConfirm={setConfirmingId}
+        onCancelConfirm={() => setConfirmingId(null)}
+        onDelete={handleDelete}
+      />
+    </>
+  );
+}
+
+function MemoriesModal({
+  isOpen,
+  memories,
+  confirmingId,
+  deletingId,
+  onClose,
+  onAskConfirm,
+  onCancelConfirm,
+  onDelete,
+}: {
+  isOpen: boolean;
+  memories: api.UserMemory[];
+  confirmingId: string | null;
+  deletingId: string | null;
+  onClose: () => void;
+  onAskConfirm: (id: string) => void;
+  onCancelConfirm: () => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={(event) => event.target === event.currentTarget && onClose()}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 24, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 24, scale: 0.97 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="custom-scrollbar max-h-[86dvh] w-full max-w-[430px] overflow-y-auto rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl"
+          >
+            <div className="mb-5 flex items-center justify-between">
+              <div>
+                <p className="text-sm font-black text-primary">
+                  Memórias do Axon
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  Informações salvas a partir das conversas.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            {memories.length === 0 ? (
+              <div className="rounded-[1.35rem] border border-dashed border-soft bg-surface-muted px-4 py-8 text-center">
+                <p className="text-sm font-black text-primary">
+                  Nenhuma memória ainda
+                </p>
+                <p className="mx-auto mt-2 max-w-[18rem] text-xs leading-5 text-muted">
+                  Quando o chat salvar informações importantes, elas aparecem aqui.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {memories.map((memory) => (
+                  <div
+                    key={memory.id}
+                    className="rounded-[1.35rem] border border-soft bg-surface-muted px-4 py-3"
+                  >
+                    <div className="flex items-start gap-3">
+                      <p className="min-w-0 flex-1 break-words text-xs leading-5 text-secondary">
+                        {memory.content}
+                      </p>
+
+                      {confirmingId !== memory.id && (
+                        <button
+                          type="button"
+                          onClick={() => onAskConfirm(memory.id)}
+                          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-soft bg-surface-elevated text-muted transition active:scale-[0.94]"
+                          aria-label="Remover memória"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+
+                    {confirmingId === memory.id && (
+                      <div className="mt-3 flex items-center justify-between gap-3 border-t border-[var(--border-soft)] pt-3">
+                        <p className="text-[0.7rem] leading-4 text-muted">
+                          Remover esta memória permanentemente?
+                        </p>
+
+                        <div className="flex shrink-0 items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={onCancelConfirm}
+                            disabled={deletingId === memory.id}
+                            className="flex h-8 w-8 items-center justify-center rounded-xl border border-soft bg-surface-elevated text-muted active:scale-[0.94] disabled:opacity-50"
+                            aria-label="Cancelar"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => onDelete(memory.id)}
+                            disabled={deletingId === memory.id}
+                            className="flex h-8 items-center gap-1.5 rounded-xl bg-rose-500/90 px-3 text-xs font-semibold text-white active:scale-[0.96] disabled:opacity-60"
+                          >
+                            {deletingId === memory.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3.5 w-3.5" />
+                            )}
+                            Remover
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </motion.div>
+        </motion.div>
       )}
-    </section>
+    </AnimatePresence>
+  );
+}
+
+// ===========================================================================
+// MODAL DE ESTILO DE ROTINA
+// ===========================================================================
+
+type WeekDayKey = "seg" | "ter" | "qua" | "qui" | "sex" | "sab" | "dom";
+
+type FixedRoutineEntry = {
+  id: string;
+  activity: string;
+  days: WeekDayKey[];
+  startTime: string;
+  endTime: string;
+};
+
+const WEEK_DAYS: Array<{ key: WeekDayKey; label: string; fullLabel: string }> = [
+  { key: "seg", label: "S", fullLabel: "Segunda" },
+  { key: "ter", label: "T", fullLabel: "Terça" },
+  { key: "qua", label: "Q", fullLabel: "Quarta" },
+  { key: "qui", label: "Q", fullLabel: "Quinta" },
+  { key: "sex", label: "S", fullLabel: "Sexta" },
+  { key: "sab", label: "S", fullLabel: "Sábado" },
+  { key: "dom", label: "D", fullLabel: "Domingo" },
+];
+
+function createFixedRoutineEntry(): FixedRoutineEntry {
+  return {
+    id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    activity: "",
+    days: [],
+    startTime: "",
+    endTime: "",
+  };
+}
+
+function ScheduleStyleModal({
+  isOpen,
+  currentValue,
+  onClose,
+  onSave,
+}: {
+  isOpen: boolean;
+  currentValue: ScheduleType;
+  onClose: () => void;
+  onSave: (value: ScheduleType) => void;
+}) {
+  const [selected, setSelected] = useState<ScheduleType>(currentValue);
+  const [fixedRoutines, setFixedRoutines] = useState<FixedRoutineEntry[]>([
+    createFixedRoutineEntry(),
+  ]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    setSelected(currentValue);
+    setFixedRoutines([createFixedRoutineEntry()]);
+  }, [isOpen, currentValue]);
+
+  function updateFixedRoutine(
+    id: string,
+    field: "activity" | "startTime" | "endTime",
+    value: string
+  ) {
+    setFixedRoutines((current) =>
+      current.map((routine) =>
+        routine.id === id ? { ...routine, [field]: value } : routine
+      )
+    );
+  }
+
+  function toggleRoutineDay(id: string, day: WeekDayKey) {
+    setFixedRoutines((current) =>
+      current.map((routine) => {
+        if (routine.id !== id) return routine;
+
+        const nextDays = routine.days.includes(day)
+          ? routine.days.filter((currentDay) => currentDay !== day)
+          : [...routine.days, day];
+
+        return {
+          ...routine,
+          days: nextDays,
+        };
+      })
+    );
+  }
+
+  function addFixedRoutine() {
+    setFixedRoutines((current) => [...current, createFixedRoutineEntry()]);
+  }
+
+  function removeFixedRoutine(id: string) {
+    setFixedRoutines((current) => {
+      if (current.length === 1) return current;
+
+      return current.filter((routine) => routine.id !== id);
+    });
+  }
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <motion.div
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm"
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={(event) => event.target === event.currentTarget && onClose()}
+        >
+          <motion.div
+            initial={{ opacity: 0, y: 18, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 18, scale: 0.97 }}
+            transition={{ duration: 0.22, ease: "easeOut" }}
+            className="custom-scrollbar max-h-[88dvh] w-full max-w-[460px] overflow-y-auto rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl"
+          >
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-sm font-black text-primary">
+                  Estilo de rotina
+                </p>
+                <p className="mt-1 text-xs leading-5 text-muted">
+                  Configure seus horários fixos sem precisar digitar os dias.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
+                aria-label="Fechar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+
+            <div className="grid gap-2">
+              <ScheduleOption
+                active={selected === "flexible"}
+                icon={Sparkles}
+                title="Rotina flexível"
+                description="Meus horários mudam bastante ou organizo o dia livremente."
+                onClick={() => setSelected("flexible")}
+              />
+
+              <ScheduleOption
+                active={selected === "fixed"}
+                icon={Briefcase}
+                title="Rotina fixa"
+                description="Tenho trabalho, estudo ou compromissos em horários definidos."
+                onClick={() => setSelected("fixed")}
+              />
+            </div>
+
+            {selected === "fixed" && (
+              <div className="mt-4 space-y-3">
+                <div className="rounded-[1.5rem] border border-accent-soft bg-accent-soft p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-accent">
+                    Rotinas fixas
+                  </p>
+
+                  <p className="mt-1 text-xs leading-5 text-muted">
+                    Adicione uma rotina para cada bloco fixo do seu dia. Assim,
+                    se algum dia tiver horário diferente, basta criar outro
+                    bloco com dias e horários próprios.
+                  </p>
+                </div>
+
+                {fixedRoutines.map((routine, index) => (
+                  <FixedRoutineCard
+                    key={routine.id}
+                    routine={routine}
+                    index={index}
+                    canRemove={fixedRoutines.length > 1}
+                    onRemove={() => removeFixedRoutine(routine.id)}
+                    onChange={(field, value) =>
+                      updateFixedRoutine(routine.id, field, value)
+                    }
+                    onToggleDay={(day) => toggleRoutineDay(routine.id, day)}
+                  />
+                ))}
+
+                <button
+                  type="button"
+                  onClick={addFixedRoutine}
+                  className="inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-dashed border-accent-soft bg-accent-soft px-4 text-sm font-black text-accent transition active:scale-[0.98]"
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Adicionar outra rotina
+                </button>
+              </div>
+            )}
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                onClick={onClose}
+                className="min-h-12 rounded-2xl border border-soft bg-surface-muted px-4 text-sm font-semibold text-secondary transition active:scale-[0.98]"
+              >
+                Cancelar
+              </button>
+
+              <button
+                type="button"
+                onClick={() => onSave(selected)}
+                className="inline-flex min-h-12 items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-4 text-sm font-semibold text-white shadow-card transition active:scale-[0.98]"
+              >
+                Salvar
+              </button>
+            </div>
+          </motion.div>
+        </motion.div>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function ScheduleOption({
+  active,
+  icon: Icon,
+  title,
+  description,
+  onClick,
+}: {
+  active: boolean;
+  icon: ElementType;
+  title: string;
+  description: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`flex w-full items-start gap-3 rounded-[1.45rem] border p-3 text-left transition active:scale-[0.98] ${
+        active
+          ? "border-accent-soft bg-accent-soft"
+          : "border-soft bg-surface-muted"
+      }`}
+    >
+      <div
+        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border ${
+          active
+            ? "border-accent-soft bg-surface-elevated text-accent"
+            : "border-soft bg-surface-elevated text-muted"
+        }`}
+      >
+        <Icon className="h-4 w-4" />
+      </div>
+
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-black text-primary">{title}</p>
+        <p className="mt-1 text-xs leading-5 text-muted">{description}</p>
+      </div>
+
+      {active && <Check className="h-4 w-4 shrink-0 text-accent" />}
+    </button>
+  );
+}
+
+function FixedRoutineCard({
+  routine,
+  index,
+  canRemove,
+  onRemove,
+  onChange,
+  onToggleDay,
+}: {
+  routine: FixedRoutineEntry;
+  index: number;
+  canRemove: boolean;
+  onRemove: () => void;
+  onChange: (
+    field: "activity" | "startTime" | "endTime",
+    value: string
+  ) => void;
+  onToggleDay: (day: WeekDayKey) => void;
+}) {
+  return (
+    <div className="rounded-[1.5rem] border border-soft bg-surface-muted p-4">
+      <div className="mb-3 flex items-center justify-between gap-3">
+        <p className="text-xs font-black uppercase tracking-[0.12em] text-soft">
+          Rotina {index + 1}
+        </p>
+
+        {canRemove && (
+          <button
+            type="button"
+            onClick={onRemove}
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-red-300/20 bg-red-500/10 text-red-600 transition active:scale-[0.94] dark:text-red-300"
+            aria-label="Remover rotina"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+
+      <ScheduleInput
+        label="Tipo de compromisso"
+        placeholder="Ex.: trabalho, faculdade, estágio"
+        value={routine.activity}
+        onChange={(value) => onChange("activity", value)}
+      />
+
+      <div className="mt-3">
+        <p className="mb-2 text-xs font-semibold text-muted">
+          Dias da semana
+        </p>
+
+        <div className="grid grid-cols-7 gap-1.5">
+          {WEEK_DAYS.map((day) => {
+            const active = routine.days.includes(day.key);
+
+            return (
+              <button
+                key={day.key}
+                type="button"
+                onClick={() => onToggleDay(day.key)}
+                title={day.fullLabel}
+                className={`flex h-9 items-center justify-center rounded-xl border text-xs font-black transition active:scale-[0.94] ${
+                  active
+                    ? "border-accent-soft bg-[var(--accent-strong)] text-white"
+                    : "border-soft bg-surface-elevated text-muted"
+                }`}
+              >
+                {day.label}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        <ScheduleInput
+          label="Início"
+          type="time"
+          placeholder="08:00"
+          value={routine.startTime}
+          onChange={(value) => onChange("startTime", value)}
+        />
+
+        <ScheduleInput
+          label="Fim"
+          type="time"
+          placeholder="18:00"
+          value={routine.endTime}
+          onChange={(value) => onChange("endTime", value)}
+        />
+      </div>
+    </div>
+  );
+}
+
+function ScheduleInput({
+  label,
+  placeholder,
+  value,
+  onChange,
+  type = "text",
+}: {
+  label: string;
+  placeholder: string;
+  value: string;
+  onChange: (value: string) => void;
+  type?: "text" | "time";
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-semibold text-muted">
+        {label}
+      </span>
+
+      <input
+        type={type}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        className="w-full rounded-2xl border border-soft bg-surface-elevated px-4 py-3 text-sm font-medium text-primary outline-none transition placeholder:text-soft focus:border-accent-soft"
+      />
+    </label>
   );
 }
 
@@ -461,7 +1177,7 @@ function AvatarUpload({
   }, [showMenu]);
 
   // Envia a nova imagem e atualiza o perfil retornado pelo backend.
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+  async function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
 
     if (!file) return;
@@ -502,7 +1218,7 @@ function AvatarUpload({
   }
 
   return (
-    <div className="relative shrink-0" ref={menuRef}>
+    <div className="relative shrink-0 overflow-visible" ref={menuRef}>
       {/* Input fica oculto; o clique acontece pelo avatar. */}
       <input
         ref={fileInputRef}
@@ -515,32 +1231,34 @@ function AvatarUpload({
       <button
         type="button"
         onClick={() =>
-          avatarUrl ? setShowMenu((v) => !v) : fileInputRef.current?.click()
+          avatarUrl ? setShowMenu((value) => !value) : fileInputRef.current?.click()
         }
         disabled={loading}
-        className="relative flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-[1.7rem] border border-accent-soft bg-accent-soft text-accent shadow-card transition active:scale-[0.97] disabled:opacity-60"
+        className="group relative flex h-28 w-28 shrink-0 items-center justify-center overflow-visible rounded-full text-3xl font-black text-accent transition active:scale-[0.97] disabled:opacity-60"
         aria-label="Foto de perfil"
       >
-        {loading ? (
-          <Loader2 className="h-7 w-7 animate-spin text-accent" />
-        ) : avatarUrl ? (
-          <img
-            src={avatarUrl}
-            alt="Avatar"
-            className="h-full w-full object-cover"
-          />
-        ) : (
-          <User className="h-9 w-9" />
-        )}
+        <span className="absolute inset-0 overflow-hidden rounded-full bg-accent-soft shadow-[0_24px_80px_rgba(123,44,191,0.34)] ring-4 ring-white/6 dark:shadow-[0_28px_90px_rgba(168,85,247,0.32)]">
+          {loading ? (
+            <span className="flex h-full w-full items-center justify-center">
+              <Loader2 className="h-7 w-7 animate-spin text-accent" />
+            </span>
+          ) : avatarUrl ? (
+            <img
+              src={avatarUrl}
+              alt="Avatar"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <span className="flex h-full w-full items-center justify-center">
+              <User className="h-10 w-10" />
+            </span>
+          )}
+        </span>
 
         {!loading && (
-          <span className="absolute bottom-1.5 right-1.5 flex h-6 w-6 items-center justify-center rounded-full border border-accent-soft bg-[var(--accent-strong)] backdrop-blur-sm">
-            <Camera className="h-3 w-3 text-white" />
+          <span className="absolute -bottom-1 -right-1 z-20 flex h-8 w-8 items-center justify-center rounded-full border-2 border-[var(--surface-elevated)] bg-[var(--accent-strong)] text-white shadow-card transition group-active:scale-[0.94]">
+            <Camera className="h-3.5 w-3.5" />
           </span>
-        )}
-
-        {!loading && !avatarUrl && (
-          <span className="absolute bottom-2 right-2 h-3.5 w-3.5 rounded-full border-2 border-[var(--surface-elevated)] bg-emerald-400" />
         )}
       </button>
 
@@ -552,7 +1270,7 @@ function AvatarUpload({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.92, y: -4 }}
             transition={{ duration: 0.15, ease: "easeOut" }}
-            className="absolute left-0 top-[calc(100%+8px)] z-50 min-w-[180px] overflow-hidden rounded-2xl border border-soft bg-surface-elevated py-1 text-primary shadow-soft backdrop-blur-2xl"
+            className="absolute left-1/2 top-[calc(100%+12px)] z-50 min-w-[180px] -translate-x-1/2 overflow-hidden rounded-2xl border border-soft bg-surface-elevated py-1 text-primary shadow-soft backdrop-blur-2xl"
           >
             <button
               type="button"
@@ -579,7 +1297,7 @@ function AvatarUpload({
       </AnimatePresence>
 
       {error && (
-        <p className="absolute left-0 top-[calc(100%+36px)] z-50 w-52 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-[0.7rem] leading-5 text-red-600 dark:text-red-400">
+        <p className="absolute left-1/2 top-[calc(100%+42px)] z-50 w-52 -translate-x-1/2 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-[0.7rem] leading-5 text-red-600 dark:text-red-400">
           {error}
         </p>
       )}
@@ -591,38 +1309,39 @@ function AvatarUpload({
 // MODAL DE EDIÇÃO DE NOME
 // ===========================================================================
 
-function EditNameModal({
+function EditProfileModal({
   isOpen,
   currentName,
+  avatarUrl,
+  onAvatarUpdate,
   onClose,
-  onSave,
+  onSaveName,
 }: {
   isOpen: boolean;
   currentName: string;
+  avatarUrl?: string;
+  onAvatarUpdate: (profile: ProfileData) => void;
   onClose: () => void;
-  onSave: (name: string) => void;
+  onSaveName: (name: string) => void;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
 
-  // Estado local do modal para não alterar o perfil antes de salvar.
-  const [value, setValue] = useState(currentName);
+  const [nameValue, setNameValue] = useState(currentName);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // Ao abrir, reidrata o nome atual e posiciona o foco no input.
   useEffect(() => {
     if (isOpen) {
-      setValue(currentName);
+      setNameValue(currentName);
       setError(null);
       setTimeout(() => inputRef.current?.focus(), 120);
     }
   }, [isOpen, currentName]);
 
-  // Persiste o nome no backend e atualiza o card principal após sucesso.
   async function handleSave() {
-    const trimmed = value.trim();
+    const trimmedName = nameValue.trim();
 
-    if (!trimmed) {
+    if (!trimmedName) {
       setError("O nome não pode ser vazio.");
       return;
     }
@@ -631,8 +1350,8 @@ function EditNameModal({
     setError(null);
 
     try {
-      await api.updateProfile({ name: trimmed });
-      onSave(trimmed);
+      await api.updateProfile({ name: trimmedName });
+      onSaveName(trimmedName);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Erro ao salvar.");
     } finally {
@@ -644,18 +1363,18 @@ function EditNameModal({
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-4 pb-6 backdrop-blur-sm sm:items-center sm:pb-0"
+          className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={(e) => e.target === e.currentTarget && onClose()}
+          onClick={(event) => event.target === event.currentTarget && onClose()}
         >
           <motion.div
             initial={{ opacity: 0, y: 24, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 24, scale: 0.97 }}
             transition={{ duration: 0.22, ease: "easeOut" }}
-            className="w-full max-w-[400px] overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl"
+            className="custom-scrollbar max-h-[86dvh] w-full max-w-[430px] overflow-y-auto rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl"
           >
             <div className="mb-5 flex items-center justify-between">
               <div className="flex items-center gap-3">
@@ -664,11 +1383,11 @@ function EditNameModal({
                 </div>
 
                 <div>
-                  <p className="text-sm font-semibold text-primary">
-                    Editar nome
+                  <p className="text-sm font-black text-primary">
+                    Editar perfil
                   </p>
                   <p className="text-xs text-muted">
-                    Visível no seu perfil
+                    Foto e nome do perfil
                   </p>
                 </div>
               </div>
@@ -677,29 +1396,36 @@ function EditNameModal({
                 type="button"
                 onClick={onClose}
                 className="flex h-9 w-9 items-center justify-center rounded-xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
+                aria-label="Fechar"
               >
                 <X className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="mb-4">
-              <input
-                ref={inputRef}
-                type="text"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSave()}
-                maxLength={60}
-                placeholder="Seu nome"
-                className="w-full rounded-2xl border border-soft bg-surface-muted px-4 py-3.5 text-sm font-medium text-primary outline-none ring-[var(--accent-soft)] transition placeholder:text-soft focus:border-accent-soft focus:ring-2"
-              />
+            <div className="mb-5 flex flex-col items-center text-center">
+              <AvatarUpload avatarUrl={avatarUrl} onUpdate={onAvatarUpdate} />
 
-              {error && (
-                <p className="mt-2 px-1 text-xs text-red-600 dark:text-red-400">{error}</p>
-              )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-3">
+              <ProfileEditField
+                inputRef={inputRef}
+                icon={User}
+                label="Nome"
+                value={nameValue}
+                onChange={setNameValue}
+                placeholder="Seu nome"
+              />
+
+            </div>
+
+            {error && (
+              <p className="mt-3 rounded-xl border border-red-400/20 bg-red-500/10 px-3 py-2 text-xs text-red-600 dark:text-red-400">
+                {error}
+              </p>
+            )}
+
+            <div className="mt-5 grid grid-cols-2 gap-3">
               <button
                 type="button"
                 onClick={onClose}
@@ -712,7 +1438,7 @@ function EditNameModal({
               <button
                 type="button"
                 onClick={handleSave}
-                disabled={saving || !value.trim()}
+                disabled={saving || !nameValue.trim()}
                 className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[var(--accent-strong)] px-4 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:opacity-50"
               >
                 {saving ? (
@@ -727,5 +1453,49 @@ function EditNameModal({
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+function ProfileEditField({
+  inputRef,
+  icon: Icon,
+  label,
+  value,
+  onChange,
+  placeholder,
+  disabled = false,
+  helper,
+}: {
+  inputRef?: RefObject<HTMLInputElement | null>;
+  icon: ElementType;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder?: string;
+  disabled?: boolean;
+  helper?: string;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-xs font-black uppercase tracking-[0.12em] text-soft">
+        {label}
+      </span>
+
+      <div className="flex min-h-12 items-center gap-3 rounded-2xl border border-soft bg-surface-muted px-4 transition focus-within:border-accent-soft">
+        <Icon className="h-4 w-4 shrink-0 text-accent" />
+
+        <input
+          ref={inputRef}
+          type="text"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          disabled={disabled}
+          placeholder={placeholder}
+          className="w-full bg-transparent text-sm font-medium text-primary outline-none placeholder:text-soft disabled:cursor-not-allowed disabled:text-muted"
+        />
+      </div>
+
+      {helper && <p className="mt-2 px-1 text-xs text-muted">{helper}</p>}
+    </label>
   );
 }
