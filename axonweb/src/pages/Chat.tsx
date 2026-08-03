@@ -3,7 +3,7 @@
  * criação rápida e navegação para a conversa interna.
  * ========================================================================== */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ElementType } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   Bell,
@@ -42,6 +42,9 @@ type ProjectConversation = ConversationData & { project_id?: string | null };
 type ConversationWithSortDates = ConversationData & {
   updated_at?: string | null;
   last_message_at?: string | null;
+  last_accessed_at?: string | null;
+  last_opened_at?: string | null;
+  last_read_at?: string | null;
 };
 
 // Centraliza a prioridade de datas usada para ordenar conversas recentes.
@@ -49,7 +52,12 @@ function getConversationSortDate(conversation: ConversationData) {
   const item = conversation as ConversationWithSortDates;
 
   return new Date(
-    item.last_message_at ?? item.updated_at ?? item.created_at
+    item.last_accessed_at ??
+      item.last_opened_at ??
+      item.last_read_at ??
+      item.last_message_at ??
+      item.updated_at ??
+      item.created_at
   ).getTime();
 }
 
@@ -60,8 +68,90 @@ function sortConversationsByRecent<T extends ConversationData>(items: T[]) {
   );
 }
 
+function formatConversationDate(date: Date) {
+  const now = new Date();
+  const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
+
+  if (diffDays === 0) {
+    return date.toLocaleTimeString("pt-BR", {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+
+  if (diffDays === 1) return "Ontem";
+
+  if (diffDays < 7) {
+    return date.toLocaleDateString("pt-BR", { weekday: "short" });
+  }
+
+  return date.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+function getConversationLastAccessDate(
+  conversation: ConversationData,
+  localLastAccess?: string
+) {
+  const item = conversation as ConversationWithSortDates;
+
+  const rawDate =
+    localLastAccess ??
+    item.last_accessed_at ??
+    item.last_opened_at ??
+    item.last_read_at ??
+    null;
+
+  if (!rawDate) return null;
+
+  const date = new Date(rawDate);
+
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function getConversationDisplayDate(
+  conversation: ConversationData,
+  localLastAccess?: string
+) {
+  const lastAccessDate = getConversationLastAccessDate(
+    conversation,
+    localLastAccess
+  );
+
+  if (!lastAccessDate) return "Novo";
+
+  return formatConversationDate(lastAccessDate);
+}
+
 function isAxonDirectConversation(conversation: ConversationData) {
   return conversation.conversation_type === "axon_direct";
+}
+
+// Controla por quanto tempo o card explicativo do topo aparece para usuários recorrentes.
+const CHAT_INTRO_STORAGE_KEY = "axon:chat:intro:first-seen-at";
+const CHAT_INTRO_DISMISSED_KEY = "axon:chat:intro:dismissed";
+const CHAT_INTRO_VISIBLE_DAYS = 7;
+const CHAT_INTRO_HIDE_AFTER_MS =
+  CHAT_INTRO_VISIBLE_DAYS * 24 * 60 * 60 * 1000;
+
+const CHAT_LAST_ACCESS_STORAGE_KEY = "axon:chat:last-accessed-by-id";
+
+type LastAccessMap = Record<string, string>;
+
+function readLastAccessMap(): LastAccessMap {
+  try {
+    return JSON.parse(
+      localStorage.getItem(CHAT_LAST_ACCESS_STORAGE_KEY) ?? "{}"
+    ) as LastAccessMap;
+  } catch {
+    return {};
+  }
+}
+
+function saveLastAccessMap(nextMap: LastAccessMap) {
+  localStorage.setItem(CHAT_LAST_ACCESS_STORAGE_KEY, JSON.stringify(nextMap));
 }
 
 // Fallback usado pela Sidebar quando o cronotipo salvo ainda não existe.
@@ -84,6 +174,9 @@ export default function Chat() {
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"all" | "projects">("all");
   const [visibleCount, setVisibleCount] = useState(8);
+  const [showIntroCard, setShowIntroCard] = useState(false);
+  const [lastAccessByConversation, setLastAccessByConversation] =
+    useState<LastAccessMap>(() => readLastAccessMap());
 
   /* --------------------------------------------------------------------------
    * Conversas
@@ -119,6 +212,41 @@ export default function Chat() {
       .catch(() => setConversations([]))
       .finally(() => setLoadingConversations(false));
   }, []);
+
+  /* --------------------------------------------------------------------------
+   * Card contextual do topo
+   * -------------------------------------------------------------------------- */
+  useEffect(() => {
+    const dismissed = localStorage.getItem(CHAT_INTRO_DISMISSED_KEY) === "true";
+    const firstSeen = localStorage.getItem(CHAT_INTRO_STORAGE_KEY);
+    const now = Date.now();
+
+    if (dismissed) {
+      setShowIntroCard(false);
+      return;
+    }
+
+    if (!firstSeen) {
+      localStorage.setItem(CHAT_INTRO_STORAGE_KEY, String(now));
+      setShowIntroCard(true);
+      return;
+    }
+
+    const firstSeenAt = Number(firstSeen);
+
+    if (!Number.isFinite(firstSeenAt)) {
+      localStorage.setItem(CHAT_INTRO_STORAGE_KEY, String(now));
+      setShowIntroCard(true);
+      return;
+    }
+
+    setShowIntroCard(now - firstSeenAt < CHAT_INTRO_HIDE_AFTER_MS);
+  }, []);
+
+  function hideIntroCard() {
+    localStorage.setItem(CHAT_INTRO_DISMISSED_KEY, "true");
+    setShowIntroCard(false);
+  }
 
   /* --------------------------------------------------------------------------
    * Carregamento sob demanda dos projetos
@@ -260,6 +388,26 @@ export default function Chat() {
   }, [view]);
 
   /* --------------------------------------------------------------------------
+   * Último acesso do usuário em uma conversa
+   * -------------------------------------------------------------------------- */
+  function openConversation(conversationId: string) {
+    const accessedAt = new Date().toISOString();
+
+    setLastAccessByConversation((current) => {
+      const next = {
+        ...current,
+        [conversationId]: accessedAt,
+      };
+
+      saveLastAccessMap(next);
+
+      return next;
+    });
+
+    navigate(`/chat/${conversationId}`);
+  }
+
+  /* --------------------------------------------------------------------------
    * Criação de conversa/projeto
    * -------------------------------------------------------------------------- */
   function openCreateConversationModal(projectId?: string | null) {
@@ -349,71 +497,19 @@ export default function Chat() {
           </div>
         </header>
 
-        <ScrollArea className="flex-1" contentClassName="pr-1">
-          {/* Hero contextual da página de chat. */}
-          <div className="mb-4">
-            <div className="relative overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated p-5 text-primary shadow-soft backdrop-blur-2xl">
-              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_48%)]" />
-              <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.18),transparent_40%)] opacity-60 dark:opacity-30" />
+        {showIntroCard && <ChatIntroCard onHide={hideIntroCard} />}
 
-              <div className="relative">
-                <div className="mb-4 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  Memória e contexto
-                </div>
+        <ChatSearchPanel
+          search={search}
+          view={view}
+          isInsideProject={view === "projects" && Boolean(selectedProjectId)}
+          onSearchChange={setSearch}
+          onViewChange={setView}
+        />
 
-                <h1 className="text-[2.05rem] font-semibold leading-[1.02] tracking-[-0.06em] text-primary">
-                  Organize suas conversas por assunto.
-                </h1>
-
-                <p className="mt-3 text-sm leading-6 text-muted">
-                  Crie chats separados para rotina, foco, projetos, estudos ou
-                  qualquer área que precise de acompanhamento.
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Busca e alternância entre conversas soltas e projetos. */}
-          <div className="sticky top-0 z-30 -mx-1 mb-4 space-y-3 bg-transparent px-1 py-3">
-            <label className="flex min-h-13 items-center gap-3 rounded-2xl border border-soft bg-surface-elevated px-4 shadow-card backdrop-blur-2xl">
-              <Search className="h-4 w-4 text-soft" />
-
-              <input
-                value={search}
-                onChange={(event) => setSearch(event.target.value)}
-                placeholder="Buscar conversa..."
-                className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-soft"
-              />
-            </label>
-
-            <div className="flex rounded-2xl border border-soft bg-surface-elevated p-1 shadow-card backdrop-blur-2xl">
-              <button
-                onClick={() => setView("all")}
-                className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                  view === "all"
-                    ? "bg-[var(--accent-strong)] text-white shadow-card"
-                    : "text-muted"
-                }`}
-              >
-                Todas
-              </button>
-
-              <button
-                onClick={() => setView("projects")}
-                className={`min-h-10 flex-1 rounded-xl text-xs font-semibold transition active:scale-[0.98] ${
-                  view === "projects"
-                    ? "bg-[var(--accent-strong)] text-white shadow-card"
-                    : "text-muted"
-                }`}
-              >
-                Projetos
-              </button>
-            </div>
-          </div>
-
+        <ScrollArea className="min-h-0 flex-1" contentClassName="pr-1 pt-1 pb-8">
           {/* Lista principal: muda entre conversas, projetos e conversas do projeto selecionado. */}
-          <section className="space-y-3 pb-4">
+          <section className="space-y-3">
             {loadingConversations || (view === "projects" && loadingProjects) ? (
               <div className="rounded-[2rem] border border-soft bg-surface-elevated p-5 text-center shadow-card backdrop-blur-2xl">
                 <p className="text-sm text-muted">
@@ -429,7 +525,11 @@ export default function Chat() {
                   {selectedProject && (
                     <SelectedProjectHeader
                       project={selectedProject}
+                      conversationCount={activeConversationList.length}
                       onBack={() => setSelectedProjectId(null)}
+                      onCreateConversation={() =>
+                        openCreateConversationModal(selectedProject.id)
+                      }
                     />
                   )}
 
@@ -451,7 +551,8 @@ export default function Chat() {
                         <ConversationCard
                           key={conversation.id}
                           conversation={conversation}
-                          onClick={() => navigate(`/chat/${conversation.id}`)}
+                          lastAccessedAt={lastAccessByConversation[conversation.id]}
+                          onClick={() => openConversation(conversation.id)}
                         />
                       ))}
 
@@ -510,7 +611,10 @@ export default function Chat() {
                   <div className="space-y-3">
                     <AxonDirectConversationCard
                       conversation={axonDirectConversation}
-                      onClick={() => navigate(`/chat/${axonDirectConversation.id}`)}
+                      lastAccessedAt={
+                        lastAccessByConversation[axonDirectConversation.id]
+                      }
+                      onClick={() => openConversation(axonDirectConversation.id)}
                     />
 
                     {visibleConversations.length > 0 && (
@@ -531,7 +635,8 @@ export default function Chat() {
                   <ConversationCard
                     key={conversation.id}
                     conversation={conversation}
-                    onClick={() => navigate(`/chat/${conversation.id}`)}
+                    lastAccessedAt={lastAccessByConversation[conversation.id]}
+                    onClick={() => openConversation(conversation.id)}
                   />
                 ))}
 
@@ -618,50 +723,177 @@ export default function Chat() {
 }
 
 /* ==========================================================================
+ * Card contextual temporário
+ * ========================================================================== */
+function ChatIntroCard({ onHide }: { onHide: () => void }) {
+  return (
+    <section className="mb-4">
+      <div className="relative overflow-hidden rounded-[2.15rem] border border-soft bg-surface-elevated p-5 text-primary shadow-card backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_54%)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-24 bg-gradient-to-b from-[var(--accent-muted)] to-transparent" />
+
+        <div className="relative">
+          <div className="mb-3 flex items-start justify-between gap-3">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-accent-soft bg-accent-soft px-2.5 py-1 text-[0.62rem] font-black uppercase tracking-[0.1em] text-accent">
+              <Sparkles className="h-3 w-3" />
+              Memória e contexto
+            </div>
+
+            <button
+              type="button"
+              onClick={onHide}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-soft bg-surface-muted text-soft transition active:scale-[0.96]"
+              aria-label="Ocultar explicação"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          <h1 className="max-w-[21rem] text-[1.75rem] font-black leading-[0.98] tracking-[-0.055em] text-primary">
+            Organize suas conversas por assunto.
+          </h1>
+
+          <p className="mt-3 text-sm leading-6 text-muted">
+            Crie chats separados para rotina, foco, projetos, estudos ou
+            qualquer área que precise de acompanhamento.
+          </p>
+
+          <p className="mt-3 text-[0.68rem] leading-5 text-soft">
+            Essa explicação desaparece automaticamente depois de{" "}
+            {CHAT_INTRO_VISIBLE_DAYS} dias.
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+/* ==========================================================================
+ * Busca e alternância de visualização
+ * ========================================================================== */
+function ChatSearchPanel({
+  search,
+  view,
+  isInsideProject,
+  onSearchChange,
+  onViewChange,
+}: {
+  search: string;
+  view: "all" | "projects";
+  isInsideProject: boolean;
+  onSearchChange: (value: string) => void;
+  onViewChange: (value: "all" | "projects") => void;
+}) {
+  return (
+    <section className="mb-4 shrink-0 space-y-3">
+      <label className="flex min-h-13 items-center gap-3 rounded-[1.55rem] border border-soft bg-surface-elevated px-4 shadow-card backdrop-blur-2xl">
+        <Search className="h-4 w-4 text-soft" />
+
+        <input
+          value={search}
+          onChange={(event) => onSearchChange(event.target.value)}
+          placeholder={
+            isInsideProject ? "Buscar neste projeto..." : "Buscar conversa..."
+          }
+          className="w-full bg-transparent text-sm text-primary outline-none placeholder:text-soft"
+        />
+      </label>
+
+      {!isInsideProject && (
+        <div className="flex rounded-[1.45rem] border border-soft bg-surface-elevated p-1 shadow-card backdrop-blur-2xl">
+          <button
+            type="button"
+            onClick={() => onViewChange("all")}
+            className={`min-h-10 flex-1 rounded-[1rem] text-xs font-semibold transition active:scale-[0.98] ${
+              view === "all"
+                ? "bg-[var(--accent-strong)] text-white shadow-card"
+                : "text-muted"
+            }`}
+          >
+            Todas
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onViewChange("projects")}
+            className={`min-h-10 flex-1 rounded-[1rem] text-xs font-semibold transition active:scale-[0.98] ${
+              view === "projects"
+                ? "bg-[var(--accent-strong)] text-white shadow-card"
+                : "text-muted"
+            }`}
+          >
+            Projetos
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ==========================================================================
  * Cabeçalho do projeto selecionado
  * ========================================================================== */
 function SelectedProjectHeader({
   project,
+  conversationCount,
   onBack,
+  onCreateConversation,
 }: {
   project: ProjectFolder;
+  conversationCount: number;
   onBack: () => void;
+  onCreateConversation: () => void;
 }) {
   return (
-    <div className="relative overflow-hidden rounded-[1.8rem] border border-accent-soft bg-accent-soft p-4 text-primary shadow-card backdrop-blur-2xl">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_52%)]" />
+    <article className="relative overflow-hidden rounded-[1.65rem] border border-soft bg-surface-elevated p-4 text-primary shadow-card backdrop-blur-2xl">
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-[var(--accent-muted)] to-transparent" />
 
       <div className="relative">
-        <button
-          type="button"
-          onClick={onBack}
-          className="mb-4 inline-flex items-center gap-2 text-sm font-semibold text-muted transition active:scale-[0.98]"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Voltar aos projetos
-        </button>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            className="inline-flex min-h-9 items-center gap-2 rounded-xl border border-soft bg-surface-muted px-3 text-xs font-semibold text-secondary transition active:scale-[0.98]"
+          >
+            <ArrowLeft className="h-3.5 w-3.5" />
+            Projetos
+          </button>
 
-        <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
+          <span className="rounded-full border border-accent-soft bg-accent-soft px-3 py-1 text-[0.62rem] font-black text-accent">
+            {conversationCount} {conversationCount === 1 ? "conversa" : "conversas"}
+          </span>
+        </div>
+
+        <div className="flex min-w-0 items-start gap-3">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
             <Briefcase className="h-5 w-5" />
           </div>
 
           <div className="min-w-0 flex-1">
-            <p className="text-[0.65rem] font-semibold uppercase tracking-[0.18em] text-accent">
+            <p className="text-[0.62rem] font-black uppercase tracking-[0.14em] text-accent">
               Projeto
             </p>
 
-            <h2 className="mt-1 truncate text-xl font-semibold tracking-[-0.04em] text-primary">
+            <h2 className="mt-1 truncate text-xl font-black leading-none tracking-[-0.045em] text-primary">
               {project.name}
             </h2>
 
-            <p className="mt-1 line-clamp-2 text-sm leading-6 text-muted">
+            <p className="mt-2 line-clamp-2 text-xs leading-5 text-muted">
               {project.description || "Sem descrição"}
             </p>
           </div>
         </div>
+
+        <button
+          type="button"
+          onClick={onCreateConversation}
+          className="mt-4 inline-flex min-h-11 w-full items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft px-4 text-sm font-black text-accent transition active:scale-[0.98]"
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Nova conversa
+        </button>
       </div>
-    </div>
+    </article>
   );
 }
 
@@ -672,10 +904,12 @@ function SelectedProjectHeader({
 // Card genérico para conversa solta ou dentro de projeto.
 function ConversationCard({
   conversation,
+  lastAccessedAt,
   isFixed = false,
   onClick,
 }: {
   conversation: ConversationData;
+  lastAccessedAt?: string;
   isFixed?: boolean;
   onClick: () => void;
 }) {
@@ -684,16 +918,11 @@ function ConversationCard({
     ? Bell
     : getConversationIcon(conversation.type as ConversationType);
 
-  // Formata a data para leitura rápida na lista mobile.
-  const formattedDate = useMemo(() => {
-    const date = new Date(conversation.created_at);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
-    if (diffDays === 0) return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    if (diffDays === 1) return "Ontem";
-    if (diffDays < 7) return date.toLocaleDateString("pt-BR", { weekday: "short" });
-    return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-  }, [conversation.created_at]);
+  // Mostra a última atividade/acesso disponível, evitando usar a data de criação.
+  const formattedDate = useMemo(
+    () => getConversationDisplayDate(conversation, lastAccessedAt),
+    [conversation, lastAccessedAt]
+  );
 
   return (
     <button
@@ -771,33 +1000,17 @@ function ConversationCard({
 // Card especial para a conversa direta com o Axon, sempre fixa no topo da lista.
 function AxonDirectConversationCard({
   conversation,
+  lastAccessedAt,
   onClick,
 }: {
   conversation: ConversationData;
+  lastAccessedAt?: string;
   onClick: () => void;
 }) {
-  const formattedDate = useMemo(() => {
-    const date = new Date(conversation.created_at);
-    const now = new Date();
-    const diffDays = Math.floor((now.getTime() - date.getTime()) / 86400000);
-
-    if (diffDays === 0) {
-      return date.toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    }
-
-    if (diffDays === 1) return "Ontem";
-    if (diffDays < 7) {
-      return date.toLocaleDateString("pt-BR", { weekday: "short" });
-    }
-
-    return date.toLocaleDateString("pt-BR", {
-      day: "2-digit",
-      month: "2-digit",
-    });
-  }, [conversation.created_at]);
+  const formattedDate = useMemo(
+    () => getConversationDisplayDate(conversation, lastAccessedAt),
+    [conversation, lastAccessedAt]
+  );
 
   return (
     <button
@@ -949,23 +1162,25 @@ function CreateConversationModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/55 px-3 pb-3 backdrop-blur-sm">
-      <div className="relative flex max-h-[88vh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
+    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm">
+      <div className="relative flex max-h-[88dvh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,var(--accent-soft),transparent_50%)]" />
 
-        <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-4">
-          <div className="mx-auto mb-4 h-1.5 w-11 rounded-full bg-[var(--border-medium)]" />
-
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-medium text-accent">
+        <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-5">
+          <div className="mb-5 flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-accent-soft bg-accent-soft px-3 py-1.5 text-xs font-semibold text-accent">
                 <Plus className="h-3.5 w-3.5" />
-                {isInsideProject ? "Nova conversa" : "Novo espaço"}
+                {isInsideProject
+                  ? "Conversa do projeto"
+                  : createMode === "project"
+                  ? "Novo projeto"
+                  : "Nova conversa"}
               </div>
 
-              <h2 className="text-[1.55rem] font-semibold leading-[1.05] tracking-[-0.05em] text-primary">
+              <h2 className="text-[1.65rem] font-black leading-[1.02] tracking-[-0.055em] text-primary">
                 {isInsideProject
-                  ? "Criar conversa no projeto"
+                  ? "Adicionar conversa"
                   : createMode === "project"
                   ? "Criar projeto"
                   : "Criar conversa"}
@@ -973,14 +1188,15 @@ function CreateConversationModal({
 
               <p className="mt-2 text-xs leading-5 text-muted">
                 {isInsideProject
-                  ? "Esta conversa será vinculada ao projeto selecionado."
+                  ? "A nova conversa ficará dentro deste projeto."
                   : createMode === "project"
-                  ? "Reúna conversas relacionadas em um mesmo contexto."
-                  : "Separe assuntos para o Axon acompanhar cada contexto com mais clareza."}
+                  ? "Agrupe conversas relacionadas em uma pasta própria."
+                  : "Crie um chat separado para um assunto específico."}
               </p>
             </div>
 
             <button
+              type="button"
               onClick={onClose}
               disabled={isLoading}
               className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96] disabled:opacity-50"
@@ -989,12 +1205,9 @@ function CreateConversationModal({
               <X className="h-5 w-5" />
             </button>
           </div>
-        </div>
 
-        <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
-          {/* Quando não veio de um projeto, o modal também permite criar uma nova pasta. */}
           {!isInsideProject && (
-            <div className="mb-4 grid grid-cols-2 gap-2 rounded-2xl border border-soft bg-surface-muted p-1">
+            <div className="grid grid-cols-2 gap-2 rounded-2xl border border-soft bg-surface-muted p-1">
               <button
                 type="button"
                 onClick={() => setCreateMode("conversation")}
@@ -1020,44 +1233,44 @@ function CreateConversationModal({
               </button>
             </div>
           )}
+        </div>
 
+        <ScrollArea className="flex-1" contentClassName="relative px-5 py-4">
           {createMode === "conversation" || isInsideProject ? (
-            <>
-              {/* Tipos de conversa solta ajudam o Axon a interpretar o contexto inicial. */}
+            <div className="space-y-4">
               {!isInsideProject && (
-                <div className="mb-4 grid grid-cols-2 gap-2">
-                  <ConversationTypeButton
-                    active={selectedType === "general"}
-                    icon={MessageCircle}
-                    label="Geral"
-                    onClick={() => setSelectedType("general")}
-                  />
+                <div>
+                  <p className="mb-2 text-xs font-semibold text-muted">
+                    Tipo de conversa
+                  </p>
 
-                  <ConversationTypeButton
-                    active={selectedType === "planning"}
-                    icon={CalendarDays}
-                    label="Planejamento"
-                    onClick={() => setSelectedType("planning")}
-                  />
+                  <div className="grid grid-cols-3 gap-2">
+                    <ConversationTypeButton
+                      active={selectedType === "general"}
+                      icon={MessageCircle}
+                      label="Geral"
+                      onClick={() => setSelectedType("general")}
+                    />
 
-                  <ConversationTypeButton
-                    active={selectedType === "focus"}
-                    icon={Focus}
-                    label="Foco"
-                    onClick={() => setSelectedType("focus")}
-                  />
+                    <ConversationTypeButton
+                      active={selectedType === "planning"}
+                      icon={CalendarDays}
+                      label="Planejamento"
+                      onClick={() => setSelectedType("planning")}
+                    />
 
-                  <ConversationTypeButton
-                    active={selectedType === "project"}
-                    icon={Briefcase}
-                    label="Projeto"
-                    onClick={() => setSelectedType("project")}
-                  />
+                    <ConversationTypeButton
+                      active={selectedType === "focus"}
+                      icon={Focus}
+                      label="Foco"
+                      onClick={() => setSelectedType("focus")}
+                    />
+                  </div>
                 </div>
               )}
 
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-muted">
+                <span className="mb-2 block text-xs font-semibold text-muted">
                   Nome da conversa
                 </span>
 
@@ -1065,30 +1278,35 @@ function CreateConversationModal({
                   value={title}
                   onChange={(event) => setTitle(event.target.value)}
                   type="text"
-                  placeholder="Ex: Estudos, Trabalho, Rotina..."
-                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
+                  placeholder={
+                    isInsideProject
+                      ? "Ex: Briefing, tarefas, decisões..."
+                      : "Ex: Estudos, trabalho, rotina..."
+                  }
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none transition placeholder:text-soft focus:border-accent-soft"
                 />
               </label>
 
               {isInsideProject && (
-                <div className="mt-4 rounded-2xl border border-accent-soft bg-accent-soft p-4">
+                <div className="rounded-2xl border border-accent-soft bg-accent-soft p-4">
                   <div className="mb-2 flex items-center gap-2">
                     <Briefcase className="h-4 w-4 text-accent" />
                     <p className="text-sm font-semibold text-primary">
-                      Conversa de projeto
+                      Dentro do projeto atual
                     </p>
                   </div>
 
                   <p className="text-xs leading-5 text-muted">
-                    Esta conversa será criada diretamente dentro do projeto atual.
+                    O Axon usará o contexto deste projeto para manter as
+                    conversas mais organizadas.
                   </p>
                 </div>
               )}
-            </>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-muted">
+                <span className="mb-2 block text-xs font-semibold text-muted">
                   Nome do projeto
                 </span>
 
@@ -1097,12 +1315,12 @@ function CreateConversationModal({
                   onChange={(event) => setProjectName(event.target.value)}
                   type="text"
                   placeholder="Ex: AXON WebApp"
-                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none placeholder:text-soft focus:border-accent-soft"
+                  className="min-h-[52px] w-full rounded-2xl border border-soft bg-surface-muted px-4 text-sm text-primary outline-none transition placeholder:text-soft focus:border-accent-soft"
                 />
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-xs font-medium text-muted">
+                <span className="mb-2 block text-xs font-semibold text-muted">
                   Descrição
                 </span>
 
@@ -1110,8 +1328,8 @@ function CreateConversationModal({
                   value={projectDescription}
                   onChange={(event) => setProjectDescription(event.target.value)}
                   placeholder="Ex: Conversas sobre telas, fluxo, backend e decisões do produto."
-                  rows={3}
-                  className="w-full resize-none rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm leading-6 text-primary outline-none placeholder:text-soft focus:border-accent-soft"
+                  rows={4}
+                  className="w-full resize-none rounded-2xl border border-soft bg-surface-muted px-4 py-3 text-sm leading-6 text-primary outline-none transition placeholder:text-soft focus:border-accent-soft"
                 />
               </label>
 
@@ -1119,19 +1337,20 @@ function CreateConversationModal({
                 <div className="mb-2 flex items-center gap-2">
                   <Sparkles className="h-4 w-4 text-accent" />
                   <p className="text-sm font-semibold text-primary">
-                    Como o Axon usa projetos
+                    Quando usar projetos
                   </p>
                 </div>
 
                 <p className="text-xs leading-5 text-muted">
-                  Projetos servem para reunir conversas relacionadas em um mesmo contexto.
+                  Use projetos para reunir conversas que pertencem ao mesmo
+                  tema, trabalho, estudo ou objetivo.
                 </p>
               </div>
             </div>
           )}
 
           {formError && (
-            <p className="mt-3 text-xs font-medium text-rose-300">
+            <p className="mt-4 rounded-xl border border-red-300/20 bg-red-500/10 px-3 py-2 text-xs font-medium text-red-600 dark:text-red-300">
               {formError}
             </p>
           )}
@@ -1142,14 +1361,24 @@ function CreateConversationModal({
             type="button"
             onClick={handleCreate}
             disabled={isLoading}
-            className="inline-flex min-h-14 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
+            className="inline-flex min-h-13 w-full items-center justify-center rounded-2xl bg-[var(--accent-strong)] px-6 text-sm font-semibold text-white shadow-card transition active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-60"
           >
-            {isLoading
-              ? "Criando..."
-              : createMode === "project" && !isInsideProject
-              ? "Criar projeto"
-              : "Criar conversa"}
-            {!isLoading && <Plus className="ml-2 h-4 w-4" />}
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Criando...
+              </>
+            ) : createMode === "project" && !isInsideProject ? (
+              <>
+                Criar projeto
+                <Briefcase className="ml-2 h-4 w-4" />
+              </>
+            ) : (
+              <>
+                Criar conversa
+                <MessageCircle className="ml-2 h-4 w-4" />
+              </>
+            )}
           </button>
 
           <button
@@ -1176,7 +1405,7 @@ function ConversationTypeButton({
   onClick,
 }: {
   active: boolean;
-  icon: React.ElementType;
+  icon: ElementType;
   label: string;
   onClick: () => void;
 }) {
@@ -1184,7 +1413,7 @@ function ConversationTypeButton({
     <button
       type="button"
       onClick={onClick}
-      className={`flex min-h-[4.6rem] flex-col items-center justify-center gap-2 rounded-2xl border text-xs font-semibold transition active:scale-[0.98] ${
+      className={`flex min-h-[4.25rem] flex-col items-center justify-center gap-2 rounded-2xl border px-2 text-[0.68rem] font-semibold transition active:scale-[0.98] ${
         active
           ? "border-accent-soft bg-accent-soft text-accent shadow-card"
           : "border-soft bg-surface-muted text-muted"
@@ -1221,25 +1450,25 @@ function ProjectFolderCard({
       <button
         type="button"
         onClick={onClick}
-        className="group w-full rounded-[2rem] border border-soft bg-surface-elevated p-5 pr-16 text-left text-primary shadow-card backdrop-blur-2xl transition active:scale-[0.98]"
+        className="group relative flex w-full items-center gap-3 overflow-hidden rounded-[1.7rem] border border-soft bg-surface-elevated p-4 pr-14 text-left text-primary shadow-card backdrop-blur-2xl transition active:scale-[0.98]"
       >
-        <div className="flex items-start gap-3">
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
-            <Briefcase className="h-5 w-5" />
-          </div>
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-16 bg-gradient-to-b from-[var(--accent-muted)] to-transparent" />
 
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-semibold text-primary">
-              {project.name}
-            </p>
+        <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-accent-soft bg-accent-soft text-accent">
+          <Briefcase className="h-5 w-5" />
+        </div>
 
-            <p className="mt-1 line-clamp-2 text-xs leading-5 text-muted">
-              {project.description || "Sem descrição"}
-            </p>
+        <div className="relative min-w-0 flex-1">
+          <p className="truncate text-base font-black tracking-[-0.035em] text-primary">
+            {project.name}
+          </p>
 
-            <div className="mt-3 inline-flex rounded-full border border-soft bg-surface-muted px-3 py-1 text-[0.68rem] font-semibold text-muted">
-              {count} {count === 1 ? "conversa" : "conversas"}
-            </div>
+          <p className="mt-1 line-clamp-1 text-xs leading-5 text-muted">
+            {project.description || "Sem descrição"}
+          </p>
+
+          <div className="mt-2 inline-flex rounded-full border border-accent-soft bg-accent-soft px-2.5 py-1 text-[0.62rem] font-black text-accent">
+            {count} {count === 1 ? "conversa" : "conversas"}
           </div>
         </div>
       </button>
@@ -1250,14 +1479,14 @@ function ProjectFolderCard({
           event.stopPropagation();
           setIsMenuOpen((current) => !current);
         }}
-        className="absolute right-4 top-4 flex h-10 w-10 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted transition active:scale-[0.96]"
+        className="absolute right-4 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-2xl border border-soft bg-surface-muted text-muted shadow-card backdrop-blur-2xl transition active:scale-[0.96]"
         aria-label="Ações do projeto"
       >
         <MoreVertical className="h-5 w-5" />
       </button>
 
       {isMenuOpen && (
-        <div className="absolute right-4 top-16 z-40 w-56 overflow-hidden rounded-2xl border border-soft bg-surface-elevated p-1 shadow-soft backdrop-blur-2xl">
+        <div className="absolute right-4 top-[calc(100%+8px)] z-40 w-56 overflow-hidden rounded-2xl border border-soft bg-surface-elevated p-1 shadow-soft backdrop-blur-2xl">
           <button
             type="button"
             onClick={(event) => {
@@ -1267,7 +1496,7 @@ function ProjectFolderCard({
             }}
             className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-secondary transition hover:bg-surface-muted active:scale-[0.98]"
           >
-            <Plus className="h-4 w-4" />
+            <Plus className="h-4 w-4 text-accent" />
             Nova conversa
           </button>
 
@@ -1280,7 +1509,7 @@ function ProjectFolderCard({
             }}
             className="flex min-h-11 w-full items-center gap-3 rounded-xl px-3 text-left text-sm font-semibold text-secondary transition hover:bg-surface-muted active:scale-[0.98]"
           >
-            <Edit3 className="h-4 w-4" />
+            <Edit3 className="h-4 w-4 text-accent" />
             Editar projeto
           </button>
 
@@ -1358,8 +1587,8 @@ function EditProjectModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/55 px-4 backdrop-blur-sm">
-      <div className="relative flex max-h-[82vh] w-full max-w-[390px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
+    <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/55 px-4 py-6 backdrop-blur-sm">
+      <div className="relative flex max-h-[88dvh] w-full max-w-[430px] flex-col overflow-hidden rounded-[2rem] border border-soft bg-surface-elevated text-primary shadow-soft backdrop-blur-2xl">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(168,85,247,0.22),transparent_48%)]" />
 
         <div className="relative border-b border-[var(--border-soft)] px-5 pb-4 pt-5">
